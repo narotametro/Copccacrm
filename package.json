@@ -57,8 +57,9 @@
           "@vitejs/plugin-react-swc": "^3.10.2",
           "vite": "6.3.5"
       },
+      "
       "scripts": {
-  "start": "react-scripts start",    
-  "build": "react-scripts build",
-  "dev": "vite"                      
-}
+          "dev": "vite",
+          "build": "vite build"
+      }
+  }        
