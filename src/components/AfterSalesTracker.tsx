@@ -1,5 +1,5 @@
 import { ShoppingBag, TrendingUp, Package, DollarSign, Shield, Phone, Mail, Plus, Minus, Search, AlertCircle, CheckCircle2, Tag, Percent, Pencil, Trash2, X, User, MapPin, Upload, Download, Calendar, RefreshCw, FileText, Filter, ChevronLeft, ChevronRight, Star, Award, ThumbsUp, Bot, MessageSquare, PhoneCall, Zap, Play, Pause } from 'lucide-react';
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { StatCard } from './shared/StatCard';
 import { SearchInput } from './shared/SearchInput';
 import { PageHeader } from './shared/PageHeader';
@@ -38,6 +38,11 @@ export const AfterSalesTracker = memo(function AfterSalesTracker() {
   const [deletingRecord, setDeletingRecord] = useState<any | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  
+  // Ref to prevent infinite loop in auto-selection
+  const hasAutoSelectedRef = useRef(false);
+  const lastRecordsLengthRef = useRef(0);
+  
   const [newCustomer, setNewCustomer] = useState({
     customer: '',
     contacts: [{ name: '', phone: '', phoneCountryCode: '+1', email: '', whatsapp: '', whatsappCountryCode: '+1' }],
@@ -308,30 +313,32 @@ export const AfterSalesTracker = memo(function AfterSalesTracker() {
     return total;
   };
 
-  // Filtered records sorted by revenue (high to low)
-  const filteredRecords = records
-    .filter((record) => {
-      const matchesSearch = searchQuery === '' ||
-        record.customer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.contacts?.some((c: any) => 
-          c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        ) ||
-        record.city?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCity = filterCity === 'all' || record.city === filterCity;
-      const matchesPerformance = filterPerformance === 'all' || record.performanceCategory === filterPerformance;
-      
-      return matchesSearch && matchesCity && matchesPerformance;
-    })
-    .sort((a, b) => {
-      // Sort by total revenue, highest to lowest
-      const revenueA = getCustomerTotalRevenue(a);
-      const revenueB = getCustomerTotalRevenue(b);
-      return revenueB - revenueA;
-    });
+  // Filtered records sorted by revenue (high to low) - Memoized to prevent infinite loops
+  const filteredRecords = useMemo(() => {
+    return records
+      .filter((record) => {
+        const matchesSearch = searchQuery === '' ||
+          record.customer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.contacts?.some((c: any) => 
+            c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.email?.toLowerCase().includes(searchQuery.toLowerCase())
+          ) ||
+          record.city?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesCity = filterCity === 'all' || record.city === filterCity;
+        const matchesPerformance = filterPerformance === 'all' || record.performanceCategory === filterPerformance;
+        
+        return matchesSearch && matchesCity && matchesPerformance;
+      })
+      .sort((a, b) => {
+        // Sort by total revenue, highest to lowest
+        const revenueA = getCustomerTotalRevenue(a);
+        const revenueB = getCustomerTotalRevenue(b);
+        return revenueB - revenueA;
+      });
+  }, [records, searchQuery, filterCity, filterPerformance]);
 
-  // Debug: Log records changes
+  // Debug: Log records changes and reset auto-select flag when user changes
   useEffect(() => {
     console.log('📋 [AfterSalesTracker] Records updated:', {
       totalRecords: records.length,
@@ -346,11 +353,19 @@ export const AfterSalesTracker = memo(function AfterSalesTracker() {
         _userName: r._userName 
       }))
     });
+    
+    // Reset auto-select flag when user changes so we can auto-select new top performer
+    hasAutoSelectedRef.current = false;
   }, [records, selectedUserId, user]);
 
   // Auto-select top performer (first customer) when user changes or data loads
   useEffect(() => {
-    if (filteredRecords.length > 0) {
+    // Only auto-select if:
+    // 1. Records have changed (new data loaded)
+    // 2. We haven't already auto-selected for this dataset
+    const recordsChanged = records.length !== lastRecordsLengthRef.current;
+    
+    if (filteredRecords.length > 0 && (recordsChanged || !hasAutoSelectedRef.current)) {
       // Always select the top performer (first record, sorted by revenue)
       const topPerformer = filteredRecords[0];
       const revenue = getCustomerTotalRevenue(topPerformer);
@@ -361,19 +376,22 @@ export const AfterSalesTracker = memo(function AfterSalesTracker() {
         userName: topPerformer._userName
       });
       setSelectedCustomer(topPerformer);
+      hasAutoSelectedRef.current = true;
+      lastRecordsLengthRef.current = records.length;
       
-      // Show a subtle notification for user context
-      if (selectedUserId && topPerformer._userName) {
+      // Show a subtle notification for user context (only on initial load, not on user changes)
+      if (selectedUserId && topPerformer._userName && recordsChanged) {
         toast.success(`Top Performer: ${formatName(topPerformer.customer)} (${formatName(topPerformer._userName)})`, {
           duration: 2000,
           icon: '🏆'
         });
       }
-    } else {
+    } else if (filteredRecords.length === 0) {
       console.log('📭 No customers found, clearing selection');
       setSelectedCustomer(null);
+      hasAutoSelectedRef.current = false;
     }
-  }, [filteredRecords, selectedUserId]); // Added selectedUserId to re-select when user changes
+  }, [filteredRecords, selectedUserId]); // Now safe to depend on filteredRecords since it's memoized
 
   // Sync selected customer with updated records data (e.g., after editing)
   useEffect(() => {
