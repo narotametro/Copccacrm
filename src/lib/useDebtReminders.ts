@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner@2.0.3';
-import { Bell } from 'lucide-react';
 
 interface DebtRecord {
   id: number;
@@ -43,23 +42,7 @@ export function useDebtReminders(records: DebtRecord[]) {
         if (followUpTime < now) {
           notifiedRef.current.add(record.id);
           toast.error(
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Bell className="w-5 h-5 text-red-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">Overdue Follow-up!</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {record.customer} - ${record.amount.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Scheduled: {new Date(record.scheduledFollowUp.dateTime).toLocaleString()}
-                </p>
-                <p className="text-xs text-red-600 mt-1">
-                  Method: {record.scheduledFollowUp.method}
-                </p>
-              </div>
-            </div>,
+            `Overdue Follow-up!\n${record.customer} - $${record.amount.toLocaleString()}\nScheduled: ${new Date(record.scheduledFollowUp.dateTime).toLocaleString()}\nMethod: ${record.scheduledFollowUp.method}`,
             {
               duration: 10000,
               position: 'top-right',
@@ -71,29 +54,10 @@ export function useDebtReminders(records: DebtRecord[]) {
           notifiedRef.current.add(record.id);
           const minutesUntil = Math.round((followUpTime - now) / 60000);
           
+          const notesText = record.scheduledFollowUp.notes ? `\n"${record.scheduledFollowUp.notes}"` : '';
+          
           toast.info(
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Bell className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">Follow-up Reminder</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {record.customer} - ${record.amount.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  In {minutesUntil} minute{minutesUntil !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Method: {record.scheduledFollowUp.method}
-                </p>
-                {record.scheduledFollowUp.notes && (
-                  <p className="text-xs text-gray-500 mt-1 italic">
-                    "{record.scheduledFollowUp.notes}"
-                  </p>
-                )}
-              </div>
-            </div>,
+            `Follow-up Reminder\n${record.customer} - $${record.amount.toLocaleString()}\nIn ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}\nMethod: ${record.scheduledFollowUp.method}${notesText}`,
             {
               duration: 8000,
               position: 'top-right',
