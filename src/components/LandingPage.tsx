@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onSignUp: () => void;
 }
 
 interface Feature {
@@ -53,7 +54,7 @@ const benefits: string[] = [
   'Customizable KPI dashboards',
 ];
 
-export function LandingPage({ onGetStarted }: LandingPageProps) {
+export function LandingPage({ onGetStarted, onSignUp }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-pink-200 to-pink-300">
       {/* Navigation */}
@@ -73,7 +74,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               Sign In
             </button>
             <button
-              onClick={onGetStarted}
+              onClick={onSignUp}
               className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
             >
               Sign Up
@@ -118,7 +119,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             {/* CTA Button - Single */}
             <div className="flex items-center justify-center">
               <button
-                onClick={onGetStarted}
+                onClick={onSignUp}
                 className="px-10 py-5 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-all text-xl shadow-xl hover:shadow-2xl hover:scale-105 flex items-center gap-3 group"
               >
                 Get Started Free

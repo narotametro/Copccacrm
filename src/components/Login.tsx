@@ -8,11 +8,12 @@ import { invitationAPI } from '../lib/api';
 interface LoginProps {
   onBack?: () => void;
   inviteCode?: string | null;
+  initialMode?: 'login' | 'signup';
 }
 
-export function Login({ onBack, inviteCode }: LoginProps) {
+export function Login({ onBack, inviteCode, initialMode = 'login' }: LoginProps) {
   const { login, signup } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(!!inviteCode); // Auto switch to signup if invite code
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup' || !!inviteCode); // Auto switch to signup if invite code or initialMode is signup
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<any>(null);

@@ -201,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (name: string, phoneOrEmail: string, password: string, role: UserRole = 'admin', inviteCode?: string) => {
+  const signup = async (name: string, phoneOrEmail: string, password: string, role: UserRole = 'user', inviteCode?: string) => {
     try {
       // Create user via backend
       console.log('📝 Creating user account for:', name, phoneOrEmail);

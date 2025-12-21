@@ -87,6 +87,20 @@ app.post("/make-server-a2294ced/auth/signup", async (c) => {
 
     const supabase = getSupabaseClient();
     
+    // Check if this is the first user (make them admin)
+    let finalRole = role;
+    if (!inviteCode) {
+      console.log('Checking if this is the first user...');
+      const { data: existingUsers } = await supabase.auth.admin.listUsers();
+      const userCount = existingUsers?.users?.length || 0;
+      console.log('Current user count:', userCount);
+      
+      if (userCount === 0) {
+        console.log('🎉 First user detected - assigning admin role');
+        finalRole = 'admin';
+      }
+    }
+    
     // Check if invite code is valid and get invitation details
     let inviteData = null;
     let adminTeamId = null;
@@ -140,7 +154,7 @@ app.post("/make-server-a2294ced/auth/signup", async (c) => {
           name,
           email,
           phone,
-          role,
+          role: finalRole,
           teamId,
           status: 'Active',
           createdAt: new Date().toISOString(),
@@ -202,7 +216,7 @@ app.post("/make-server-a2294ced/auth/signup", async (c) => {
       name,
       email,
       phone,
-      role,
+      role: finalRole,
       teamId,
       status: 'Active', // Default status
       createdAt: new Date().toISOString(),
@@ -212,7 +226,7 @@ app.post("/make-server-a2294ced/auth/signup", async (c) => {
     await kv.set(`users:profile:${userId}`, userProfile);
 
     // Create team if admin and not invited
-    if (role === 'admin' && !inviteCode) {
+    if (finalRole === 'admin' && !inviteCode) {
       console.log('Creating team for admin user...');
       await kv.set(`team:${teamId}`, {
         id: teamId,

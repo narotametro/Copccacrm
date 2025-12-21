@@ -192,6 +192,7 @@ function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -210,6 +211,7 @@ function AppContent() {
         window.history.replaceState({}, '', '/');
       } else {
         // User not logged in - show signup
+        setShowSignup(true);
         setShowLogin(true);
       }
     }
@@ -262,10 +264,19 @@ function AppContent() {
     );
   }
 
-  if (!user && !showLogin) {
+  if (!user && !showLogin && !showSignup) {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <LandingPage onGetStarted={() => setShowLogin(true)} />
+        <LandingPage 
+          onGetStarted={() => {
+            setShowLogin(true);
+            setShowSignup(false);
+          }} 
+          onSignUp={() => {
+            setShowLogin(true);
+            setShowSignup(true);
+          }}
+        />
       </Suspense>
     );
   }
@@ -273,7 +284,14 @@ function AppContent() {
   if (!user && showLogin) {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <Login onBack={() => setShowLogin(false)} inviteCode={inviteCode} />
+        <Login 
+          onBack={() => {
+            setShowLogin(false);
+            setShowSignup(false);
+          }} 
+          inviteCode={inviteCode}
+          initialMode={showSignup ? 'signup' : 'login'}
+        />
       </Suspense>
     );
   }
