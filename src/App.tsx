@@ -34,65 +34,41 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Eager load critical components
-import { Sidebar } from './components/Sidebar';
-import { UserProfile } from './components/UserProfile';
-import { UserSelector } from './components/UserSelector';
-import { CompanyBranding } from './components/CompanyBranding';
-import { PerformanceIndicator } from './components/PerformanceIndicator';
-import { PerformanceMonitor } from './components/PerformanceMonitor';
-import { NotificationCenter } from './components/NotificationCenter';
-import { SubscriptionGate } from './components/SubscriptionGate';
+// Eager load critical components from organized structure
+import { Sidebar } from './components/layout/Sidebar';
+import { UserProfile } from './components/layout/UserProfile';
+import { UserSelector } from './components/layout/UserSelector';
+import { CompanyBranding } from './components/layout/CompanyBranding';
+import { PerformanceIndicator } from './components/layout/PerformanceIndicator';
+import { PerformanceMonitor } from './components/layout/PerformanceMonitor';
+import { NotificationCenter } from './components/layout/NotificationCenter';
+import { SubscriptionGate } from './components/layout/SubscriptionGate';
 import { useTeamData } from './lib/useTeamData';
 import { useNotifications } from './lib/useNotifications';
+
+// Import routing configuration
+import { type TabId, ROUTES, HASH_TO_TAB } from './config/routes';
 
 // Lazy load heavy components for code splitting
 const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
 const Login = lazy(() => import('./components/Login').then(m => ({ default: m.Login })));
 const PasswordReset = lazy(() => import('./components/PasswordReset').then(m => ({ default: m.PasswordReset })));
-const Home = lazy(() => import('./components/Home').then(m => ({ default: m.Home })));
-const AfterSalesTracker = lazy(() => import('./components/AfterSalesTracker').then(m => ({ default: m.AfterSalesTracker })));
-const CompetitorIntel = lazy(() => import('./components/CompetitorIntelEnhanced').then(m => ({ default: m.CompetitorIntelEnhanced })));
-const SalesStrategies = lazy(() => import('./components/SalesStrategies').then(m => ({ default: m.SalesStrategies })));
-const KPITracking = lazy(() => import('./components/KPITracking').then(m => ({ default: m.KPITracking })));
-const Integrations = lazy(() => import('./components/Integrations').then(m => ({ default: m.Integrations })));
-const UserManagement = lazy(() => import('./components/UserManagement').then(m => ({ default: m.UserManagement })));
-const Reports = lazy(() => import('./components/Reports').then(m => ({ default: m.Reports })));
-const AnalyticalReports = lazy(() => import('./components/AnalyticalReports').then(m => ({ default: m.AnalyticalReports })));
-const DebtCollection = lazy(() => import('./components/DebtCollection').then(m => ({ default: m.DebtCollection })));
+const Home = lazy(() => import('./components/modules/Home').then(m => ({ default: m.Home })));
+const AfterSalesTracker = lazy(() => import('./components/modules/AfterSalesTracker').then(m => ({ default: m.AfterSalesTracker })));
+const CompetitorIntel = lazy(() => import('./components/modules/CompetitorIntelEnhanced').then(m => ({ default: m.CompetitorIntelEnhanced })));
+const SalesStrategies = lazy(() => import('./components/modules/SalesStrategies').then(m => ({ default: m.SalesStrategies })));
+const KPITracking = lazy(() => import('./components/modules/KPITracking').then(m => ({ default: m.KPITracking })));
+const Integrations = lazy(() => import('./components/settings/Integrations').then(m => ({ default: m.Integrations })));
+const UserManagement = lazy(() => import('./components/settings/UserManagement').then(m => ({ default: m.UserManagement })));
+const Reports = lazy(() => import('./components/reports/Reports').then(m => ({ default: m.Reports })));
+const AnalyticalReports = lazy(() => import('./components/reports/AnalyticalReports').then(m => ({ default: m.AnalyticalReports })));
+const DebtCollection = lazy(() => import('./components/modules/DebtCollection').then(m => ({ default: m.DebtCollection })));
 const AdminDashboard = lazy(() => import('./AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 
-type TabId = 'home' | 'aftersales' | 'competitors' | 'debt' | 'strategies' | 'kpi' | 'integrations' | 'users' | 'reports' | 'analytical';
-
-const TAB_TITLES: Record<TabId, string> = {
-  home: 'Dashboard',
-  aftersales: 'After-Sales Follow-up',
-  competitors: 'Competitors Information',
-  debt: 'Debt Collection',
-  strategies: 'Sales & Marketing Strategies',
-  kpi: 'KPI Tracking',
-  integrations: 'Data Integrations',
-  users: 'User Management',
-  reports: 'Reports',
-  analytical: 'Analytical Reports',
-};
-
-const HASH_TO_TAB: Record<string, TabId> = {
-  '#/home': 'home',
-  '#/after-sales': 'aftersales',
-  '#/aftersales': 'aftersales',
-  '#/competitors': 'competitors',
-  '#/debt': 'debt',
-  '#/strategies': 'strategies',
-  '#/kpi': 'kpi',
-  '#/integrations': 'integrations',
-  '#/settings': 'integrations',
-  '#/user-management': 'users',
-  '#/users': 'users',
-  '#/reports': 'reports',
-  '#/analytical': 'analytical',
-  '#/analytical-reports': 'analytical',
-};
+// Tab titles from routes config
+const TAB_TITLES: Record<TabId, string> = Object.fromEntries(
+  Object.entries(ROUTES).map(([key, route]) => [key, route.title])
+) as Record<TabId, string>;
 
 // Loading fallback component
 const LoadingFallback = memo(() => (
