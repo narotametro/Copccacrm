@@ -77,16 +77,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
 
     if (error) throw error;
-
-    if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        email: data.user.email!,
-        full_name: fullName,
-        role: 'user',
-        status: 'active',
-      } as any);
-    }
+    // Profile will be auto-created by database trigger
   },
 
   signOut: async () => {
@@ -107,34 +98,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        // Check if user profile exists
-        let { data: profile } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
-
-        // If no profile exists (OAuth user), create one
-        if (!profile) {
-          const fullName = session.user.user_metadata?.full_name || 
-                          session.user.email?.split('@')[0] || 
-                          'User';
-          
-          const { data: newProfile } = await supabase
-            .from('profiles')
-            .insert({
-              id: session.user.id,
-              email: session.user.email!,
-              full_name: fullName,
-              role: 'user',
-              status: 'active',
-              avatar_url: session.user.user_metadata?.avatar_url || null,
-            } as any)
-            .select()
-            .single();
-          
-          profile = newProfile;
-        }
 
         set({ user: session.user, profile, loading: false });
       } else {
@@ -143,34 +111,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          // Check if user profile exists
-          let { data: profile } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
-
-          // If no profile exists (OAuth user), create one
-          if (!profile) {
-            const fullName = session.user.user_metadata?.full_name || 
-                            session.user.email?.split('@')[0] || 
-                            'User';
-            
-            const { data: newProfile } = await supabase
-              .from('profiles')
-              .insert({
-                id: session.user.id,
-                email: session.user.email!,
-                full_name: fullName,
-                role: 'user',
-                status: 'active',
-                avatar_url: session.user.user_metadata?.avatar_url || null,
-              } as any)
-              .select()
-              .single();
-            
-            profile = newProfile;
-          }
 
           set({ user: session.user, profile });
         } else {
