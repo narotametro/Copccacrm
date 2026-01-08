@@ -5,11 +5,9 @@ import { ContactSalesModal } from '@/components/ContactSalesModal';
 import {
   Brain,
   TrendingUp,
-  Users,
   Target,
   Zap,
   Shield,
-  BarChart3,
   MessageSquare,
   CheckCircle,
   ArrowRight,
