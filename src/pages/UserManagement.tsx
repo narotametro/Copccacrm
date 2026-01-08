@@ -25,7 +25,6 @@ import {
   Send,
   Copy,
   Link2,
-  ExternalLink,
   MessageCircle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -368,7 +367,7 @@ export const UserManagement: React.FC = () => {
       </Card>
 
       {/* Add User Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Team Member" size="large">
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Team Member" size="lg">
         <form className="space-y-4" onSubmit={handleAddUser}>
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
@@ -404,7 +403,7 @@ export const UserManagement: React.FC = () => {
 
       {/* Permissions Modal */}
       {selectedUser && (
-        <Modal isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} title={`Manage Permissions - ${selectedUser.full_name}`} size="large">
+        <Modal isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} title={`Manage Permissions - ${selectedUser.full_name}`} size="lg">
           <div className="space-y-4">
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
               <div className="flex items-center gap-3">
@@ -460,7 +459,7 @@ export const UserManagement: React.FC = () => {
         isOpen={showInvitationModal}
         onClose={() => setShowInvitationModal(false)}
         title="📧 Invitation Link Generated"
-        size="large"
+        size="lg"
       >
         <div className="space-y-6">
           {/* Success Message */}

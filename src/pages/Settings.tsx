@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Bell, Lock, Globe, Palette, Database, Download, Trash2, Save } from 'lucide-react';
+import { Bell, Globe, Palette, Database, Download, Trash2, Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';

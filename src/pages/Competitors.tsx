@@ -10,6 +10,8 @@ import {
   Brain,
   Plus,
   Eye,
+  Star,
+  Zap,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -322,7 +324,7 @@ export const Competitors: React.FC = () => {
             setActiveTab('overview');
           }}
           title={selectedCompetitor.name}
-          size="large"
+          size="lg"
         >
           <div className="space-y-6">
             {/* Header */}

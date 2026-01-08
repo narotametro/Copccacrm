@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Calendar, Package, Target, Brain, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Award, Shield, Zap, Eye } from 'lucide-react';
+import { FileText, Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, DollarSign, Award, Shield, Zap, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';

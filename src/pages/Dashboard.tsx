@@ -17,6 +17,7 @@ import {
   BarChart3,
   Shield,
   Search,
+  Users,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

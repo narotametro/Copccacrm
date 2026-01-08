@@ -19,6 +19,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   BarChart3,
+  DollarSign,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -434,7 +435,7 @@ export const Customers: React.FC = () => {
             setActiveTab('overview');
           }}
           title={selectedCustomer.name}
-          size="large"
+          size="lg"
         >
           <div className="space-y-6">
             {/* Header with Quick Actions */}

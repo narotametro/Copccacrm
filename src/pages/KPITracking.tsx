@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingUp, Target, Activity, Plus } from 'lucide-react';
+import { BarChart3, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
