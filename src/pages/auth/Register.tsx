@@ -90,9 +90,19 @@ export const Register: React.FC = () => {
             </Link>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating account...' : 'Create Account'}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => navigate('/')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating account...' : 'Create Account'}
+            </Button>
+          </div>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

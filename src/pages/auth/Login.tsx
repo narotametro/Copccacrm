@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Failed to sign in');
     } finally {
@@ -83,9 +83,19 @@ export const Login: React.FC = () => {
             </Link>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => navigate('/')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </div>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
