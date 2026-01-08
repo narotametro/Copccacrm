@@ -85,7 +85,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         full_name: fullName,
         role: 'user',
         status: 'active',
-      });
+      } as any);
     }
   },
 
@@ -129,7 +129,7 @@ export const useAuthStore = create<AuthState>((set) => ({
               role: 'user',
               status: 'active',
               avatar_url: session.user.user_metadata?.avatar_url || null,
-            })
+            } as any)
             .select()
             .single();
           
@@ -141,7 +141,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ loading: false });
       }
 
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
           // Check if user profile exists
           let { data: profile } = await supabase
@@ -165,7 +165,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 role: 'user',
                 status: 'active',
                 avatar_url: session.user.user_metadata?.avatar_url || null,
-              })
+              } as any)
               .select()
               .single();
             
