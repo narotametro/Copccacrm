@@ -79,15 +79,15 @@ export const DebtCollection: React.FC = () => {
     return colors[risk] || 'text-slate-600';
   };
 
-  const handleAutoRemind = (debtId: string) => {
+  const handleAutoRemind = (_debtId: string) => {
     toast.success('AI-generated reminder sent successfully!');
   };
 
-  const handleGeneratePaymentPlan = (debtId: string) => {
+  const handleGeneratePaymentPlan = (_debtId: string) => {
     toast.success('Payment plan generated and sent to customer');
   };
 
-  const handleEscalate = (debtId: string) => {
+  const handleEscalate = (_debtId: string) => {
     toast.warning('Case escalated to senior collections team');
   };
 

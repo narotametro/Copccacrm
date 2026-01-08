@@ -6,25 +6,16 @@ import {
   Phone,
   Mail,
   Globe,
-  TrendingUp,
-  TrendingDown,
   Eye,
   MessageSquare,
   Calendar,
   Target,
   AlertCircle,
   CheckCircle,
-  Star,
-  DollarSign,
-  ShoppingCart,
-  Users,
   Brain,
-  Zap,
   Send,
-  X,
   Linkedin,
   Twitter,
-  Facebook,
   ThumbsUp,
   ThumbsDown,
   BarChart3,
@@ -225,11 +216,24 @@ export const Customers: React.FC = () => {
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCompany: Company = {
+    const newCompany: any = {
       id: Date.now().toString(),
       ...formData,
       status: 'prospect',
       health_score: 75,
+      customer_type: 'B2B',
+      churn_risk: 'low',
+      upsell_potential: 'medium',
+      total_revenue: 0,
+      last_interaction: new Date().toISOString(),
+      next_action: 'Initial contact',
+      sentiment: 'neutral',
+      satisfaction_score: 0,
+      open_tickets: 0,
+      resolved_tickets: 0,
+      avg_resolution_time: 0,
+      active_projects: 0,
+      upcoming_renewals: 0,
     };
     setCompanies([newCompany, ...companies]);
     toast.success('Customer added successfully');

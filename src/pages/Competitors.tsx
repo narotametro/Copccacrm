@@ -5,21 +5,11 @@ import {
   TrendingDown,
   AlertTriangle,
   Shield,
-  DollarSign,
-  Star,
-  Users,
-  Package,
   Truck,
   Globe,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Youtube,
   Brain,
-  Zap,
   Plus,
   Eye,
-  X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

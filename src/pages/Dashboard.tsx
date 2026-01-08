@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Brain,
-  Zap,
   TrendingUp,
   TrendingDown,
   AlertCircle,
@@ -12,10 +11,7 @@ import {
   Sparkles,
   Phone,
   Send,
-  FileText,
   DollarSign,
-  Users,
-  ShoppingCart,
   Bell,
   Plus,
   BarChart3,
