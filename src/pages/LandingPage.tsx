@@ -92,9 +92,9 @@ export const LandingPage = () => {
         <div className="text-center space-y-8">
           <div className="space-y-4">
             <h1 className="text-6xl md:text-8xl font-black text-slate-900 leading-tight">
-              Turn your data into{' '}
+              Turn Data into{' '}
               <span className="bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent font-black">
-                actionable business insights
+                Actionable Business Insights
               </span>{' '}
               with AI
             </h1>
