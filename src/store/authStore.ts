@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     if (data.user) {
       const { data: profile } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (error) throw error;
 
     if (data.user) {
-      await supabase.from('users').insert({
+      await supabase.from('profiles').insert({
         id: data.user.id,
         email: data.user.email!,
         full_name: fullName,
@@ -109,7 +109,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session?.user) {
         // Check if user profile exists
         let { data: profile } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
@@ -121,7 +121,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                           'User';
           
           const { data: newProfile } = await supabase
-            .from('users')
+            .from('profiles')
             .insert({
               id: session.user.id,
               email: session.user.email!,
@@ -145,7 +145,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         if (session?.user) {
           // Check if user profile exists
           let { data: profile } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
@@ -157,7 +157,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                             'User';
             
             const { data: newProfile } = await supabase
-              .from('users')
+              .from('profiles')
               .insert({
                 id: session.user.id,
                 email: session.user.email!,
