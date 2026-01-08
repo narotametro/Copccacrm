@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -21,8 +22,14 @@ import { UserManagement } from '@/pages/UserManagement';
 import { MyWorkplace } from '@/pages/MyWorkplace';
 import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
+import { useAuthStore } from '@/store/authStore';
 
 function App() {
+  const initialize = useAuthStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
   return (
     <ErrorBoundary>
       <BrowserRouter>

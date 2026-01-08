@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -28,18 +28,6 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { AIAssistant } from './AIAssistant';
 
-// Demo profile for preview mode
-const demoProfile = {
-  id: 'demo',
-  email: 'demo@copcca.com',
-  full_name: 'Demo User',
-  role: 'admin' as const,
-  avatar_url: null,
-  phone: null,
-  department: 'Sales',
-  status: 'active' as const,
-};
-
 const menuItems = [
   { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/dashboard' },
   { icon: Users, label: 'Customers', path: '/customers' },
@@ -55,14 +43,31 @@ const menuItems = [
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
-  const { profile, signOut } = useAuthStore();
+  const { user, profile, loading, initialize, signOut } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile-first: closed by default
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
-  // Use demo profile if no real profile (for preview mode)
-  const displayProfile = profile || demoProfile;
+  // Initialize auth on mount
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  // Redirect to login if not authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const displayProfile = profile;
 
   // Demo notifications
   const notifications = [
@@ -75,9 +80,7 @@ export const AppLayout: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleSignOut = async () => {
-    if (profile) {
-      await signOut();
-    }
+    await signOut();
     window.location.href = '/login';
   };
 
