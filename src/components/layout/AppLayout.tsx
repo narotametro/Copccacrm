@@ -63,7 +63,7 @@ export const AppLayout: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return <Navigate to="/login" replace />;
   }
 
