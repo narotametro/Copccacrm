@@ -5,6 +5,7 @@ import { ContactSalesModal } from '@/components/ContactSalesModal';
 import {
   Brain,
   TrendingUp,
+  Users,
   Target,
   Zap,
   Shield,
