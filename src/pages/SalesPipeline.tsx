@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Plus,
-  DollarSign,
+  Banknote,
   Target,
   AlertTriangle,
   Award,
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Deal {
   id: string;
@@ -199,9 +200,15 @@ const demoDeals: Deal[] = [
 ];
 
 export const SalesPipeline: React.FC = () => {
+  const { formatCurrency, currency } = useCurrency();
   const [deals] = useState<Deal[]>(demoDeals);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCompleteActionModal, setShowCompleteActionModal] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [actionNotes, setActionNotes] = useState('');
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
   
   const getDealsByStage = (stage: string) => {
     return deals.filter((deal) => deal.stage === stage);
@@ -260,7 +267,7 @@ export const SalesPipeline: React.FC = () => {
         <Card className="border-l-4 border-primary-500">
           <Brain className="text-primary-600 mb-1 md:mb-2" size={20} />
           <p className="text-xs md:text-sm text-slate-600">AI Forecast</p>
-          <p className="text-xl md:text-2xl font-bold text-primary-600">₦{(forecastRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-xl md:text-2xl font-bold text-primary-600">{formatCurrency(forecastRevenue / 1000)}<span className="text-sm ml-0.5">K</span></p>
         </Card>
         <Card className="border-l-4 border-green-500">
           <Award className="text-green-600 mb-1 md:mb-2" size={20} />
@@ -268,9 +275,9 @@ export const SalesPipeline: React.FC = () => {
           <p className="text-xl md:text-2xl font-bold text-green-600">{winRate}%</p>
         </Card>
         <Card className="border-l-4 border-blue-500">
-          <DollarSign className="text-blue-600 mb-1 md:mb-2" size={20} />
+          <Banknote className="text-blue-600 mb-1 md:mb-2" size={20} />
           <p className="text-xs md:text-sm text-slate-600">Avg Deal Size</p>
-          <p className="text-xl md:text-2xl font-bold text-blue-600">₦{(avgDealSize / 1000).toFixed(0)}K</p>
+          <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(avgDealSize / 1000)}<span className="text-sm ml-0.5">K</span></p>
         </Card>
         <Card className="border-l-4 border-orange-500">
           <Target className="text-orange-600 mb-1 md:mb-2" size={20} />
@@ -309,7 +316,7 @@ export const SalesPipeline: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">₦{(totalValue / 1000).toFixed(0)}K</span>
+                    <span className="text-slate-600">{formatCurrency(totalValue / 1000)}<span className="text-xs ml-0.5">K</span></span>
                     {!stage.startsWith('closed') && (
                       <span className={`font-bold ${getProbabilityColor(avgProb)}`}>
                         {avgProb}% avg
@@ -376,8 +383,8 @@ export const SalesPipeline: React.FC = () => {
                       {/* Value & Action */}
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                         <div className="flex items-center text-sm font-bold text-slate-900">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          ₦{(deal.value / 1000).toFixed(0)}K
+                          <Banknote className="w-4 h-4 mr-1" />
+                          {formatCurrency(deal.value / 1000)}<span className="text-xs ml-0.5">K</span>
                         </div>
                         <Button 
                           size="sm" 
@@ -426,7 +433,7 @@ export const SalesPipeline: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-slate-600">Deal Value</p>
-                <p className="text-3xl font-bold text-green-600">₦{(selectedDeal.value / 1000).toFixed(0)}K</p>
+                <p className="text-3xl font-bold text-green-600">{formatCurrency(selectedDeal.value / 1000)}<span className="text-base ml-1">K</span></p>
               </div>
             </div>
 
@@ -512,10 +519,10 @@ export const SalesPipeline: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex gap-2 mt-3">
-                      <Button size="sm" onClick={() => toast.success('Action marked as complete')}>
+                      <Button size="sm" onClick={() => setShowCompleteActionModal(true)}>
                         Complete Action
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => toast.success('Reminder set')}>
+                      <Button size="sm" variant="secondary" onClick={() => setShowReminderModal(true)}>
                         Set Reminder
                       </Button>
                     </div>
@@ -639,7 +646,7 @@ export const SalesPipeline: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <Input label="Deal Title" placeholder="Enterprise License" required />
             <Input label="Company Name" placeholder="Acme Corp" required />
-            <Input label="Deal Value (₦)" placeholder="50000" type="number" required />
+            <Input label={`Deal Value (${currency.symbol})`} placeholder="50000" type="number" required />
             <Input label="Contact Name" placeholder="Sarah Johnson" />
           </div>
 
@@ -651,6 +658,174 @@ export const SalesPipeline: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Complete Action Modal */}
+      {selectedDeal && (
+        <Modal
+          isOpen={showCompleteActionModal}
+          onClose={() => {
+            setShowCompleteActionModal(false);
+            setActionNotes('');
+          }}
+          title="Complete Action"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success('Action completed successfully! Deal updated.');
+            setShowCompleteActionModal(false);
+            setActionNotes('');
+          }}>
+            <Card className="border-l-4 border-green-500 bg-green-50">
+              <h3 className="font-bold text-green-900 mb-2">Current Action:</h3>
+              <p className="text-green-800">{selectedDeal.next_action}</p>
+              <p className="text-sm text-green-700 mt-2">Deadline: {new Date(selectedDeal.action_deadline).toLocaleDateString()}</p>
+            </Card>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <CheckCircle className="inline mr-2" size={16} />
+                Action Notes & Outcome
+              </label>
+              <textarea
+                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all min-h-[120px]"
+                placeholder="Describe what was accomplished, next steps, and any important details..."
+                value={actionNotes}
+                onChange={(e) => setActionNotes(e.target.value)}
+                required
+              />
+            </div>
+
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-3">💡 Quick Update</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setActionNotes('Meeting completed successfully. Moving to next stage.')}>
+                  Meeting Done
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setActionNotes('Proposal sent. Awaiting client review and feedback.')}>
+                  Proposal Sent
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setActionNotes('Follow-up call completed. Client interested, scheduling demo.')}>
+                  Follow-up Complete
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setActionNotes('Demo presented. Positive feedback received.')}>
+                  Demo Complete
+                </Button>
+              </div>
+            </Card>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowCompleteActionModal(false);
+                setActionNotes('');
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit" icon={CheckCircle}>
+                Mark as Complete
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Set Reminder Modal */}
+      {selectedDeal && (
+        <Modal
+          isOpen={showReminderModal}
+          onClose={() => {
+            setShowReminderModal(false);
+            setReminderDate('');
+            setReminderTime('');
+          }}
+          title="Set Reminder"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success(`Reminder set for ${reminderDate} at ${reminderTime}`);
+            setShowReminderModal(false);
+            setReminderDate('');
+            setReminderTime('');
+          }}>
+            <Card className="border-l-4 border-blue-500 bg-blue-50">
+              <h3 className="font-bold text-blue-900 mb-2">Deal:</h3>
+              <p className="text-blue-800 font-bold text-lg">{selectedDeal.title}</p>
+              <p className="text-sm text-blue-700 mt-1">{selectedDeal.companies?.name}</p>
+              <p className="text-sm text-blue-700 mt-2">Current Action: {selectedDeal.next_action}</p>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input 
+                type="date" 
+                label="Reminder Date" 
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+                required 
+              />
+              <Input 
+                type="time" 
+                label="Reminder Time" 
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                required 
+              />
+            </div>
+
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-3">⚡ Quick Reminders</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setReminderDate(tomorrow.toISOString().split('T')[0]);
+                  setReminderTime('09:00');
+                }}>
+                  Tomorrow 9 AM
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const nextWeek = new Date();
+                  nextWeek.setDate(nextWeek.getDate() + 7);
+                  setReminderDate(nextWeek.toISOString().split('T')[0]);
+                  setReminderTime('10:00');
+                }}>
+                  Next Week
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const today = new Date();
+                  setReminderDate(today.toISOString().split('T')[0]);
+                  setReminderTime('15:00');
+                }}>
+                  Today 3 PM
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setReminderDate(tomorrow.toISOString().split('T')[0]);
+                  setReminderTime('14:00');
+                }}>
+                  Tomorrow 2 PM
+                </Button>
+              </div>
+            </Card>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowReminderModal(false);
+                setReminderDate('');
+                setReminderTime('');
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit" icon={Clock}>
+                Set Reminder
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };
+
+export default SalesPipeline;

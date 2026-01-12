@@ -9,7 +9,6 @@ import {
   Users,
   Package,
   Target,
-  DollarSign,
   Calendar,
   Flag,
   Eye,
@@ -19,6 +18,7 @@ import {
   Brain,
   TrendingUp,
   Filter,
+  Banknote,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -274,7 +274,7 @@ const demoTasks: Task[] = [
 ];
 
 export const AfterSales: React.FC = () => {
-  const [tasks] = useState<Task[]>(demoTasks);
+  const [tasks, setTasks] = useState<Task[]>(demoTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterPriority, setFilterPriority] = useState<string>('all');
@@ -313,7 +313,7 @@ export const AfterSales: React.FC = () => {
 
   const getLinkedIcon = (type: string | null) => {
     if (type === 'customer') return <Users className="text-blue-600" size={14} />;
-    if (type === 'deal') return <DollarSign className="text-green-600" size={14} />;
+    if (type === 'deal') return <Banknote className="text-green-600" size={14} />;
     if (type === 'competitor') return <Target className="text-red-600" size={14} />;
     if (type === 'product') return <Package className="text-purple-600" size={14} />;
     return null;
@@ -621,7 +621,15 @@ export const AfterSales: React.FC = () => {
                     <p className="text-sm text-slate-600 capitalize">{selectedTask.linked_to.type}</p>
                     <p className="font-bold text-slate-900">{selectedTask.linked_to.name}</p>
                   </div>
-                  <Button size="sm" icon={Eye} onClick={() => toast.success(`Opening ${selectedTask.linked_to.type}...`)}>
+                  <Button 
+                    size="sm" 
+                    icon={Eye} 
+                    onClick={() => {
+                      toast.info(`Opening ${selectedTask.linked_to.type}: ${selectedTask.linked_to.name}`, {
+                        description: 'Navigating to details page...'
+                      });
+                    }}
+                  >
                     View
                   </Button>
                 </div>
@@ -648,7 +656,15 @@ export const AfterSales: React.FC = () => {
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
                   💬 Task Feedback
                 </h3>
-                <Button size="sm" icon={Plus} onClick={() => toast.success('Feedback form opened - Add your update here')}>
+                <Button 
+                  size="sm" 
+                  icon={Plus} 
+                  onClick={() => {
+                    toast.success('Feedback form opened', {
+                      description: 'Add your update in the form below'
+                    });
+                  }}
+                >
                   Add Feedback
                 </Button>
               </div>
@@ -681,18 +697,66 @@ export const AfterSales: React.FC = () => {
 
             {/* Actions */}
             <div className="flex gap-2 pt-4 border-t">
-              <Button icon={Edit} onClick={() => toast.success('Edit mode enabled')}>
+              <Button 
+                icon={Edit} 
+                onClick={() => {
+                  toast.info('Edit mode enabled', {
+                    description: 'Make your changes below'
+                  });
+                }}
+              >
                 Edit Task
               </Button>
               {selectedTask.status !== 'done' && (
-                <Button icon={CheckCircle} onClick={() => toast.success('Task marked as complete')}>
+                <Button 
+                  icon={CheckCircle} 
+                  onClick={async () => {
+                    try {
+                      await toast.promise(
+                        new Promise(resolve => setTimeout(resolve, 1000)),
+                        {
+                          loading: 'Updating task status...',
+                          success: 'Task marked as complete!',
+                          error: 'Failed to update task',
+                        }
+                      );
+                      // Update task status in state
+                      setTasks(tasks.map(t => 
+                        t.id === selectedTask.id 
+                          ? { ...t, status: 'done', completed_at: new Date().toISOString() }
+                          : t
+                      ));
+                      setSelectedTask(null);
+                    } catch (error) {
+                      console.error('Failed to complete task:', error);
+                    }
+                  }}
+                >
                   Mark Complete
                 </Button>
               )}
-              <Button variant="secondary" icon={Trash2} onClick={() => {
-                toast.success('Task deleted');
-                setSelectedTask(null);
-              }}>
+              <Button 
+                variant="secondary" 
+                icon={Trash2} 
+                onClick={async () => {
+                  if (!window.confirm('Are you sure you want to delete this task?')) return;
+                  
+                  try {
+                    await toast.promise(
+                      new Promise(resolve => setTimeout(resolve, 500)),
+                      {
+                        loading: 'Deleting task...',
+                        success: 'Task deleted successfully',
+                        error: 'Failed to delete task',
+                      }
+                    );
+                    setTasks(tasks.filter(t => t.id !== selectedTask.id));
+                    setSelectedTask(null);
+                  } catch (error) {
+                    console.error('Failed to delete task:', error);
+                  }
+                }}
+              >
                 Delete
               </Button>
             </div>
@@ -707,10 +771,21 @@ export const AfterSales: React.FC = () => {
         title="Create New Task"
         size="lg"
       >
-        <form className="space-y-4" onSubmit={(e) => {
+        <form className="space-y-4" onSubmit={async (e) => {
           e.preventDefault();
-          toast.success('Task created! AI is analyzing priority...');
-          setShowAddModal(false);
+          try {
+            await toast.promise(
+              new Promise(resolve => setTimeout(resolve, 1500)),
+              {
+                loading: 'Creating task and analyzing priority...',
+                success: 'Task created successfully!',
+                error: 'Failed to create task',
+              }
+            );
+            setShowAddModal(false);
+          } catch (error) {
+            console.error('Failed to create task:', error);
+          }
         }}>
           <p className="text-sm text-slate-600">AI will automatically prioritize and suggest optimizations</p>
           

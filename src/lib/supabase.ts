@@ -1,25 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types/database';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Replace these with your Supabase project keys
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// Use placeholder values if env vars aren't set yet
-const url = supabaseUrl && supabaseUrl !== 'your_supabase_url_here' 
-  ? supabaseUrl 
-  : 'https://placeholder.supabase.co';
-const key = supabaseAnonKey && supabaseAnonKey !== 'your_supabase_anon_key_here'
-  ? supabaseAnonKey
-  : 'placeholder-key';
+// Warn if environment variables are missing
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    '⚠️ Supabase environment variables are not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
+  );
+}
 
-export const supabase = createClient<Database>(url, key, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
+export const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
   TrendingUp,
   Package,
-  DollarSign,
+  Coins,
   Target,
   BarChart3,
   FileText,
@@ -24,64 +24,79 @@ import {
   CheckCircle,
   AlertCircle,
   Globe,
+  Filter,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { AIAssistant } from './AIAssistant';
+import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
+import { PaymentPopup } from '@/components/PaymentPopup';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/dashboard' },
-  { icon: Users, label: 'Customers', path: '/customers' },
-  { icon: TrendingUp, label: 'Sales', path: '/pipeline' },
-  { icon: BarChart3, label: 'Marketing', path: '/strategies' },
-  { icon: Package, label: 'Products', path: '/products' },
-  { icon: Target, label: 'Competitors', path: '/competitors' },
-  { icon: DollarSign, label: 'Debt Collection', path: '/debt-collection' },
-  { icon: FileText, label: 'Reports & AI', path: '/reports' },
-  { icon: Settings, label: 'Admin', path: '/users' },
-  { icon: Globe, label: 'My Workplace', path: '/my-workplace' },
+  { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
+  { icon: Users, label: 'Customers', path: '/app/customers' },
+  { icon: TrendingUp, label: 'Sales', path: '/app/pipeline' },
+  { icon: BarChart3, label: 'Marketing', path: '/app/strategies' },
+  { icon: Package, label: 'Products', path: '/app/products' },
+  { icon: Target, label: 'Competitors', path: '/app/competitors' },
+  { icon: Coins, label: 'Debt Collection', path: '/app/debt-collection' },
+  { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
+  { icon: Settings, label: 'Admin', path: '/app/users' },
+  { icon: Globe, label: 'My Workplace', path: '/app/my-workplace' },
 ];
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
-  const { user, profile, loading, initialize, signOut } = useAuthStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile-first: closed by default
+  const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [userFilterDropdownOpen, setUserFilterDropdownOpen] = useState(false);
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
 
-  // Initialize auth on mount
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
-
-  // Redirect to login if not authenticated
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user || !profile) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const displayProfile = profile;
-
-  // Demo notifications
-  const notifications = [
-    { id: '1', type: 'success', title: 'Deal Closed', message: 'Acme Corp signed the contract!', time: '5 min ago', read: false },
-    { id: '2', type: 'warning', title: 'Task Overdue', message: 'Damage compensation to DANGOOD is 33 days overdue', time: '1 hour ago', read: false },
-    { id: '3', type: 'info', title: 'New Customer', message: 'GlobalTech Industries added to CRM', time: '2 hours ago', read: true },
-    { id: '4', type: 'success', title: 'Payment Received', message: '₦2.5M received from TechStart', time: '3 hours ago', read: true },
+  // Team members for filtering
+  const teamMembers = [
+    { id: 'all', name: 'All Users', role: '' },
+    { id: '1', name: 'Demo User', role: 'admin' },
+    { id: '2', name: 'John Smith', role: 'user' },
+    { id: '3', name: 'Sarah Johnson', role: 'user' },
+    { id: '4', name: 'Michael Chen', role: 'user' },
   ];
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Notification state with sender info
+  const [notifications, setNotifications] = useState([
+    { id: '1', type: 'success', title: 'Deal Closed', message: 'Acme Corp signed the contract!', time: '5 min ago', read: false, sender: 'john doe', senderRole: 'sales manager' },
+    { id: '2', type: 'warning', title: 'Task Overdue', message: 'Damage compensation to DANGOOD is 33 days overdue', time: '1 hour ago', read: false, sender: 'jane smith', senderRole: 'account manager' },
+    { id: '3', type: 'info', title: 'New Customer', message: 'GlobalTech Industries added to CRM', time: '2 hours ago', read: true, sender: 'mike johnson', senderRole: 'sales rep' },
+    { id: '4', type: 'success', title: 'Payment Received', message: '₦2.5M received from TechStart', time: '3 hours ago', read: true, sender: 'finance team', senderRole: 'finance' },
+  ]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    window.location.href = '/login';
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const isAdmin = profile?.role === 'admin';
+
+  // For demo, fallback profile info from user
+  const displayProfile = user ? {
+    full_name: user.user_metadata?.full_name || user.email || 'User',
+    email: user.email,
+    role: user.role || 'user',
+    department: user.user_metadata?.department || '',
+    phone: user.user_metadata?.phone || '',
+  } : null;
+
+  // Demo: Check if current user's company has payment popup enabled
+  // In production, this would come from Supabase subscription data
+  const [showPaymentPopup] = useState(false); // Change to true for demo
+  const demoCompanyData = {
+    companyName: displayProfile?.full_name ? `${displayProfile.full_name}'s Company` : 'Your Company',
+    daysOverdue: 15,
+    amount: 120000,
+  };
+
+  const markAsRead = (id: string) => {
+    setNotifications(notifications.map(n =>
+      n.id === id ? { ...n, read: true } : n
+    ));
   };
 
   // Close dropdowns when clicking outside
@@ -91,11 +106,18 @@ export const AppLayout: React.FC = () => {
       if (!target.closest('[data-dropdown]')) {
         setProfileDropdownOpen(false);
         setNotificationDropdownOpen(false);
+        setUserFilterDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleSignOut = async () => {
+    // Use Supabase directly for sign out
+    await import('@/lib/supabase').then(({ supabase }) => supabase.auth.signOut());
+    window.location.href = '/login';
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -106,7 +128,7 @@ export const AppLayout: React.FC = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-full bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-all duration-300 z-30 ${
@@ -131,7 +153,7 @@ export const AppLayout: React.FC = () => {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
-
+            
             return (
               <Link
                 key={item.path}
@@ -149,42 +171,10 @@ export const AppLayout: React.FC = () => {
             );
           })}
         </nav>
-
-        {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-600 to-purple-600 flex items-center justify-center font-bold">
-                {displayProfile.full_name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{displayProfile.full_name}</p>
-                <p className="text-xs text-slate-400 capitalize">{displayProfile.role}</p>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                title="Sign out"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleSignOut}
-              className="w-full p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={20} className="mx-auto" />
-            </button>
-          )}
-        </div>
       </aside>
 
       {/* Main Content */}
-      <div
-        className="flex-1 transition-all duration-300 lg:ml-20"
-      >
+      <div className="flex-1 transition-all duration-300 lg:ml-20">
         {/* Header */}
         <header className="glass border-b border-slate-200 sticky top-0 z-20">
           <div className="px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between">
@@ -196,14 +186,12 @@ export const AppLayout: React.FC = () => {
               >
                 <Menu size={20} />
               </button>
-              
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <Search size={20} />
               </button>
-
               {searchOpen && (
                 <input
                   type="text"
@@ -213,8 +201,56 @@ export const AppLayout: React.FC = () => {
                 />
               )}
             </div>
-
             <div className="flex items-center gap-2">
+              {/* User Filter Dropdown */}
+              <div className="relative" data-dropdown>
+                <button 
+                  onClick={() => {
+                    setUserFilterDropdownOpen(!userFilterDropdownOpen);
+                    setNotificationDropdownOpen(false);
+                    setProfileDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                >
+                  <Filter size={18} />
+                  <span className="hidden md:inline text-sm font-medium">
+                    {teamMembers.find(m => m.id === selectedUserFilter)?.name || 'All Users'}
+                  </span>
+                  <ChevronDown size={16} />
+                </button>
+                {userFilterDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
+                    <div className="p-2 border-b border-slate-200">
+                      <h3 className="font-semibold text-sm text-slate-900 px-2">Filter by Team Member</h3>
+                    </div>
+                    <div className="py-1">
+                      {teamMembers.map((member) => (
+                        <button
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedUserFilter(member.id);
+                            setUserFilterDropdownOpen(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                            selectedUserFilter === member.id ? 'bg-primary-50 text-primary-700' : 'text-slate-700'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-medium text-sm">{member.name}</p>
+                            {member.role && (
+                              <p className="text-xs text-slate-500">{formatRole(member.role)}</p>
+                            )}
+                          </div>
+                          {selectedUserFilter === member.id && (
+                            <CheckCircle size={16} className="text-primary-600" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Notifications Dropdown */}
               <div className="relative" data-dropdown>
                 <button 
@@ -231,7 +267,6 @@ export const AppLayout: React.FC = () => {
                     </span>
                   )}
                 </button>
-
                 {/* Notification Dropdown */}
                 {notificationDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
@@ -243,7 +278,10 @@ export const AppLayout: React.FC = () => {
                       {notifications.map((notification) => (
                         <div 
                           key={notification.id} 
-                          className={`p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
+                          onClick={() => markAsRead(notification.id)}
+                          className={`p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${
+                            !notification.read ? 'bg-blue-50' : ''
+                          }`}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -258,6 +296,11 @@ export const AppLayout: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-sm text-slate-900">{notification.title}</p>
                               <p className="text-xs text-slate-600 mt-0.5">{notification.message}</p>
+                              {isAdmin && (
+                                <p className="text-xs text-primary-600 mt-1 font-medium">
+                                  From: {formatName(notification.sender)} ({formatRole(notification.senderRole)})
+                                </p>
+                              )}
                               <p className="text-xs text-slate-500 mt-1">{notification.time}</p>
                             </div>
                             {!notification.read && <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>}
@@ -273,7 +316,6 @@ export const AppLayout: React.FC = () => {
                   </div>
                 )}
               </div>
-
               {/* Profile Dropdown */}
               <div className="relative" data-dropdown>
                 <button 
@@ -284,11 +326,10 @@ export const AppLayout: React.FC = () => {
                   className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
-                    {displayProfile.full_name.charAt(0).toUpperCase()}
+                    {displayProfile?.full_name?.charAt(0).toUpperCase()}
                   </div>
                   <ChevronDown size={16} className="text-slate-600" />
                 </button>
-
                 {/* Profile Dropdown Menu */}
                 {profileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
@@ -296,29 +337,28 @@ export const AppLayout: React.FC = () => {
                     <div className="p-4 bg-gradient-to-r from-primary-600 to-purple-600 rounded-t-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-bold text-white text-2xl border-2 border-white/30">
-                          {displayProfile.full_name.charAt(0).toUpperCase()}
+                          {displayProfile?.full_name ? displayProfile.full_name.charAt(0).toUpperCase() : ''}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white truncate">{displayProfile.full_name}</p>
-                          <p className="text-xs text-white/80 truncate">{displayProfile.email}</p>
+                          <p className="font-bold text-white truncate">{formatName(displayProfile?.full_name || '')}</p>
+                          <p className="text-xs text-white/80 truncate">{formatEmail(displayProfile?.email || '')}</p>
                           <div className="flex items-center gap-1 mt-1">
                             <Shield size={12} className="text-white/90" />
-                            <span className="text-xs font-semibold text-white/90 capitalize">{displayProfile.role}</span>
+                            <span className="text-xs font-semibold text-white/90">{formatRole(displayProfile?.role || '')}</span>
                           </div>
                         </div>
                       </div>
                     </div>
-
                     {/* Profile Details */}
                     <div className="p-3 border-b border-slate-200">
                       <div className="space-y-2 text-sm">
-                        {displayProfile.department && (
+                        {displayProfile?.department && (
                           <div className="flex items-center gap-2 text-slate-700">
                             <Building size={14} className="text-slate-500" />
                             <span>{displayProfile.department}</span>
                           </div>
                         )}
-                        {displayProfile.phone && (
+                        {displayProfile?.phone && (
                           <div className="flex items-center gap-2 text-slate-700">
                             <Phone size={14} className="text-slate-500" />
                             <span>{displayProfile.phone}</span>
@@ -326,24 +366,23 @@ export const AppLayout: React.FC = () => {
                         )}
                         <div className="flex items-center gap-2 text-slate-700">
                           <Mail size={14} className="text-slate-500" />
-                          <span className="truncate">{displayProfile.email}</span>
+                          <span className="truncate">{formatEmail(displayProfile?.email || '')}</span>
                         </div>
                       </div>
                     </div>
-
                     {/* Menu Items */}
                     <div className="p-2">
                       <Link 
-                        to="/profile"
+                        to="/app/profile"
                         className="flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                         onClick={() => setProfileDropdownOpen(false)}
                       >
                         <User size={16} />
                         <span className="text-sm font-medium">My Profile</span>
                       </Link>
-                      {displayProfile.role === 'admin' && (
+                      {displayProfile?.role === 'admin' && (
                         <Link 
-                          to="/users"
+                          to="/app/users"
                           className="flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                           onClick={() => setProfileDropdownOpen(false)}
                         >
@@ -352,7 +391,7 @@ export const AppLayout: React.FC = () => {
                         </Link>
                       )}
                       <Link 
-                        to="/settings"
+                        to="/app/settings"
                         className="flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                         onClick={() => setProfileDropdownOpen(false)}
                       >
@@ -360,7 +399,6 @@ export const AppLayout: React.FC = () => {
                         <span className="text-sm font-medium">Settings</span>
                       </Link>
                     </div>
-
                     {/* Logout */}
                     <div className="p-2 border-t border-slate-200">
                       <button 
@@ -377,15 +415,22 @@ export const AppLayout: React.FC = () => {
             </div>
           </div>
         </header>
-
         {/* Page Content */}
         <main className="p-6">
           <Outlet />
         </main>
       </div>
-
       {/* Floating AI Assistant */}
       <AIAssistant />
+
+      {/* Payment Popup - Cannot be closed */}
+      {showPaymentPopup && !isAdmin && (
+        <PaymentPopup
+          companyName={demoCompanyData.companyName}
+          daysOverdue={demoCompanyData.daysOverdue}
+          amount={demoCompanyData.amount}
+        />
+      )}
     </div>
   );
 };

@@ -20,18 +20,19 @@ import {
   TrendingUp,
   Target,
   Package,
-  DollarSign,
   BarChart3,
   Send,
   Copy,
   Link2,
   MessageCircle,
+  Banknote,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
+import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 
 interface UserType {
   id: string;
@@ -133,38 +134,58 @@ export const UserManagement: React.FC = () => {
   const activeUsers = users.filter(u => u.status === 'active').length;
   const adminUsers = users.filter(u => u.role === 'admin').length;
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newUser: UserType = {
-      id: String(users.length + 1),
-      ...formData,
-      status: 'active',
-      permissions: formData.role === 'admin' ? {
-        customers: true, sales: true, marketing: true, products: true, competitors: true, debt_collection: true, reports: true, admin: true,
-      } : {
-        customers: true, sales: true, marketing: false, products: true, competitors: false, debt_collection: false, reports: true, admin: false,
-      },
-      created_at: new Date().toISOString().split('T')[0],
-      last_login: 'Never',
-    };
-    setUsers([...users, newUser]);
-    setShowAddModal(false);
     
-    // Generate invitation link
-    const baseUrl = window.location.origin;
-    const token = btoa(`${newUser.email}:${Date.now()}`);
-    const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(newUser.email)}`;
-    setInvitationLink(link);
-    setSelectedUser(newUser);
-    setShowInvitationModal(true);
-    
-    setFormData({ full_name: '', email: '', role: 'user', department: '', phone: '' });
-    toast.success(`${formData.full_name} added successfully!`);
+    try {
+      const newUser: UserType = {
+        id: String(users.length + 1),
+        ...formData,
+        status: 'active',
+        permissions: formData.role === 'admin' ? {
+          customers: true, sales: true, marketing: true, products: true, competitors: true, debt_collection: true, reports: true, admin: true,
+        } : {
+          customers: true, sales: true, marketing: false, products: true, competitors: false, debt_collection: false, reports: true, admin: false,
+        },
+        created_at: new Date().toISOString().split('T')[0],
+        last_login: 'Never',
+      };
+      
+      await toast.promise(
+        new Promise(resolve => setTimeout(resolve, 1000)),
+        {
+          loading: 'Adding user...',
+          success: `${formatName(formData.full_name)} added successfully!`,
+          error: 'Failed to add user',
+        }
+      );
+      
+      setUsers([...users, newUser]);
+      setShowAddModal(false);
+      
+      // Generate invitation link
+      const baseUrl = window.location.origin;
+      const token = btoa(`${newUser.email}:${Date.now()}`);
+      const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(newUser.email)}`;
+      setInvitationLink(link);
+      setSelectedUser(newUser);
+      setShowInvitationModal(true);
+      
+      setFormData({ full_name: '', email: '', role: 'user', department: '', phone: '' });
+    } catch (error) {
+      console.error('Failed to add user:', error);
+    }
   };
 
-  const handleCopyInvitationLink = () => {
-    navigator.clipboard.writeText(invitationLink);
-    toast.success('Invitation link copied to clipboard!');
+  const handleCopyInvitationLink = async () => {
+    try {
+      await navigator.clipboard.writeText(invitationLink);
+      toast.success('Invitation link copied!', {
+        description: 'Share it with the new user'
+      });
+    } catch (error) {
+      toast.error('Failed to copy link');
+    }
   };
 
   const handleSendInvitation = (email: string) => {
@@ -174,12 +195,14 @@ export const UserManagement: React.FC = () => {
     const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(email)}`;
     setInvitationLink(link);
     setShowInvitationModal(true);
-    toast.success(`Invitation link generated for ${email}`);
+    toast.success('Invitation link generated', {
+      description: `Ready to send to ${email}`
+    });
   };
 
   const handleSendViaWhatsApp = () => {
     if (!selectedUser) return;
-    const message = `Hi ${selectedUser.full_name}! 👋\n\nYou've been invited to join COPCCA CRM as a ${selectedUser.role.toUpperCase()}.\n\n🔗 Click here to complete your registration:\n${invitationLink}\n\n📋 Your Details:\n• Email: ${selectedUser.email}\n• Department: ${selectedUser.department}\n• Role: ${selectedUser.role.toUpperCase()}\n\nThis link will expire in 7 days.\n\nWelcome to the team! 🎉`;
+    const message = `Hi ${formatName(selectedUser.full_name)}! 👋\n\nYou've been invited to join COPCCA CRM as a ${formatRole(selectedUser.role)}.\n\n🔗 Click here to complete your registration:\n${invitationLink}\n\n📋 Your Details:\n• Email: ${formatEmail(selectedUser.email)}\n• Department: ${selectedUser.department}\n• Role: ${formatRole(selectedUser.role)}\n\nThis link will expire in 7 days.\n\nWelcome to the team! 🎉`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     toast.success('Opening WhatsApp...');
@@ -188,30 +211,55 @@ export const UserManagement: React.FC = () => {
   const handleSendViaEmail = () => {
     if (!selectedUser) return;
     const subject = `Welcome to COPCCA CRM - Complete Your Registration`;
-    const body = `Hi ${selectedUser.full_name},\n\nYou've been invited to join COPCCA CRM!\n\n🎯 Your Role: ${selectedUser.role.toUpperCase()}\n🏢 Department: ${selectedUser.department}\n📧 Email: ${selectedUser.email}\n\n🔗 Click the link below to complete your registration:\n${invitationLink}\n\nThis link will expire in 7 days.\n\nIf you have any questions, please contact your administrator.\n\nBest regards,\nCOPCCA CRM Team`;
+    const body = `Hi ${formatName(selectedUser.full_name)},\n\nYou've been invited to join COPCCA CRM!\n\n🎯 Your Role: ${formatRole(selectedUser.role)}\n🏢 Department: ${selectedUser.department}\n📧 Email: ${formatEmail(selectedUser.email)}\n\n🔗 Click the link below to complete your registration:\n${invitationLink}\n\nThis link will expire in 7 days.\n\nIf you have any questions, please contact your administrator.\n\nBest regards,\nCOPCCA CRM Team`;
     const mailtoUrl = `mailto:${selectedUser.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
     toast.success('Opening email client...');
   };
 
-  const handleToggleStatus = (userId: string) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' }
-        : user
-    ));
-    toast.success('User status updated');
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      await toast.promise(
+        new Promise(resolve => setTimeout(resolve, 500)),
+        {
+          loading: 'Updating user status...',
+          success: 'User status updated successfully',
+          error: 'Failed to update status',
+        }
+      );
+      
+      setUsers(users.map(user => 
+        user.id === userId 
+          ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' }
+          : user
+      ));
+    } catch (error) {
+      console.error('Failed to toggle status:', error);
+    }
   };
 
-  const handleUpdatePermissions = (permission: keyof UserType['permissions']) => {
+  const handleUpdatePermissions = async (permission: keyof UserType['permissions']) => {
     if (selectedUser) {
-      const updatedUser = {
-        ...selectedUser,
-        permissions: { ...selectedUser.permissions, [permission]: !selectedUser.permissions[permission] },
-      };
-      setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
-      setSelectedUser(updatedUser);
-      toast.success('Permissions updated');
+      try {
+        const updatedUser = {
+          ...selectedUser,
+          permissions: { ...selectedUser.permissions, [permission]: !selectedUser.permissions[permission] },
+        };
+        
+        await toast.promise(
+          new Promise(resolve => setTimeout(resolve, 300)),
+          {
+            loading: 'Updating permissions...',
+            success: 'Permissions updated successfully',
+            error: 'Failed to update permissions',
+          }
+        );
+        
+        setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
+        setSelectedUser(updatedUser);
+      } catch (error) {
+        console.error('Failed to update permissions:', error);
+      }
     }
   };
 
@@ -221,7 +269,7 @@ export const UserManagement: React.FC = () => {
     { key: 'marketing', label: 'Marketing', icon: Target },
     { key: 'products', label: 'Products', icon: Package },
     { key: 'competitors', label: 'Competitors', icon: Shield },
-    { key: 'debt_collection', label: 'Debt Collection', icon: DollarSign },
+    { key: 'debt_collection', label: 'Debt Collection', icon: Banknote },
     { key: 'reports', label: 'Reports & AI', icon: BarChart3 },
     { key: 'admin', label: 'Admin Panel', icon: Crown },
   ];
@@ -310,15 +358,15 @@ export const UserManagement: React.FC = () => {
                         {user.full_name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-900">{user.full_name}</p>
-                        <p className="text-xs text-slate-600">{user.email}</p>
+                        <p className="font-semibold text-slate-900">{formatName(user.full_name)}</p>
+                        <p className="text-xs text-slate-600">{formatEmail(user.email)}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-blue-100 text-blue-700 border border-blue-300'}`}>
                       {user.role === 'admin' ? <Crown size={12} /> : <User size={12} />}
-                      {user.role.toUpperCase()}
+                      {formatRole(user.role)}
                     </span>
                   </td>
                   <td className="p-3">
@@ -354,7 +402,7 @@ export const UserManagement: React.FC = () => {
                       <button className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600" title="Edit User">
                         <Edit size={16} />
                       </button>
-                      <button onClick={() => { if (window.confirm(`Delete ${user.full_name}?`)) { setUsers(users.filter(u => u.id !== user.id)); toast.success('User deleted'); }}} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600" title="Delete User">
+                      <button onClick={() => { if (window.confirm(`Delete ${formatName(user.full_name)}?`)) { setUsers(users.filter(u => u.id !== user.id)); toast.success('User deleted'); }}} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600" title="Delete User">
                         <Trash2 size={16} />
                       </button>
                     </div>

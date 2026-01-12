@@ -3,7 +3,7 @@ import {
   Package,
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  Banknote,
   Target,
   Star,
   Brain,
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Product {
   id: string;
@@ -264,6 +265,7 @@ const demoProducts: Product[] = [
 ];
 
 export const Products: React.FC = () => {
+  const { formatCurrency } = useCurrency();
   const [products] = useState<Product[]>(demoProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -304,9 +306,9 @@ export const Products: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-l-4 border-green-500">
-          <DollarSign className="text-green-600 mb-2" size={24} />
+          <Banknote className="text-green-600 mb-2" size={24} />
           <p className="text-sm text-slate-600">Monthly Revenue</p>
-          <p className="text-3xl font-bold text-green-600">₦{(totalRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-3xl font-bold text-green-600">{formatCurrency(totalRevenue / 1000)}<span className="text-base ml-0.5">K</span></p>
         </Card>
         <Card className="border-l-4 border-blue-500">
           <TrendingUp className="text-blue-600 mb-2" size={24} />
@@ -351,7 +353,7 @@ export const Products: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b">
               <div>
                 <p className="text-xs text-slate-600 mb-1">Revenue/Month</p>
-                <p className="text-lg font-bold text-green-600">₦{(product.monthly_revenue / 1000).toFixed(0)}K</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(product.monthly_revenue / 1000)}<span className="text-xs ml-0.5">K</span></p>
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">Growth Rate</p>
@@ -514,11 +516,11 @@ export const Products: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-sm text-slate-600 mb-1">Monthly Revenue</p>
-                        <p className="text-2xl font-bold text-green-600">₦{(selectedProduct.monthly_revenue / 1000).toFixed(0)}K</p>
+                        <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedProduct.monthly_revenue / 1000)}<span className="text-sm ml-0.5">K</span></p>
                       </div>
                       <div>
                         <p className="text-sm text-slate-600 mb-1">Total Revenue</p>
-                        <p className="text-2xl font-bold text-slate-900">₦{(selectedProduct.total_revenue / 1000).toFixed(0)}K</p>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedProduct.total_revenue / 1000)}<span className="text-sm ml-0.5">K</span></p>
                       </div>
                       <div>
                         <p className="text-sm text-slate-600 mb-1">Units Sold</p>
@@ -810,10 +812,29 @@ export const Products: React.FC = () => {
                           <div className="flex-1">
                             <p className="font-medium text-slate-900 mb-2">{rec}</p>
                             <div className="flex gap-2">
-                              <Button size="sm" icon={Zap} onClick={() => toast.success('Recommendation activated')}>
+                              <Button 
+                                size="sm" 
+                                icon={Zap} 
+                                onClick={() => {
+                                  toast.promise(
+                                    new Promise(resolve => setTimeout(resolve, 1500)),
+                                    {
+                                      loading: 'Executing recommendation...',
+                                      success: 'Recommendation executed! Check your tasks.',
+                                      error: 'Failed to execute recommendation',
+                                    }
+                                  );
+                                }}
+                              >
                                 Execute
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => toast.success('Added to roadmap')}>
+                              <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                onClick={() => {
+                                  toast.success('Added to product roadmap');
+                                }}
+                              >
                                 Add to Roadmap
                               </Button>
                             </div>
@@ -826,15 +847,39 @@ export const Products: React.FC = () => {
                   {/* Pricing Recommendation */}
                   <Card className="border-l-4 border-green-500">
                     <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
-                      <DollarSign className="text-green-600" size={20} />
+                      <Banknote className="text-green-600" size={20} />
                       💰 Pricing Recommendation
                     </h3>
                     <p className="text-slate-800 mb-4">{selectedProduct.pricing_recommendation}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => toast.success('Pricing analysis started')}>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          toast.promise(
+                            new Promise(resolve => setTimeout(resolve, 2000)),
+                            {
+                              loading: 'Running pricing analysis...',
+                              success: 'Analysis complete! View results in Reports.',
+                              error: 'Analysis failed',
+                            }
+                          );
+                        }}
+                      >
                         Run Pricing Analysis
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => toast.success('A/B test created')}>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        onClick={() => {
+                          toast.success('A/B test created successfully', {
+                            description: 'Test will run for 14 days',
+                            action: {
+                              label: 'View Test',
+                              onClick: () => console.log('Navigate to A/B test')
+                            }
+                          });
+                        }}
+                      >
                         A/B Test Price
                       </Button>
                     </div>
@@ -848,10 +893,28 @@ export const Products: React.FC = () => {
                     </h3>
                     <p className="text-slate-800 mb-4">{selectedProduct.positioning_recommendation}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => toast.success('Marketing brief created')}>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          toast.promise(
+                            new Promise(resolve => setTimeout(resolve, 1500)),
+                            {
+                              loading: 'Generating marketing brief...',
+                              success: 'Marketing brief created successfully',
+                              error: 'Failed to create brief',
+                            }
+                          );
+                        }}
+                      >
                         Create Marketing Brief
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => toast.success('Messaging updated')}>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        onClick={() => {
+                          toast.success('Messaging updated across all channels');
+                        }}
+                      >
                         Update Messaging
                       </Button>
                     </div>
@@ -866,7 +929,20 @@ export const Products: React.FC = () => {
                         <p className="text-yellow-800 mb-3">
                           Based on AI analysis, implementing the top recommendation could increase revenue by 15-20% within 60 days.
                         </p>
-                        <Button size="sm" icon={Zap} onClick={() => toast.success('Quick win plan created')}>
+                        <Button 
+                          size="sm" 
+                          icon={Zap} 
+                          onClick={() => {
+                            toast.promise(
+                              new Promise(resolve => setTimeout(resolve, 1500)),
+                              {
+                                loading: 'Creating action plan...',
+                                success: 'Action plan created! Added to your tasks.',
+                                error: 'Failed to create plan',
+                              }
+                            );
+                          }}
+                        >
                           Create Action Plan
                         </Button>
                       </div>
@@ -886,10 +962,21 @@ export const Products: React.FC = () => {
         title="Add New Product"
         size="lg"
       >
-        <form className="space-y-4" onSubmit={(e) => {
+        <form className="space-y-4" onSubmit={async (e) => {
           e.preventDefault();
-          toast.success('Product added successfully!');
-          setShowAddModal(false);
+          try {
+            await toast.promise(
+              new Promise(resolve => setTimeout(resolve, 1000)),
+              {
+                loading: 'Adding product...',
+                success: 'Product added successfully!',
+                error: 'Failed to add product',
+              }
+            );
+            setShowAddModal(false);
+          } catch (error) {
+            console.error('Failed to add product:', error);
+          }
         }}>
           <p className="text-sm text-slate-600">Track your product performance and get AI-powered recommendations</p>
           

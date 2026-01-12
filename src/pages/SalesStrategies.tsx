@@ -3,7 +3,7 @@ import {
   Plus,
   Megaphone,
   Calendar,
-  DollarSign,
+  Banknote,
   TrendingUp,
   Users,
   Mail,
@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Campaign {
   id: string;
@@ -243,10 +244,17 @@ const demoCampaigns: Campaign[] = [
 ];
 
 export const SalesStrategies: React.FC = () => {
+  const { formatCurrency, currency } = useCurrency();
   const [campaigns] = useState<Campaign[]>(demoCampaigns);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'ai-insights'>('overview');
+  const [showEditMessageModal, setShowEditMessageModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -287,9 +295,9 @@ export const SalesStrategies: React.FC = () => {
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="border-l-4 border-green-500">
-          <DollarSign className="text-green-600 mb-2" size={24} />
+          <Banknote className="text-green-600 mb-2" size={24} />
           <p className="text-sm text-slate-600">Total Revenue</p>
-          <p className="text-2xl font-bold text-green-600">₦{(totalRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue / 1000)}<span className="text-sm ml-0.5">K</span></p>
         </Card>
         <Card className="border-l-4 border-blue-500">
           <TrendingUp className="text-blue-600 mb-2" size={24} />
@@ -302,7 +310,7 @@ export const SalesStrategies: React.FC = () => {
           <p className="text-2xl font-bold text-purple-600">{activeCampaigns}</p>
         </Card>
         <Card className="border-l-4 border-orange-500">
-          <DollarSign className="text-orange-600 mb-2" size={24} />
+          <Banknote className="text-orange-600 mb-2" size={24} />
           <p className="text-sm text-slate-600">Budget Used</p>
           <p className="text-2xl font-bold text-orange-600">{Math.round((totalSpent / totalBudget) * 100)}%</p>
         </Card>
@@ -382,7 +390,7 @@ export const SalesStrategies: React.FC = () => {
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-slate-600 mb-1">Budget</p>
-                  <p className="text-lg font-bold text-slate-900">₦{(campaign.budget / 1000).toFixed(0)}K</p>
+                  <p className="text-lg font-bold text-slate-900">{formatCurrency(campaign.budget / 1000)}<span className="text-xs ml-0.5">K</span></p>
                   <div className="w-full bg-slate-200 rounded-full h-1 mt-1">
                     <div
                       className="bg-orange-500 h-1 rounded-full"
@@ -430,7 +438,7 @@ export const SalesStrategies: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600">Revenue</p>
-                      <p className="font-bold text-green-600 text-sm">₦{(campaign.revenue / 1000).toFixed(0)}K</p>
+                      <p className="font-bold text-green-600 text-sm">{formatCurrency(campaign.revenue / 1000)}<span className="text-xs ml-0.5">K</span></p>
                     </div>
                   </div>
                 </div>
@@ -465,7 +473,8 @@ export const SalesStrategies: React.FC = () => {
                   icon={Copy}
                   onClick={(e) => {
                     e.stopPropagation();
-                    toast.success('Campaign duplicated');
+                    toast.success(`"${campaign.name}" duplicated successfully!`);
+                    setTimeout(() => toast.info('New campaign added to drafts'), 1000);
                   }}
                 >
                   Duplicate
@@ -550,7 +559,11 @@ export const SalesStrategies: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-4">
-                      <Button size="sm" icon={Edit} onClick={() => toast.success('Message editor opened')}>
+                      <Button size="sm" icon={Edit} onClick={() => {
+                        setMessageSubject(selectedCampaign.message_subject);
+                        setMessageBody(selectedCampaign.message_preview);
+                        setShowEditMessageModal(true);
+                      }}>
                         Edit Message
                       </Button>
                     </div>
@@ -606,15 +619,15 @@ export const SalesStrategies: React.FC = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Total Budget</span>
-                          <span className="font-bold text-slate-900">₦{selectedCampaign.budget.toLocaleString()}</span>
+                          <span className="font-bold text-slate-900">{formatCurrency(selectedCampaign.budget)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Spent</span>
-                          <span className="font-bold text-orange-600">₦{selectedCampaign.spent.toLocaleString()}</span>
+                          <span className="font-bold text-orange-600">{formatCurrency(selectedCampaign.spent)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Remaining</span>
-                          <span className="font-bold text-green-600">₦{(selectedCampaign.budget - selectedCampaign.spent).toLocaleString()}</span>
+                          <span className="font-bold text-green-600">{formatCurrency(selectedCampaign.budget - selectedCampaign.spent)}</span>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-3 mt-2">
                           <div
@@ -710,7 +723,7 @@ export const SalesStrategies: React.FC = () => {
                     </Card>
                     <Card className="border-l-4 border-green-500">
                       <p className="text-xs text-slate-600 mb-1">Revenue</p>
-                      <p className="text-2xl font-bold text-green-600">₦{(selectedCampaign.revenue / 1000).toFixed(0)}K</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedCampaign.revenue / 1000)}<span className="text-sm ml-0.5">K</span></p>
                     </Card>
                   </div>
 
@@ -756,7 +769,7 @@ export const SalesStrategies: React.FC = () => {
                            '⚠️ Needs Improvement'}
                         </p>
                         <p className="text-sm text-slate-600">
-                          For every ₦1 spent, you earned ₦{(selectedCampaign.roi / 100).toFixed(2)}
+                          For every {currency.symbol}1 spent, you earned {currency.symbol}{(selectedCampaign.roi / 100).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -842,10 +855,15 @@ export const SalesStrategies: React.FC = () => {
                           <div className="flex-1">
                             <p className="font-medium text-slate-900 mb-2">{rec}</p>
                             <div className="flex gap-2">
-                              <Button size="sm" icon={Zap} onClick={() => toast.success('Optimization applied')}>
+                              <Button size="sm" icon={Zap} onClick={() => {
+                                toast.success(`Applying: ${rec}`);
+                                setTimeout(() => toast.success('Optimization applied! Campaign updated.'), 1500);
+                              }}>
                                 Apply Now
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => toast.success('Added to queue')}>
+                              <Button size="sm" variant="secondary" onClick={() => {
+                                setShowScheduleModal(true);
+                              }}>
                                 Schedule
                               </Button>
                             </div>
@@ -968,7 +986,7 @@ export const SalesStrategies: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Budget (₦)" placeholder="150000" type="number" required />
+              <Input label={`Budget (${currency.symbol})`} placeholder="150000" type="number" required />
               <Input label="Start Date" type="date" required />
             </div>
 
@@ -988,6 +1006,190 @@ export const SalesStrategies: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Edit Message Modal */}
+      {selectedCampaign && (
+        <Modal
+          isOpen={showEditMessageModal}
+          onClose={() => {
+            setShowEditMessageModal(false);
+            setMessageSubject('');
+            setMessageBody('');
+          }}
+          title="Edit Campaign Message"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success('Message updated successfully!');
+            setShowEditMessageModal(false);
+            setMessageSubject('');
+            setMessageBody('');
+          }}>
+            <Card className="border-l-4 border-primary-500 bg-primary-50">
+              <h3 className="font-bold text-primary-900 mb-2">Campaign: {selectedCampaign.name}</h3>
+              <p className="text-sm text-primary-700">Edit your message content below</p>
+            </Card>
+
+            <Input
+              label="Subject Line / Headline"
+              placeholder="Enter compelling subject..."
+              value={messageSubject}
+              onChange={(e) => setMessageSubject(e.target.value)}
+              required
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <Edit className="inline mr-2" size={16} />
+                Message Body
+              </label>
+              <textarea
+                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all min-h-[180px]"
+                placeholder="Write your message content here..."
+                value={messageBody}
+                onChange={(e) => setMessageBody(e.target.value)}
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">💡 Tip: Use clear, action-oriented language for best results</p>
+            </div>
+
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-3">🧠 AI Suggestions</h3>
+              <div className="space-y-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setMessageBody('Boost your sales with our proven CRM system. Join 500+ businesses growing 3x faster. Limited time offer!')}>
+                  Use AI Template 1
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setMessageBody('Transform your customer relationships today. Get personalized demos and exclusive pricing for early adopters.')}>
+                  Use AI Template 2
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setMessageBody('See how industry leaders are scaling their businesses. Request your free consultation now.')}>
+                  Use AI Template 3
+                </Button>
+              </div>
+            </Card>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowEditMessageModal(false);
+                setMessageSubject('');
+                setMessageBody('');
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit" icon={CheckCircle}>
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Schedule Modal */}
+      {selectedCampaign && (
+        <Modal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setScheduleDate('');
+            setScheduleTime('');
+          }}
+          title="Schedule Optimization"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success(`Optimization scheduled for ${scheduleDate} at ${scheduleTime}`);
+            setShowScheduleModal(false);
+            setScheduleDate('');
+            setScheduleTime('');
+          }}>
+            <Card className="border-l-4 border-blue-500 bg-blue-50">
+              <h3 className="font-bold text-blue-900 mb-2">Campaign: {selectedCampaign.name}</h3>
+              <p className="text-sm text-blue-700">Schedule when to apply AI recommendations</p>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                type="date"
+                label="Schedule Date"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                required
+              />
+              <Input
+                type="time"
+                label="Schedule Time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                required
+              />
+            </div>
+
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-3">⚡ Quick Schedule</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setScheduleDate(tomorrow.toISOString().split('T')[0]);
+                  setScheduleTime('08:00');
+                }}>
+                  Tomorrow 8 AM
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const nextWeek = new Date();
+                  nextWeek.setDate(nextWeek.getDate() + 7);
+                  setScheduleDate(nextWeek.toISOString().split('T')[0]);
+                  setScheduleTime('09:00');
+                }}>
+                  Next Week
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const today = new Date();
+                  setScheduleDate(today.toISOString().split('T')[0]);
+                  setScheduleTime('18:00');
+                }}>
+                  Today 6 PM
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setScheduleDate(tomorrow.toISOString().split('T')[0]);
+                  setScheduleTime('12:00');
+                }}>
+                  Tomorrow Noon
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="border-l-4 border-green-500 bg-green-50">
+              <div className="flex items-start gap-2">
+                <Sparkles className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="text-sm font-bold text-green-900 mb-1">🎯 AI Recommendation</p>
+                  <p className="text-sm text-green-800">
+                    Best time to apply optimization: {selectedCampaign.best_time} for maximum engagement
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowScheduleModal(false);
+                setScheduleDate('');
+                setScheduleTime('');
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit" icon={Calendar}>
+                Schedule Optimization
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };

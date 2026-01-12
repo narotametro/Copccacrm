@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -16,9 +16,15 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   size = 'md',
 }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Auto-focus the modal content for immediate keyboard navigation
+      setTimeout(() => {
+        contentRef.current?.focus();
+      }, 100);
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -31,9 +37,9 @@ export const Modal: React.FC<ModalProps> = ({
 
   const sizes = {
     sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    md: 'max-w-xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl',
   };
 
   return (
@@ -54,7 +60,13 @@ export const Modal: React.FC<ModalProps> = ({
             <X size={24} />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto">{children}</div>
+        <div 
+          ref={contentRef}
+          tabIndex={-1}
+          className="max-h-[80vh] overflow-y-auto focus:outline-none"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

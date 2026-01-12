@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { DollarSign, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target } from 'lucide-react';
+import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 const demoDebts = [
   { 
@@ -56,6 +57,7 @@ const demoDebts = [
 ];
 
 export const DebtCollection: React.FC = () => {
+  const { formatCurrency, convertAmount } = useCurrency();
   const [debts] = useState<any[]>(demoDebts);
   const [automationEnabled, setAutomationEnabled] = useState(true);
 
@@ -109,10 +111,25 @@ export const DebtCollection: React.FC = () => {
           >
             {automationEnabled ? 'Automation ON' : 'Automation OFF'}
           </Button>
-          <Button variant="secondary" icon={Send} onClick={() => toast.success('Manual reminders sent to 3 customers')}>
+          <Button 
+            variant="secondary" 
+            icon={Send} 
+            onClick={() => {
+              toast.success('Sending reminders to all overdue customers...', {
+                description: 'Emails will be sent in the next few minutes'
+              });
+            }}
+          >
             Send All Reminders
           </Button>
-          <Button icon={TrendingUp} onClick={() => toast.success('Generating AI report...')}>
+          <Button 
+            icon={TrendingUp} 
+            onClick={() => {
+              toast.success('Generating AI report...', {
+                description: 'Report will be ready in a moment'
+              });
+            }}
+          >
             AI Report
           </Button>
         </div>
@@ -153,10 +170,10 @@ export const DebtCollection: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
-          <DollarSign className="text-primary-600 mb-2" size={24} />
+          <Banknote className="text-primary-600 mb-2" size={24} />
           <h3 className="text-sm text-slate-600">Total Outstanding</h3>
           <p className="text-2xl font-bold text-slate-900">
-            ₦{(debts.filter(d => d.status !== 'paid').reduce((sum, d) => sum + d.amount, 0) / 1000).toFixed(1)}K
+            {formatCurrency(convertAmount(debts.filter(d => d.status !== 'paid').reduce((sum, d) => sum + d.amount, 0)))}
           </p>
         </Card>
         <Card>
@@ -225,7 +242,7 @@ export const DebtCollection: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3 px-4 font-medium">{debt.invoice_number}</td>
-                  <td className="py-3 px-4">₦{debt.amount.toLocaleString()}</td>
+                  <td className="py-3 px-4">{formatCurrency(convertAmount(debt.amount))}</td>
                   <td className="py-3 px-4">
                     <div>
                       <p>{new Date(debt.due_date).toLocaleDateString()}</p>

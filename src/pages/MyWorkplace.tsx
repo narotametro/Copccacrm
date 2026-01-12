@@ -9,12 +9,6 @@ interface WorkplaceApp {
 
 const apps: WorkplaceApp[] = [
   { 
-    name: "COPCCA CRM", 
-    logo: "👥", 
-    url: "http://localhost:5174",
-    color: "from-blue-500 to-blue-600"
-  },
-  { 
     name: "COPCCA PROCUREMENT", 
     logo: "📦", 
     url: "https://procurement.copcca.com",

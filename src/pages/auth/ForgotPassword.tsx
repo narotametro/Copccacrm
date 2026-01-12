@@ -76,7 +76,7 @@ export const ForgotPassword: React.FC = () => {
             required
           />
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full">
             {loading ? 'Sending...' : 'Send Reset Link'}
           </Button>
 

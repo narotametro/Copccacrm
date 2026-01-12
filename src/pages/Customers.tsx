@@ -19,13 +19,14 @@ import {
   ThumbsUp,
   ThumbsDown,
   BarChart3,
-  DollarSign,
+  Banknote,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Company {
   id: string;
@@ -177,9 +178,25 @@ const demoCompanies: Company[] = [
 ];
 
 export const Customers: React.FC = () => {
+  const { formatCurrency } = useCurrency();
   const [companies, setCompanies] = useState<Company[]>(demoCompanies);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showPainPointModal, setShowPainPointModal] = useState(false);
+  const [showEscalateModal, setShowEscalateModal] = useState(false);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [showScheduleDemoModal, setShowScheduleDemoModal] = useState(false);
+  const [showEnableAnalyticsModal, setShowEnableAnalyticsModal] = useState(false);
+  const [showMarkDoneModal, setShowMarkDoneModal] = useState(false);
+  const [showSetReminderModal, setShowSetReminderModal] = useState(false);
+  const [selectedAction, setSelectedAction] = useState('');
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('09:00');
+  const [escalateFeedback, setEscalateFeedback] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights'>('overview');
   const [formData, setFormData] = useState({
@@ -189,6 +206,14 @@ export const Customers: React.FC = () => {
     phone: '',
     website: '',
   });
+  const [feedbackData, setFeedbackData] = useState({
+    type: 'positive' as 'positive' | 'negative' | 'neutral',
+    comment: '',
+    category: '',
+  });
+  const [painPointData, setPainPointData] = useState('');
+  const [escalateNote, setEscalateNote] = useState('');
+  const [escalatePriority, setEscalatePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
 
   const getCustomerTypeColor = (type: string) => {
     const colors = {
@@ -338,7 +363,7 @@ export const Customers: React.FC = () => {
 
               <div className="flex items-center justify-between pt-2 border-t">
                 <span className="text-sm text-slate-600">Total Revenue</span>
-                <span className="font-bold text-slate-900">₦{(company.total_revenue / 1000000).toFixed(1)}M</span>
+                <span className="font-bold text-slate-900">{formatCurrency(company.total_revenue / 1000000)}<span className="text-sm ml-0.5">M</span></span>
               </div>
 
               <div className="flex items-center justify-between">
@@ -460,10 +485,10 @@ export const Customers: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" icon={Calendar} onClick={() => toast.success('Task added')}>Add Task</Button>
-                <Button size="sm" icon={Send} onClick={() => toast.success('Email sent')}>Email</Button>
-                <Button size="sm" icon={MessageSquare} onClick={() => toast.success('WhatsApp opened')}>WhatsApp</Button>
-                <Button size="sm" variant="secondary" icon={Target} onClick={() => toast.success('Added to campaign')}>Campaign</Button>
+                <Button size="sm" icon={Calendar} onClick={() => setShowAddTaskModal(true)}>Add Task</Button>
+                <Button size="sm" icon={Send} onClick={() => setShowEmailModal(true)}>Email</Button>
+                <Button size="sm" icon={MessageSquare} onClick={() => setShowWhatsAppModal(true)}>WhatsApp</Button>
+                <Button size="sm" variant="secondary" icon={Target} onClick={() => setShowCampaignModal(true)}>Campaign</Button>
               </div>
             </div>
 
@@ -624,7 +649,7 @@ export const Customers: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-xs text-slate-600 mb-1">Total Revenue</p>
-                        <p className="text-2xl font-bold text-slate-900">₦{(selectedCustomer.total_revenue / 1000000).toFixed(1)}M</p>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedCustomer.total_revenue / 1000000)}<span className="text-sm ml-1">M</span></p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-600 mb-1">Total Purchases</p>
@@ -632,7 +657,7 @@ export const Customers: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-xs text-slate-600 mb-1">Avg Order Value</p>
-                        <p className="text-2xl font-bold text-slate-900">₦{(selectedCustomer.avg_order_value / 1000).toFixed(0)}K</p>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedCustomer.avg_order_value / 1000)}<span className="text-sm ml-1">K</span></p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-600 mb-1">Last Purchase</p>
@@ -711,7 +736,7 @@ export const Customers: React.FC = () => {
                   <Card>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-slate-900">📝 Customer Feedback History</h3>
-                      <Button size="sm" icon={Plus} onClick={() => toast.success('Feedback form opened - Ready to collect customer input')}>Add Feedback</Button>
+                      <Button size="sm" icon={Plus} onClick={() => setShowFeedbackModal(true)}>Add Feedback</Button>
                     </div>
                     <div className="space-y-3">
                       {selectedCustomer.feedback_history && selectedCustomer.feedback_history.length > 0 ? (
@@ -745,11 +770,16 @@ export const Customers: React.FC = () => {
                               <span className="text-xs text-slate-600">{new Date(feedback.date).toLocaleDateString()}</span>
                             </div>
                             <p className="text-sm text-slate-700">{feedback.comment}</p>
-                            {feedback.type === 'negative' && (
-                              <Button size="sm" className="mt-3" onClick={() => toast.success('Escalated to support team')}>
-                                Escalate Now
-                              </Button>
-                            )}
+                            <Button 
+                              size="sm" 
+                              className="mt-3" 
+                              onClick={() => {
+                                setEscalateFeedback(feedback);
+                                setShowEscalateModal(true);
+                              }}
+                            >
+                              Escalate Now
+                            </Button>
                           </div>
                         ))
                       ) : (
@@ -794,7 +824,7 @@ export const Customers: React.FC = () => {
                   <Card className="border-l-4 border-orange-500">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-slate-900">⚠️ Customer Pain Points</h3>
-                      <Button size="sm" icon={Plus} onClick={() => toast.success('Pain point form opened')}>Add Pain Point</Button>
+                      <Button size="sm" icon={Plus} onClick={() => setShowPainPointModal(true)}>Add Pain Point</Button>
                     </div>
                     {selectedCustomer.pain_points && selectedCustomer.pain_points.length > 0 ? (
                       <ul className="space-y-3">
@@ -825,12 +855,12 @@ export const Customers: React.FC = () => {
                         <div className="bg-white p-4 rounded-lg border border-purple-200">
                           <p className="text-sm font-medium text-slate-900 mb-2">💡 Quick Win</p>
                           <p className="text-slate-700">Automate manual data entry → Reduce time by 65% using AI import tool</p>
-                          <Button size="sm" className="mt-3" onClick={() => toast.success('Solution demo scheduled')}>Schedule Demo</Button>
+                          <Button size="sm" className="mt-3" onClick={() => setShowScheduleDemoModal(true)}>Schedule Demo</Button>
                         </div>
                         <div className="bg-white p-4 rounded-lg border border-purple-200">
                           <p className="text-sm font-medium text-slate-900 mb-2">📊 Better Reporting</p>
                           <p className="text-slate-700">Enable Advanced Analytics Dashboard → Custom reports in real-time</p>
-                          <Button size="sm" className="mt-3" onClick={() => toast.success('Analytics access granted')}>Enable Now</Button>
+                          <Button size="sm" className="mt-3" onClick={() => setShowEnableAnalyticsModal(true)}>Enable Now</Button>
                         </div>
                       </div>
                     ) : (
@@ -863,10 +893,16 @@ export const Customers: React.FC = () => {
                           <div className="flex-1">
                             <p className="font-medium text-slate-900 mb-2">{action}</p>
                             <div className="flex gap-2">
-                              <Button size="sm" icon={CheckCircle} onClick={() => toast.success('Action marked as done')}>
+                              <Button size="sm" icon={CheckCircle} onClick={() => {
+                                setSelectedAction(action);
+                                setShowMarkDoneModal(true);
+                              }}>
                                 Mark Done
                               </Button>
-                              <Button size="sm" variant="secondary" icon={Calendar} onClick={() => toast.success('Reminder set')}>
+                              <Button size="sm" variant="secondary" icon={Calendar} onClick={() => {
+                                setSelectedAction(action);
+                                setShowSetReminderModal(true);
+                              }}>
                                 Set Reminder
                               </Button>
                             </div>
@@ -894,7 +930,7 @@ export const Customers: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <DollarSign className="text-purple-600 flex-shrink-0 mt-1" size={20} />
+                        <Banknote className="text-purple-600 flex-shrink-0 mt-1" size={20} />
                         <div>
                           <p className="font-medium text-slate-900 mb-1">Revenue Potential</p>
                           <p className="text-sm text-slate-700">Est. ₦2.4M additional revenue possible within 6 months via upsell</p>
@@ -908,6 +944,486 @@ export const Customers: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <Modal
+          isOpen={showFeedbackModal}
+          onClose={() => {
+            setShowFeedbackModal(false);
+            setFeedbackData({ type: 'positive', comment: '', category: '' });
+          }}
+          title="Add Customer Feedback"
+        >
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (selectedCustomer) {
+              const newFeedback = {
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                type: feedbackData.type,
+                comment: feedbackData.comment,
+                category: feedbackData.category
+              };
+              setCompanies(companies.map(c => 
+                c.id === selectedCustomer.id 
+                  ? { ...c, feedback_history: [...(c.feedback_history || []), newFeedback] }
+                  : c
+              ));
+              setSelectedCustomer({
+                ...selectedCustomer,
+                feedback_history: [...(selectedCustomer.feedback_history || []), newFeedback]
+              });
+              toast.success('Feedback added successfully!');
+              setShowFeedbackModal(false);
+              setFeedbackData({ type: 'positive', comment: '', category: '' });
+            }
+          }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Feedback Type</label>
+              <select
+                value={feedbackData.type}
+                onChange={(e) => setFeedbackData({ ...feedbackData, type: e.target.value as 'positive' | 'negative' | 'neutral' })}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              >
+                <option value="positive">👍 Positive</option>
+                <option value="neutral">😐 Neutral</option>
+                <option value="negative">👎 Negative</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+              <input
+                type="text"
+                value={feedbackData.category}
+                onChange={(e) => setFeedbackData({ ...feedbackData, category: e.target.value })}
+                placeholder="e.g., Product, Support, Performance"
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Comment</label>
+              <textarea
+                value={feedbackData.comment}
+                onChange={(e) => setFeedbackData({ ...feedbackData, comment: e.target.value })}
+                placeholder="Enter customer feedback..."
+                rows={4}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowFeedbackModal(false)}>Cancel</Button>
+              <Button type="submit">Add Feedback</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Pain Point Modal */}
+      {showPainPointModal && (
+        <Modal
+          isOpen={showPainPointModal}
+          onClose={() => {
+            setShowPainPointModal(false);
+            setPainPointData('');
+          }}
+          title="Add Pain Point"
+        >
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (selectedCustomer && painPointData.trim()) {
+              setCompanies(companies.map(c => 
+                c.id === selectedCustomer.id 
+                  ? { ...c, pain_points: [...(c.pain_points || []), painPointData] }
+                  : c
+              ));
+              setSelectedCustomer({
+                ...selectedCustomer,
+                pain_points: [...(selectedCustomer.pain_points || []), painPointData]
+              });
+              toast.success('Pain point added successfully!');
+              setShowPainPointModal(false);
+              setPainPointData('');
+            }
+          }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Pain Point Description</label>
+              <textarea
+                value={painPointData}
+                onChange={(e) => setPainPointData(e.target.value)}
+                placeholder="Describe the customer's pain point or challenge..."
+                rows={4}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowPainPointModal(false)}>Cancel</Button>
+              <Button type="submit">Add Pain Point</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Escalate Modal */}
+      {showEscalateModal && escalateFeedback && (
+        <Modal
+          isOpen={showEscalateModal}
+          onClose={() => {
+            setShowEscalateModal(false);
+            setEscalateNote('');
+            setEscalatePriority('medium');
+            setEscalateFeedback(null);
+          }}
+          title="Escalate Feedback to Support Team"
+        >
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            toast.success(`Feedback escalated as ${escalatePriority.toUpperCase()} priority to support team!`);
+            setShowEscalateModal(false);
+            setEscalateNote('');
+            setEscalatePriority('medium');
+            setEscalateFeedback(null);
+          }} className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <h4 className="font-semibold text-slate-900 mb-2">Feedback Details</h4>
+              <p className="text-sm text-slate-700"><strong>Category:</strong> {escalateFeedback.category}</p>
+              <p className="text-sm text-slate-700 mt-1"><strong>Comment:</strong> {escalateFeedback.comment}</p>
+              <p className="text-sm text-slate-600 mt-1"><strong>Date:</strong> {new Date(escalateFeedback.date).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Priority Level</label>
+              <select
+                value={escalatePriority}
+                onChange={(e) => setEscalatePriority(e.target.value as typeof escalatePriority)}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              >
+                <option value="low">🟢 Low - Can wait a few days</option>
+                <option value="medium">🟡 Medium - Address within 48 hours</option>
+                <option value="high">🟠 High - Needs attention within 24 hours</option>
+                <option value="urgent">🔴 Urgent - Immediate action required</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Escalation Note</label>
+              <textarea
+                value={escalateNote}
+                onChange={(e) => setEscalateNote(e.target.value)}
+                placeholder="Add context or instructions for the support team..."
+                rows={4}
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowEscalateModal(false)}>Cancel</Button>
+              <Button type="submit">Escalate to Support Team</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Add Task Modal */}
+      {selectedCustomer && (
+        <Modal
+          isOpen={showAddTaskModal}
+          onClose={() => setShowAddTaskModal(false)}
+          title="Add Task"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success('Task created successfully!');
+            setShowAddTaskModal(false);
+          }}>
+            <Card className="border-l-4 border-blue-500 bg-blue-50">
+              <p className="text-sm text-blue-900"><strong>Customer:</strong> {selectedCustomer.name}</p>
+            </Card>
+            <Input label="Task Title" placeholder="Follow up on pricing discussion" required />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+              <textarea className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none min-h-[100px]" placeholder="Task details..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input type="date" label="Due Date" required />
+              <select className="px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none mt-6">
+                <option>Low Priority</option>
+                <option>Medium Priority</option>
+                <option>High Priority</option>
+                <option>Urgent</option>
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowAddTaskModal(false)}>Cancel</Button>
+              <Button type="submit" icon={Calendar}>Create Task</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Email Modal */}
+      {selectedCustomer && (
+        <Modal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          title="Send Email"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success(`Email sent to ${selectedCustomer.name}!`);
+            setShowEmailModal(false);
+          }}>
+            <Card className="border-l-4 border-green-500 bg-green-50">
+              <p className="text-sm text-green-900"><strong>To:</strong> {selectedCustomer.name} ({selectedCustomer.email})</p>
+            </Card>
+            <Input label="Subject" placeholder="Quick follow-up on our meeting" required />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
+              <textarea className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none min-h-[180px]" placeholder="Hi [Name],\n\nThank you for..." required />
+            </div>
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-2">📧 Quick Templates</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" size="sm">Follow-up</Button>
+                <Button type="button" variant="secondary" size="sm">Thank You</Button>
+                <Button type="button" variant="secondary" size="sm">Check-in</Button>
+                <Button type="button" variant="secondary" size="sm">Meeting Request</Button>
+              </div>
+            </Card>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowEmailModal(false)}>Cancel</Button>
+              <Button type="submit" icon={Send}>Send Email</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* WhatsApp Modal */}
+      {selectedCustomer && (
+        <Modal
+          isOpen={showWhatsAppModal}
+          onClose={() => setShowWhatsAppModal(false)}
+          title="Send WhatsApp Message"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            const phone = selectedCustomer.phone || '+234';
+            const message = (e.target as any).message.value;
+            window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+            toast.success('Opening WhatsApp...');
+            setShowWhatsAppModal(false);
+          }}>
+            <Card className="border-l-4 border-green-600 bg-green-50">
+              <p className="text-sm text-green-900"><strong>To:</strong> {selectedCustomer.name}</p>
+              <p className="text-xs text-green-700 mt-1">Phone: {selectedCustomer.phone}</p>
+            </Card>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
+              <textarea name="message" className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none min-h-[150px]" placeholder="Hi! Hope you're doing well..." required />
+            </div>
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-2">💬 Quick Messages</h3>
+              <div className="space-y-2">
+                <Button type="button" variant="secondary" size="sm" className="w-full text-left justify-start">Quick check-in</Button>
+                <Button type="button" variant="secondary" size="sm" className="w-full text-left justify-start">Share update</Button>
+                <Button type="button" variant="secondary" size="sm" className="w-full text-left justify-start">Answer question</Button>
+              </div>
+            </Card>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowWhatsAppModal(false)}>Cancel</Button>
+              <Button type="submit" icon={MessageSquare}>Send via WhatsApp</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Campaign Modal */}
+      {selectedCustomer && (
+        <Modal
+          isOpen={showCampaignModal}
+          onClose={() => setShowCampaignModal(false)}
+          title="Add to Campaign"
+          size="lg"
+        >
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            toast.success(`${selectedCustomer.name} added to campaign successfully!`);
+            setShowCampaignModal(false);
+          }}>
+            <Card className="border-l-4 border-purple-500 bg-purple-50">
+              <p className="text-sm text-purple-900"><strong>Customer:</strong> {selectedCustomer.name}</p>
+              <p className="text-xs text-purple-700 mt-1">Type: {selectedCustomer.customer_type}</p>
+            </Card>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Campaign</label>
+              <select className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" required>
+                <option value="">Choose a campaign...</option>
+                <option>Q1 2026 Product Launch</option>
+                <option>Customer Appreciation Month</option>
+                <option>Upsell Premium Features</option>
+                <option>Re-engagement Campaign</option>
+                <option>New Year Promotion</option>
+              </select>
+            </div>
+            <Card>
+              <h3 className="font-bold text-slate-900 mb-3">📊 Recommended Campaigns</h3>
+              <div className="space-y-2">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="font-medium text-slate-900">Premium Upgrade Campaign</p>
+                  <p className="text-xs text-slate-600">Based on customer behavior & tier</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="font-medium text-slate-900">Industry-Specific Webinar</p>
+                  <p className="text-xs text-slate-600">Matches customer industry</p>
+                </div>
+              </div>
+            </Card>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowCampaignModal(false)}>Cancel</Button>
+              <Button type="submit" icon={Target}>Add to Campaign</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Schedule Demo Modal */}
+      <Modal isOpen={showScheduleDemoModal} onClose={() => setShowScheduleDemoModal(false)} title="Schedule Solution Demo" size="lg">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          toast.success('Demo scheduled successfully! Calendar invite sent.');
+          setShowScheduleDemoModal(false);
+        }}>
+          <div className="space-y-4">
+            <p className="text-slate-600">Schedule a personalized demo to show automated data entry solution</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Date" type="date" required />
+              <Input label="Time" type="time" defaultValue="14:00" required />
+            </div>
+            <Input label="Duration" type="select" required>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="90">90 minutes</option>
+            </Input>
+            <textarea 
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+              placeholder="Additional notes or requirements..."
+              rows={3}
+            />
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowScheduleDemoModal(false)}>Cancel</Button>
+              <Button type="submit">Schedule Demo</Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Enable Analytics Modal */}
+      <Modal isOpen={showEnableAnalyticsModal} onClose={() => setShowEnableAnalyticsModal(false)} title="Enable Advanced Analytics" size="lg">
+        <div className="space-y-4">
+          <p className="text-slate-600">Grant access to Advanced Analytics Dashboard with custom reporting</p>
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-bold text-slate-900 mb-2">Features Included:</h4>
+            <ul className="space-y-1 text-sm text-slate-700">
+              <li>✓ Real-time custom reports</li>
+              <li>✓ Advanced data visualization</li>
+              <li>✓ Export capabilities</li>
+              <li>✓ Scheduled report delivery</li>
+            </ul>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setShowEnableAnalyticsModal(false)}>Cancel</Button>
+            <Button onClick={() => {
+              toast.success('Advanced Analytics enabled successfully!');
+              setShowEnableAnalyticsModal(false);
+            }}>Enable Analytics</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mark Done Modal */}
+      <Modal isOpen={showMarkDoneModal} onClose={() => setShowMarkDoneModal(false)} title="Mark Action Complete" size="lg">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          toast.success('Action marked as complete!');
+          setShowMarkDoneModal(false);
+          setSelectedAction('');
+        }}>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="font-medium text-slate-900">Action:</p>
+              <p className="text-slate-700">{selectedAction}</p>
+            </div>
+            <textarea 
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+              placeholder="Add completion notes or outcome..."
+              rows={4}
+              required
+            />
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowMarkDoneModal(false)}>Cancel</Button>
+              <Button type="submit" icon={CheckCircle}>Mark Complete</Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Set Reminder Modal */}
+      <Modal isOpen={showSetReminderModal} onClose={() => setShowSetReminderModal(false)} title="Set Reminder" size="lg">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          toast.success(`Reminder set for ${reminderDate} at ${reminderTime}`);
+          setShowSetReminderModal(false);
+          setSelectedAction('');
+          setReminderDate('');
+        }}>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="font-medium text-slate-900">Action:</p>
+              <p className="text-slate-700">{selectedAction}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input 
+                label="Reminder Date" 
+                type="date" 
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+                required 
+              />
+              <Input 
+                label="Time" 
+                type="time" 
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                required 
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button type="button" size="sm" variant="secondary" onClick={() => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                setReminderDate(tomorrow.toISOString().split('T')[0]);
+                setReminderTime('09:00');
+              }}>Tomorrow 9 AM</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => {
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                setReminderDate(nextWeek.toISOString().split('T')[0]);
+                setReminderTime('09:00');
+              }}>Next Week</Button>
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setShowSetReminderModal(false)}>Cancel</Button>
+              <Button type="submit" icon={Calendar}>Set Reminder</Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

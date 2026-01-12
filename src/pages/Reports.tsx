@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { FileText, Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, DollarSign, Award, Shield, Zap, Eye } from 'lucide-react';
+import { FileText, Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, Banknote, Award, Shield, Zap, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export const Reports: React.FC = () => {
+  const { formatCurrency, convertAmount } = useCurrency();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
   const reports = [
@@ -51,7 +53,21 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">📊 Reports & AI Insights</h1>
           <p className="text-slate-600 mt-1 text-sm md:text-base">Comprehensive analytics and intelligence reports</p>
         </div>
-        <Button onClick={() => toast.success('Generating new report...')} className="text-sm md:text-base">Generate Report</Button>
+        <Button 
+          onClick={() => {
+            toast.promise(
+              new Promise(resolve => setTimeout(resolve, 2000)),
+              {
+                loading: 'Generating comprehensive report...',
+                success: 'Report generated successfully!',
+                error: 'Failed to generate report',
+              }
+            );
+          }} 
+          className="text-sm md:text-base"
+        >
+          Generate Report
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
@@ -122,9 +138,9 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-green-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-green-800">
-                  Sales performance trending upward with <span className="font-bold">₦524K revenue this month (65.5% of ₦800K target)</span>. 
-                  Win rate at 50% with average deal size of ₦54K. Top performer: Enterprise segment with 82% close probability. 
-                  <span className="font-bold"> Recommendation: Focus on 4 high-probability deals (₦185K weighted forecast)</span> to hit monthly target.
+                  Sales performance trending upward with <span className="font-bold">{formatCurrency(convertAmount(524000))} revenue this month (65.5% of {formatCurrency(convertAmount(800000))} target)</span>. 
+                  Win rate at 50% with average deal size of {formatCurrency(convertAmount(54000))}. Top performer: Enterprise segment with 82% close probability. 
+                  <span className="font-bold"> Recommendation: Focus on 4 high-probability deals ({formatCurrency(convertAmount(185000))} weighted forecast)</span> to hit monthly target.
                 </p>
               </div>
             </div>
@@ -136,7 +152,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Month-to-Date</span>
-                  <span className="font-bold text-green-600">₦524K</span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(524000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Target Progress</span>
@@ -144,11 +160,11 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Remaining to Target</span>
-                  <span className="font-bold text-orange-600">₦276K</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(convertAmount(276000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">AI Forecast</span>
-                  <span className="font-bold text-primary-600">₦185K</span>
+                  <span className="font-bold text-primary-600">{formatCurrency(convertAmount(185000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
               </div>
             </Card>
@@ -166,7 +182,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Avg Deal Size</span>
-                  <span className="font-bold text-slate-900">₦54K</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(54000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">At Risk Deals</span>
@@ -180,7 +196,14 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
             <Button icon={Download} onClick={() => handleDownload('Sales Performance Report')}>
               Download PDF
             </Button>
-            <Button variant="secondary" onClick={() => toast.success('Report shared with sales team')}>
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                toast.success('Report shared with sales team', {
+                  description: 'Email sent to 12 team members'
+                });
+              }}
+            >
               Share with Team
             </Button>
           </div>
@@ -203,7 +226,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 <p className="text-sm text-blue-800">
                   Customer base of <span className="font-bold">127 active customers with 82% average health score</span>. 
                   Churn risk identified in 12% of base (primarily in at-risk segment). 
-                  <span className="font-bold"> Priority: Engage Acme Corp (78% churn risk, ₦50K/mo value)</span> and 2 other high-value at-risk customers immediately.
+                  <span className="font-bold"> Priority: Engage Acme Corp (78% churn risk, {formatCurrency(convertAmount(50000))}/mo value)</span> and 2 other high-value at-risk customers immediately.
                 </p>
               </div>
             </div>
@@ -249,7 +272,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Customer LTV</span>
-                  <span className="font-bold text-slate-900">₦1.2M</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(1200000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
                 </div>
               </div>
             </Card>
@@ -280,9 +303,9 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-purple-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-purple-800">
-                  <span className="font-bold">Q1 2026 forecast: ₦1.8M total revenue</span> based on current pipeline and historical trends. 
+                  <span className="font-bold">Q1 2026 forecast: {formatCurrency(convertAmount(1800000) / 1000000)}M total revenue</span> based on current pipeline and historical trends. 
                   Month-over-month growth steady at 15%. Product revenue split: CRM Pro (54%), Mobile (15%), Analytics (20%), AI Assistant (11%). 
-                  <span className="font-bold"> Risk: ₦165K outstanding debt affecting cash flow</span> - recommend aggressive collection.
+                  <span className="font-bold"> Risk: {formatCurrency(convertAmount(165000))} outstanding debt affecting cash flow</span> - recommend aggressive collection.
                 </p>
               </div>
             </div>
@@ -294,19 +317,19 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">January 2026</span>
-                  <span className="font-bold text-purple-600">₦524K</span>
+                  <span className="font-bold text-purple-600">{formatCurrency(convertAmount(524000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">February 2026</span>
-                  <span className="font-bold text-slate-900">₦602K</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(602000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">March 2026</span>
-                  <span className="font-bold text-slate-900">₦693K</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(693000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Q1 Total</span>
-                  <span className="font-bold text-green-600">₦1.82M</span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(1820000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
                 </div>
               </div>
             </Card>
@@ -320,15 +343,15 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Outstanding Debt</span>
-                  <span className="font-bold text-red-600">₦165K</span>
+                  <span className="font-bold text-red-600">{formatCurrency(convertAmount(165000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Expected Recovery</span>
-                  <span className="font-bold text-orange-600">₦155K</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(convertAmount(155000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Net Cash Position</span>
-                  <span className="font-bold text-primary-600">₦680K</span>
+                  <span className="font-bold text-primary-600">{formatCurrency(convertAmount(680000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
               </div>
             </Card>
@@ -359,7 +382,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-orange-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-orange-800">
-                  <span className="font-bold">Marketing ROI at 165% with ₦1.5M total revenue generated</span> from 4 active campaigns. 
+                  <span className="font-bold">Marketing ROI at 165% with {formatCurrency(convertAmount(1500000) / 1000000)}M total revenue generated</span> from 4 active campaigns. 
                   Q1 2026 Launch performing exceptionally (254% ROI, 92/100 AI score). 
                   <span className="font-bold"> Best channel: Email (45% of conversions)</span>. Recommendation: Reallocate 20% budget from ads to email for Q2.
                 </p>
@@ -377,7 +400,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Total Revenue</span>
-                  <span className="font-bold text-green-600">₦1.5M</span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(1500000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Average ROI</span>
@@ -439,7 +462,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                 <h3 className="font-bold text-indigo-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-indigo-800">
                   Your product portfolio shows strong growth with <span className="font-bold">COPCCA Mobile leading at 92/100 AI score</span>. 
-                  Total monthly revenue of ₦230K with average growth rate of 37%. Key recommendation: <span className="font-bold">Focus resources on Mobile & AI Assistant</span> (highest performers) 
+                  Total monthly revenue of {formatCurrency(convertAmount(230000))} with average growth rate of 37%. Key recommendation: <span className="font-bold">Focus resources on Mobile & AI Assistant</span> (highest performers) 
                   while repositioning Analytics product to address market feedback.
                 </p>
               </div>
@@ -458,7 +481,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   <span className="text-sm text-slate-600">COPCCA CRM Pro</span>
                   <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">GROWING</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">₦125K/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(125000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-green-600 font-medium flex items-center gap-1">
                     <TrendingUp size={14} />
@@ -473,7 +496,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   <span className="text-sm text-slate-600">COPCCA Analytics</span>
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">STABLE</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">₦45K/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(45000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-blue-600 font-medium flex items-center gap-1">
                     <TrendingUp size={14} />
@@ -488,7 +511,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   <span className="text-sm text-slate-600">COPCCA Mobile</span>
                   <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded">LEADER</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">₦35K/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(35000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-purple-600 font-medium flex items-center gap-1">
                     <TrendingUp size={14} />
@@ -503,7 +526,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   <span className="text-sm text-slate-600">COPCCA AI Assistant</span>
                   <span className="px-2 py-1 bg-pink-100 text-pink-700 text-xs font-bold rounded">LEADER</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">₦25K/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(25000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-pink-600 font-medium flex items-center gap-1">
                     <TrendingUp size={14} />
@@ -569,7 +592,19 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                       These products have highest AI scores (92, 95) and growth rates (45%, 52%). 
                       Allocate 60% of R&D budget here for maximum ROI.
                     </p>
-                    <Button size="sm" onClick={() => toast.success('Creating resource allocation plan...')}>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        toast.promise(
+                          new Promise(resolve => setTimeout(resolve, 1500)),
+                          {
+                            loading: 'Creating resource allocation plan...',
+                            success: 'Plan created! Added to your tasks.',
+                            error: 'Failed to create plan',
+                          }
+                        );
+                      }}
+                    >
                       Create Action Plan
                     </Button>
                   </div>
@@ -583,9 +618,17 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                     <h4 className="font-bold text-slate-900 mb-1">Reposition Analytics Product</h4>
                     <p className="text-sm text-slate-600 mb-2">
                       Customer feedback indicates need for better dashboards. Invest in UI overhaul and add predictive analytics features.
-                      Potential to increase revenue from ₦45K to ₦75K/mo.
+                      Potential to increase revenue from {formatCurrency(convertAmount(45000))} to {formatCurrency(convertAmount(75000))}/mo.
                     </p>
-                    <Button size="sm" variant="secondary" onClick={() => toast.success('Scheduling product review...')}>
+                    <Button 
+                      size="sm" 
+                      variant="secondary" 
+                      onClick={() => {
+                        toast.success('Product review scheduled', {
+                          description: 'Added to calendar for next week'
+                        });
+                      }}
+                    >
                       Schedule Review
                     </Button>
                   </div>
@@ -598,10 +641,23 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   <div className="flex-1">
                     <h4 className="font-bold text-slate-900 mb-1">Increase Pricing on CRM Pro</h4>
                     <p className="text-sm text-slate-600 mb-2">
-                      Market analysis shows you can raise price from ₦49.99 to ₦59.99 without affecting conversion. 
-                      Estimated additional ₦25K/mo revenue.
+                      Market analysis shows you can raise price from {formatCurrency(convertAmount(49.99))} to {formatCurrency(convertAmount(59.99))} without affecting conversion. 
+                      Estimated additional {formatCurrency(convertAmount(25000))}/mo revenue.
                     </p>
-                    <Button size="sm" variant="secondary" onClick={() => toast.success('Running pricing simulation...')}>
+                    <Button 
+                      size="sm" 
+                      variant="secondary" 
+                      onClick={() => {
+                        toast.promise(
+                          new Promise(resolve => setTimeout(resolve, 2000)),
+                          {
+                            loading: 'Running pricing simulation...',
+                            success: 'Simulation complete! Revenue increase projected.',
+                            error: 'Simulation failed',
+                          }
+                        );
+                      }}
+                    >
                       Run Simulation
                     </Button>
                   </div>
@@ -635,7 +691,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-red-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-red-800">
-                  <span className="font-bold">HIGH ALERT:</span> RivalTech reduced pricing by 15%, directly threatening 2 deals worth ₦240K. 
+                  <span className="font-bold">HIGH ALERT:</span> RivalTech reduced pricing by 15%, directly threatening 2 deals worth {formatCurrency(convertAmount(240000))}. 
                   MarketLeader (85/100 threat score) gaining market share in enterprise segment. 
                   <span className="font-bold"> Immediate action required on pricing and enterprise features.</span> BudgetCRM remains low threat (32 score).
                 </p>
@@ -785,7 +841,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                       <span className="px-2 py-0.5 bg-red-200 text-red-800 text-xs font-bold rounded">DO NOW</span>
                     </div>
                     <p className="text-sm text-red-800 mb-3">
-                      RivalTech's 15% price cut threatens ₦240K in active deals (Acme Corp, GlobalTech). 
+                      RivalTech's 15% price cut threatens {formatCurrency(convertAmount(240000))} in active deals (Acme Corp, GlobalTech). 
                       <span className="font-bold"> Recommend: Offer time-limited enterprise bundle at 20% discount + 3 months free support.</span>
                     </p>
                     <div className="flex gap-2">
@@ -853,7 +909,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
           {/* Market Opportunities */}
           <Card className="bg-gradient-to-br from-primary-50 to-purple-50 border-2 border-primary-200">
             <div className="flex items-start gap-3">
-              <DollarSign className="text-primary-600 flex-shrink-0 mt-1" size={24} />
+              <Banknote className="text-primary-600 flex-shrink-0 mt-1" size={24} />
               <div>
                 <h3 className="font-bold text-primary-900 mb-1">💰 Market Opportunity Detected</h3>
                 <p className="text-sm text-primary-800 mb-2">
@@ -862,7 +918,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
                   Opportunity: Position as "The CRM Built for African SMBs" and capture market before they do.
                 </p>
                 <p className="text-xs text-primary-700 mt-2">
-                  <span className="font-semibold">Estimated TAM:</span> ₦2.8B across Nigeria, Kenya, Ghana, South Africa
+                  <span className="font-semibold">Estimated TAM:</span> {formatCurrency(convertAmount(2800000000) / 1000000000)}<span className="text-xs ml-0.5">B</span> across Nigeria, Kenya, Ghana, South Africa
                 </p>
               </div>
             </div>

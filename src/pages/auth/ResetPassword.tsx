@@ -77,7 +77,7 @@ export const ResetPassword: React.FC = () => {
             minLength={6}
           />
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full">
             {loading ? 'Updating...' : 'Update Password'}
           </Button>
         </form>

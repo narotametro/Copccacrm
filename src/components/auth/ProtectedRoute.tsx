@@ -12,7 +12,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRole,
 }) => {
-  const { user, profile, loading, initialize } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
+  const loading = useAuthStore((state) => state.loading);
+  const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
     initialize();
@@ -29,7 +32,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requiredRole && profile) {
     const roleHierarchy = { admin: 3, manager: 2, user: 1 };
     if (roleHierarchy[profile.role] < roleHierarchy[requiredRole]) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/app/dashboard" replace />;
     }
   }
 

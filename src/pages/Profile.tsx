@@ -3,12 +3,14 @@ import { Mail, Phone, Building, Shield, Camera, Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
+import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 
 export const Profile: React.FC = () => {
-  const { profile } = useAuthStore();
-  
+  // const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
   // Use demo profile if no real profile
   const demoProfile = {
     id: 'demo',
@@ -20,7 +22,6 @@ export const Profile: React.FC = () => {
     department: 'Sales',
     status: 'active' as const,
   };
-
   const displayProfile = profile || demoProfile;
 
   const [formData, setFormData] = useState({
@@ -29,6 +30,12 @@ export const Profile: React.FC = () => {
     phone: displayProfile.phone || '',
     department: displayProfile.department || '',
   });
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSave = () => {
     toast.success('Profile updated successfully!');
@@ -53,11 +60,11 @@ export const Profile: React.FC = () => {
                 <Camera size={16} className="text-slate-600" />
               </button>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-1">{displayProfile.full_name}</h2>
-            <p className="text-slate-600 text-sm mb-2">{displayProfile.email}</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-1">{formatName(displayProfile.full_name)}</h2>
+            <p className="text-slate-600 text-sm mb-2">{formatEmail(displayProfile.email)}</p>
             <div className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-primary-100 to-purple-100 border border-primary-300 rounded-full">
               <Shield size={14} className="text-primary-600" />
-              <span className="text-sm font-bold text-primary-700 capitalize">{displayProfile.role}</span>
+              <span className="text-sm font-bold text-primary-700">{formatRole(displayProfile.role)}</span>
             </div>
           </div>
 
@@ -72,7 +79,7 @@ export const Profile: React.FC = () => {
             </div>
             <div className="flex items-center gap-3 text-sm">
               <Mail size={16} className="text-slate-500" />
-              <span className="text-slate-700 truncate">{displayProfile.email}</span>
+              <span className="text-slate-700 truncate">{formatEmail(displayProfile.email)}</span>
             </div>
           </div>
         </Card>
@@ -131,15 +138,11 @@ export const Profile: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Change Password</label>
-            <div className="flex gap-3">
-              <Input type="password" placeholder="Current password" className="flex-1" />
-              <Input type="password" placeholder="New password" className="flex-1" />
-              <Button onClick={() => toast.success('Password updated!')}>Update</Button>
-            </div>
+            <Button onClick={() => setShowPasswordModal(true)}>Change Password</Button>
           </div>
           <div className="pt-4 border-t border-slate-200">
             <p className="text-sm text-slate-600 mb-2">Two-Factor Authentication</p>
-            <Button variant="secondary" size="sm" onClick={() => toast.success('2FA setup started')}>
+            <Button variant="secondary" size="sm" onClick={() => setShow2FAModal(true)}>
               Enable 2FA
             </Button>
           </div>
@@ -171,6 +174,96 @@ export const Profile: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* Change Password Modal */}
+      <Modal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} title="Change Password">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (newPassword !== confirmPassword) {
+            toast.error('Passwords do not match');
+            return;
+          }
+          if (newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters');
+            return;
+          }
+          toast.success('Password updated successfully!');
+          setShowPasswordModal(false);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }}>
+          <div className="space-y-4">
+            <Input
+              label="Current Password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+            <Input
+              label="New Password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              required
+            />
+            <Input
+              label="Confirm New Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setShowPasswordModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Update Password</Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 2FA Setup Modal */}
+      <Modal isOpen={show2FAModal} onClose={() => setShow2FAModal(false)} title="Enable Two-Factor Authentication">
+        <div className="space-y-4">
+          <p className="text-slate-600">
+            Enhance your account security by enabling two-factor authentication. You'll need to enter a code from your authenticator app each time you sign in.
+          </p>
+          <div className="bg-slate-100 p-4 rounded-lg">
+            <h4 className="font-bold text-slate-900 mb-2">Setup Steps:</h4>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-slate-700">
+              <li>Download an authenticator app (Google Authenticator, Authy, etc.)</li>
+              <li>Scan the QR code below with your app</li>
+              <li>Enter the 6-digit code to verify</li>
+            </ol>
+          </div>
+          <div className="flex justify-center bg-white p-8 rounded-lg border-2 border-dashed border-slate-300">
+            <div className="w-48 h-48 bg-slate-200 rounded flex items-center justify-center text-slate-500">
+              QR Code Placeholder
+            </div>
+          </div>
+          <Input
+            label="Verification Code"
+            placeholder="000000"
+            maxLength={6}
+            pattern="[0-9]{6}"
+          />
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShow2FAModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              toast.success('2FA enabled successfully!');
+              setShow2FAModal(false);
+            }}>
+              Enable 2FA
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
