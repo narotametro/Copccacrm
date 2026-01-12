@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, Users, TrendingUp, DollarSign, Activity, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
+import React from 'react';
+import { Building2, Users, DollarSign, Activity, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useCurrency } from '@/context/CurrencyContext';
 

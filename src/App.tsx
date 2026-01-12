@@ -25,7 +25,6 @@ import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { MyWorkplace } from '@/pages/MyWorkplace';
 import { LandingPage } from '@/pages/LandingPage';
-import { PlatformAdmin } from '@/pages/PlatformAdmin';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { AdminCompanies } from '@/pages/admin/AdminCompanies';
 import { AdminSubscriptions } from '@/pages/admin/AdminSubscriptions';

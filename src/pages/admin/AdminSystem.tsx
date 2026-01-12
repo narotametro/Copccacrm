@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Bot, Key, Save, Eye, EyeOff, CheckCircle, AlertTriangle, Activity, Lock } from 'lucide-react';
+import { Database, Bot, Save, Eye, EyeOff, CheckCircle, AlertTriangle, Activity, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';

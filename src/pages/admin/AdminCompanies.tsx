@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Users, Mail, Phone, Calendar, CheckCircle, XCircle, Settings, Trash2 } from 'lucide-react';
+import { Building2, Users, Mail, Calendar, Settings, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -57,12 +57,12 @@ export const AdminCompanies: React.FC = () => {
     company.adminEmail.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleToggleStatus = (companyId: string, currentStatus: string) => {
+  const handleToggleStatus = (_companyId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     toast.success(`Company ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
   };
 
-  const handleDeleteCompany = (companyId: string, companyName: string) => {
+  const handleDeleteCompany = (_companyId: string, companyName: string) => {
     if (confirm(`Are you sure you want to delete ${companyName}? This action cannot be undone.`)) {
       toast.success('Company deleted successfully');
     }
