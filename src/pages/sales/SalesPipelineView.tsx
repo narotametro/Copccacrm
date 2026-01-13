@@ -39,53 +39,7 @@ const stages = [
   { id: 'closed-won', label: 'Closed Won', color: 'bg-green-100 text-green-700' },
 ];
 
-const initialDeals: Deal[] = [
-  {
-    id: '1',
-    title: 'Enterprise CRM License',
-    value: 85000,
-    stage: 'negotiation',
-    company: 'Acme Corp',
-    ai_probability: 82,
-    ai_confidence: 'high',
-    next_action: 'Schedule pricing discussion',
-    action_priority: 'urgent',
-    days_in_stage: 8,
-    estimated_close_date: '2026-01-15',
-    win_factors: ['Strong champion', 'Budget approved'],
-    risk_factors: ['Competitor offering discount'],
-  },
-  {
-    id: '2',
-    title: 'Cloud Migration',
-    value: 120000,
-    stage: 'proposal',
-    company: 'GlobalTech Inc',
-    ai_probability: 65,
-    ai_confidence: 'medium',
-    next_action: 'Send technical proposal',
-    action_priority: 'high',
-    days_in_stage: 12,
-    estimated_close_date: '2026-02-01',
-    win_factors: ['Technical fit', 'Existing relationship'],
-    risk_factors: ['Budget concerns', 'Timeline pressure'],
-  },
-  {
-    id: '3',
-    title: 'SMB Package',
-    value: 25000,
-    stage: 'qualified',
-    company: 'StartupX',
-    ai_probability: 55,
-    ai_confidence: 'medium',
-    next_action: 'Schedule demo',
-    action_priority: 'medium',
-    days_in_stage: 5,
-    estimated_close_date: '2026-01-25',
-    win_factors: ['Urgent need', 'Fast decision process'],
-    risk_factors: ['Limited budget', 'Exploring alternatives'],
-  },
-];
+const initialDeals: Deal[] = [];
 
 export const SalesPipelineView: React.FC = () => {
   const { formatCurrency } = useCurrency();

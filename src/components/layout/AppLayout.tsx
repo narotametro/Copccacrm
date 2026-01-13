@@ -68,12 +68,16 @@ export const AppLayout: React.FC = () => {
   ];
 
   // Notification state with sender info
-  const [notifications, setNotifications] = useState([
-    { id: '1', type: 'success', title: 'Deal Closed', message: 'Acme Corp signed the contract!', time: '5 min ago', read: false, sender: 'john doe', senderRole: 'sales manager' },
-    { id: '2', type: 'warning', title: 'Task Overdue', message: 'Damage compensation to DANGOOD is 33 days overdue', time: '1 hour ago', read: false, sender: 'jane smith', senderRole: 'account manager' },
-    { id: '3', type: 'info', title: 'New Customer', message: 'GlobalTech Industries added to CRM', time: '2 hours ago', read: true, sender: 'mike johnson', senderRole: 'sales rep' },
-    { id: '4', type: 'success', title: 'Payment Received', message: '₦2.5M received from TechStart', time: '3 hours ago', read: true, sender: 'finance team', senderRole: 'finance' },
-  ]);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    time: string;
+    read: boolean;
+    sender: string;
+    senderRole: string;
+  }>>([]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const effectiveRole = profile?.role || (user?.user_metadata as { role?: string } | undefined)?.role || user?.role || 'user';
