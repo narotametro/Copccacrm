@@ -18,56 +18,7 @@ interface Segment {
   sales_cycle: string;
 }
 
-const initialSegments: Segment[] = [
-  {
-    id: '1',
-    name: 'Enterprise Manufacturing',
-    size: '500+ employees',
-    annual_value: 2500000,
-    growth_rate: 18,
-    pain_points: [
-      'Legacy system integration',
-      'Complex supply chain management',
-      'Compliance requirements',
-    ],
-    buying_behavior: 'Long sales cycle, committee decisions, ROI-focused',
-    decision_makers: ['CIO', 'VP Operations', 'CFO'],
-    avg_deal_size: 125000,
-    sales_cycle: '6-9 months',
-  },
-  {
-    id: '2',
-    name: 'Mid-Market Tech',
-    size: '100-500 employees',
-    annual_value: 1800000,
-    growth_rate: 25,
-    pain_points: [
-      'Rapid scaling challenges',
-      'Team collaboration',
-      'Data security',
-    ],
-    buying_behavior: 'Faster decisions, product-led growth, trial-to-paid',
-    decision_makers: ['CEO', 'CTO', 'Product Lead'],
-    avg_deal_size: 60000,
-    sales_cycle: '2-4 months',
-  },
-  {
-    id: '3',
-    name: 'SMB Professional Services',
-    size: '10-100 employees',
-    annual_value: 900000,
-    growth_rate: 15,
-    pain_points: [
-      'Limited IT resources',
-      'Budget constraints',
-      'Easy-to-use tools needed',
-    ],
-    buying_behavior: 'Price-sensitive, self-service, monthly subscriptions',
-    decision_makers: ['Owner', 'Operations Manager'],
-    avg_deal_size: 18000,
-    sales_cycle: '2-6 weeks',
-  },
-];
+const initialSegments: Segment[] = [];
 
 interface TargetSegmentsProps {
   onBack: () => void;

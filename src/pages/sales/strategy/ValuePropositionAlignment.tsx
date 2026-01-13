@@ -14,47 +14,7 @@ interface ValueProp {
   roi_claim: string;
 }
 
-const initialProps: ValueProp[] = [
-  {
-    id: '1',
-    segment: 'Enterprise Manufacturing',
-    customer_need: 'Integrate multiple legacy systems while maintaining compliance',
-    our_solution: 'Pre-built connectors for 50+ manufacturing systems with compliance templates',
-    unique_advantage: 'Only platform with ISO/IEC 27001 + FDA 21 CFR Part 11 certification',
-    evidence: [
-      '3 Fortune 500 manufacturers migrated in 6 months',
-      '99.9% uptime SLA with zero compliance violations',
-      'Average 40% reduction in integration costs',
-    ],
-    roi_claim: '18-month ROI through reduced integration costs and faster time-to-market',
-  },
-  {
-    id: '2',
-    segment: 'Mid-Market Tech',
-    customer_need: 'Scale rapidly without sacrificing team collaboration and data security',
-    our_solution: 'Cloud-native platform with real-time collaboration and enterprise-grade security',
-    unique_advantage: 'Scales from 10 to 10,000 users without performance degradation',
-    evidence: [
-      '15 tech companies scaled 5x+ on our platform',
-      'SOC 2 Type II certified with zero breaches',
-      'Average 60% faster feature deployment',
-    ],
-    roi_claim: '12-month ROI through improved team productivity and reduced security incidents',
-  },
-  {
-    id: '3',
-    segment: 'SMB Professional Services',
-    customer_need: 'Simple, affordable tools that work without dedicated IT staff',
-    our_solution: 'No-code platform with guided setup and 24/7 human support',
-    unique_advantage: 'Only solution with 30-day money-back guarantee and free migration',
-    evidence: [
-      '500+ SMBs onboarded in under 1 week',
-      '4.8/5 customer satisfaction score',
-      'Average 25% cost savings vs competitors',
-    ],
-    roi_claim: '6-month ROI through reduced operational costs and improved efficiency',
-  },
-];
+const initialProps: ValueProp[] = [];
 
 interface ValuePropositionAlignmentProps {
   onBack: () => void;

@@ -19,65 +19,7 @@ interface Channel {
   typical_conversion: number;
 }
 
-const initialChannels: Channel[] = [
-  {
-    id: '1',
-    name: 'Direct Enterprise Sales',
-    approach: 'Field sales team with solution engineers',
-    target_segments: ['Enterprise Manufacturing', 'Large Financial Services'],
-    key_activities: [
-      'Executive relationship building',
-      'Custom solution demos',
-      'Proof of concept projects',
-      'Contract negotiation',
-    ],
-    success_metrics: [
-      { metric: 'Pipeline Value', target: '$5M', current: '$4.2M' },
-      { metric: 'Win Rate', target: '40%', current: '38%' },
-      { metric: 'Avg Deal Size', target: '$150K', current: '$142K' },
-    ],
-    resources_needed: ['5 Account Executives', '3 Solution Engineers', 'Executive Sponsor Program'],
-    typical_conversion: 38,
-  },
-  {
-    id: '2',
-    name: 'Partner Channel',
-    approach: 'Resellers and system integrators',
-    target_segments: ['Mid-Market Tech', 'Regional Manufacturing'],
-    key_activities: [
-      'Partner recruitment and training',
-      'Co-marketing campaigns',
-      'Deal registration program',
-      'Partner enablement',
-    ],
-    success_metrics: [
-      { metric: 'Active Partners', target: '25', current: '18' },
-      { metric: 'Partner-sourced Revenue', target: '$2M', current: '$1.5M' },
-      { metric: 'Partner Win Rate', target: '45%', current: '42%' },
-    ],
-    resources_needed: ['2 Partner Managers', 'Partner Portal', 'Enablement Materials'],
-    typical_conversion: 42,
-  },
-  {
-    id: '3',
-    name: 'Product-Led Growth',
-    approach: 'Self-service trial to paid conversion',
-    target_segments: ['SMB Professional Services', 'Startups'],
-    key_activities: [
-      'Free trial optimization',
-      'In-app guidance and tutorials',
-      'Usage-based upsells',
-      'Automated email nurturing',
-    ],
-    success_metrics: [
-      { metric: 'Trial Signups', target: '500/mo', current: '420/mo' },
-      { metric: 'Trial-to-Paid', target: '15%', current: '12%' },
-      { metric: 'Time to First Value', target: '2 days', current: '3 days' },
-    ],
-    resources_needed: ['Product Manager', 'Growth Engineer', 'Customer Success'],
-    typical_conversion: 12,
-  },
-];
+const initialChannels: Channel[] = [];
 
 interface ChannelStrategyProps {
   onBack: () => void;

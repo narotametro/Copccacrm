@@ -18,56 +18,7 @@ interface PricingTier {
   competitive_position: string;
 }
 
-const initialTiers: PricingTier[] = [
-  {
-    id: '1',
-    name: 'Enterprise',
-    segment: 'Enterprise Manufacturing',
-    base_price: 150000,
-    pricing_model: 'Annual license + implementation fee',
-    discount_rules: [
-      'Multi-year commitment: up to 15% discount',
-      'Volume (500+ users): up to 10% discount',
-      'Early payment: 5% discount',
-    ],
-    ai_discount_suggestion: 'Customer has budget approved, strong champion. Offer 8% for multi-year to close faster.',
-    typical_discount: 12,
-    value_drivers: ['Compliance certification', 'Enterprise support', 'Custom integrations'],
-    competitive_position: 'Premium pricing justified by unique compliance features',
-  },
-  {
-    id: '2',
-    name: 'Growth',
-    segment: 'Mid-Market Tech',
-    base_price: 60000,
-    pricing_model: 'Annual subscription per user',
-    discount_rules: [
-      'Annual vs monthly: 20% savings',
-      'Growth commitment: up to 10% discount',
-      'Referral: 5% first year',
-    ],
-    ai_discount_suggestion: 'Customer comparing with competitor. Match competitor price (10% off) to win deal.',
-    typical_discount: 8,
-    value_drivers: ['Scalability', 'Real-time collaboration', 'Security features'],
-    competitive_position: 'Mid-range pricing with better feature set than competitors',
-  },
-  {
-    id: '3',
-    name: 'Starter',
-    segment: 'SMB Professional Services',
-    base_price: 18000,
-    pricing_model: 'Monthly subscription per user',
-    discount_rules: [
-      'Annual prepay: 15% savings',
-      'Non-profit: 20% discount',
-      'No discounts for monthly plans',
-    ],
-    ai_discount_suggestion: 'Price-sensitive segment. Emphasize value, avoid discounts. Offer annual plan with 15% savings.',
-    typical_discount: 5,
-    value_drivers: ['Ease of use', 'Fast setup', 'Free migration'],
-    competitive_position: 'Competitive pricing with superior support included',
-  },
-];
+const initialTiers: PricingTier[] = [];
 
 interface PricingLogicProps {
   onBack: () => void;
