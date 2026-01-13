@@ -91,6 +91,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       options: {
         data: {
           full_name: fullName,
+          role: 'admin', // self-signup defaults to admin
         },
       },
     });
@@ -194,7 +195,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      if (typeof error === 'object' && error !== null && 'name' in error && (error as any).name === 'AbortError') {
+      if (error instanceof DOMException && error.name === 'AbortError') {
         // Suppress AbortError, just set loading to false
         set({ loading: false });
       } else {

@@ -266,10 +266,21 @@ const demoProducts: Product[] = [
 
 export const Products: React.FC = () => {
   const { formatCurrency } = useCurrency();
-  const [products] = useState<Product[]>(demoProducts);
+  const [products, setProducts] = useState<Product[]>(demoProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'competitive' | 'feedback' | 'ai-insights'>('overview');
+  const [productForm, setProductForm] = useState({
+    name: '',
+    category: '',
+    price: '',
+    units_sold: '',
+    monthly_revenue: '',
+    market_share: '',
+    market_position: 'growing',
+    ai_score: '',
+    growth_rate: '',
+  });
 
   const getPositionColor = (position: string) => {
     const colors = {
@@ -286,6 +297,68 @@ export const Products: React.FC = () => {
     if (position === 'growing') return <TrendingUp className="text-blue-600" size={20} />;
     if (position === 'stable') return <Target className="text-slate-600" size={20} />;
     return <TrendingDown className="text-red-600" size={20} />;
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productForm.name.trim()) {
+      toast.error('Product name is required');
+      return;
+    }
+
+    const monthlyRevenue = Number(productForm.monthly_revenue) || 0;
+    const unitsSold = Number(productForm.units_sold) || 0;
+    const growthRate = Number(productForm.growth_rate) || 0;
+
+    const newProduct: Product = {
+      id: crypto.randomUUID(),
+      name: productForm.name.trim(),
+      category: productForm.category.trim() || 'General',
+      price: Number(productForm.price) || 0,
+      monthly_revenue: monthlyRevenue,
+      total_revenue: monthlyRevenue * 12,
+      units_sold: unitsSold,
+      growth_rate: growthRate,
+      market_share: Number(productForm.market_share) || 0,
+      market_position: productForm.market_position as Product['market_position'],
+      customer_satisfaction: 8,
+      competitor_products: [],
+      feedback_summary: {
+        positive_count: 0,
+        negative_count: 0,
+        top_praise: 'Awaiting feedback',
+        top_complaint: 'Awaiting feedback',
+      },
+      ai_score: Number(productForm.ai_score) || 60,
+      ai_recommendations: ['Start tracking usage and feedback'],
+      pricing_recommendation: 'Price review pending (demo)',
+      positioning_recommendation: 'Positioning will be generated after data intake',
+      sales_trend: Array(6).fill(unitsSold ? Math.max(Math.round(unitsSold / 6), 1) : 0),
+      revenue_trend: Array(6).fill(monthlyRevenue ? Math.max(Math.round(monthlyRevenue / 6), 1) : 0),
+    } as Product;
+
+    await toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 800)),
+      {
+        loading: 'Adding product...',
+        success: 'Product added (demo only)',
+        error: 'Failed to add product',
+      }
+    );
+
+    setProducts((prev) => [newProduct, ...prev]);
+    setShowAddModal(false);
+    setProductForm({
+      name: '',
+      category: '',
+      price: '',
+      units_sold: '',
+      monthly_revenue: '',
+      market_share: '',
+      market_position: 'growing',
+      ai_score: '',
+      growth_rate: '',
+    });
   };
 
   const totalRevenue = products.reduce((sum, p) => sum + p.monthly_revenue, 0);
@@ -962,29 +1035,81 @@ export const Products: React.FC = () => {
         title="Add New Product"
         size="lg"
       >
-        <form className="space-y-4" onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            await toast.promise(
-              new Promise(resolve => setTimeout(resolve, 1000)),
-              {
-                loading: 'Adding product...',
-                success: 'Product added successfully!',
-                error: 'Failed to add product',
-              }
-            );
-            setShowAddModal(false);
-          } catch (error) {
-            console.error('Failed to add product:', error);
-          }
-        }}>
+        <form className="space-y-4" onSubmit={handleAddProduct}>
           <p className="text-sm text-slate-600">Track your product performance and get AI-powered recommendations</p>
           
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Product Name" placeholder="COPCCA Analytics" required />
-            <Input label="Category" placeholder="Business Intelligence" required />
-            <Input label="Price ($/month)" placeholder="29.99" type="number" step="0.01" required />
-            <Input label="Units Sold" placeholder="1500" type="number" />
+            <Input
+              label="Product Name"
+              placeholder="COPCCA Analytics"
+              required
+              value={productForm.name}
+              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+            />
+            <Input
+              label="Category"
+              placeholder="Business Intelligence"
+              required
+              value={productForm.category}
+              onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+            />
+            <Input
+              label="Price ($/month)"
+              placeholder="29.99"
+              type="number"
+              step="0.01"
+              required
+              value={productForm.price}
+              onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+            />
+            <Input
+              label="Units Sold"
+              placeholder="1500"
+              type="number"
+              value={productForm.units_sold}
+              onChange={(e) => setProductForm({ ...productForm, units_sold: e.target.value })}
+            />
+            <Input
+              label="Monthly Revenue"
+              placeholder="45000"
+              type="number"
+              value={productForm.monthly_revenue}
+              onChange={(e) => setProductForm({ ...productForm, monthly_revenue: e.target.value })}
+            />
+            <Input
+              label="Market Share (%)"
+              placeholder="10"
+              type="number"
+              value={productForm.market_share}
+              onChange={(e) => setProductForm({ ...productForm, market_share: e.target.value })}
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Market Position</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                value={productForm.market_position}
+                onChange={(e) => setProductForm({ ...productForm, market_position: e.target.value })}
+              >
+                <option value="leader">Leader</option>
+                <option value="growing">Growing</option>
+                <option value="stable">Stable</option>
+                <option value="declining">Declining</option>
+              </select>
+            </div>
+            <Input
+              label="Growth Rate (%)"
+              placeholder="12"
+              type="number"
+              value={productForm.growth_rate}
+              onChange={(e) => setProductForm({ ...productForm, growth_rate: e.target.value })}
+            />
+            <Input
+              label="AI Score"
+              placeholder="75"
+              type="number"
+              value={productForm.ai_score}
+              onChange={(e) => setProductForm({ ...productForm, ai_score: e.target.value })}
+            />
           </div>
 
           <div className="flex gap-3 pt-4">

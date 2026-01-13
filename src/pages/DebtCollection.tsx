@@ -2,10 +2,25 @@ import React, { useState } from 'react';
 import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 
-const demoDebts = [
+type Debt = {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  due_date: string;
+  status: 'paid' | 'pending' | 'overdue' | 'reminded' | 'written_off';
+  days_overdue: number;
+  payment_probability: number;
+  risk_score: 'low' | 'medium' | 'high';
+  auto_reminder: boolean;
+  companies: { name: string; contact_email: string };
+  payment_plan?: string;
+};
+
+const demoDebts: Debt[] = [
   { 
     id: '1', 
     invoice_number: 'INV-001', 
@@ -58,8 +73,17 @@ const demoDebts = [
 
 export const DebtCollection: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
-  const [debts] = useState<any[]>(demoDebts);
+  const [debts, setDebts] = useState<Debt[]>(demoDebts);
   const [automationEnabled, setAutomationEnabled] = useState(true);
+  const [paymentForm, setPaymentForm] = useState({
+    company: '',
+    contact_email: '',
+    invoice_number: '',
+    amount: '',
+    due_date: '',
+    risk_score: 'medium',
+    installments: '3',
+  });
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -91,6 +115,40 @@ export const DebtCollection: React.FC = () => {
 
   const handleEscalate = (_debtId: string) => {
     toast.warning('Case escalated to senior collections team');
+  };
+
+  const handleAddPaymentPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentForm.company.trim() || !paymentForm.invoice_number.trim()) {
+      toast.error('Company and invoice number are required');
+      return;
+    }
+
+    const newDebt = {
+      id: crypto.randomUUID(),
+      invoice_number: paymentForm.invoice_number.trim(),
+      amount: Number(paymentForm.amount) || 0,
+      due_date: paymentForm.due_date || new Date().toISOString().slice(0, 10),
+      status: 'pending',
+      days_overdue: 0,
+      payment_probability: 70,
+      risk_score: paymentForm.risk_score,
+      auto_reminder: true,
+      companies: { name: paymentForm.company.trim(), contact_email: paymentForm.contact_email.trim() },
+      payment_plan: `${paymentForm.installments} installments generated (demo)`,
+    };
+
+    setDebts((prev) => [newDebt, ...prev]);
+    toast.success('Payment plan captured (demo only)');
+    setPaymentForm({
+      company: '',
+      contact_email: '',
+      invoice_number: '',
+      amount: '',
+      due_date: '',
+      risk_score: 'medium',
+      installments: '3',
+    });
   };
 
   return (
@@ -203,6 +261,75 @@ export const DebtCollection: React.FC = () => {
           <p className="text-2xl font-bold text-green-600">94%</p>
         </Card>
       </div>
+
+      {/* Payment plan intake (demo) */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Capture payment plan (demo)</h3>
+            <p className="text-sm text-slate-600">Record a promise-to-pay with amount, due date, and risk</p>
+          </div>
+          <span className="text-xs px-3 py-1 rounded-full bg-primary-50 text-primary-700 border border-primary-100">New</span>
+        </div>
+        <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleAddPaymentPlan}>
+          <Input
+            label="Company"
+            placeholder="Acme Corp"
+            value={paymentForm.company}
+            onChange={(e) => setPaymentForm({ ...paymentForm, company: e.target.value })}
+            required
+          />
+          <Input
+            label="Contact Email"
+            placeholder="finance@acme.com"
+            type="email"
+            value={paymentForm.contact_email}
+            onChange={(e) => setPaymentForm({ ...paymentForm, contact_email: e.target.value })}
+          />
+          <Input
+            label="Invoice #"
+            placeholder="INV-010"
+            value={paymentForm.invoice_number}
+            onChange={(e) => setPaymentForm({ ...paymentForm, invoice_number: e.target.value })}
+            required
+          />
+          <Input
+            label="Amount"
+            type="number"
+            placeholder="50000"
+            value={paymentForm.amount}
+            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+          />
+          <Input
+            label="Due Date"
+            type="date"
+            value={paymentForm.due_date}
+            onChange={(e) => setPaymentForm({ ...paymentForm, due_date: e.target.value })}
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Risk</label>
+            <select
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              value={paymentForm.risk_score}
+              onChange={(e) => setPaymentForm({ ...paymentForm, risk_score: e.target.value })}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <Input
+            label="Installments"
+            type="number"
+            min="1"
+            value={paymentForm.installments}
+            onChange={(e) => setPaymentForm({ ...paymentForm, installments: e.target.value })}
+          />
+          <div className="flex items-end justify-end">
+            <Button type="submit">Save plan</Button>
+          </div>
+        </form>
+      </Card>
 
       {/* Debts List */}
       <Card>

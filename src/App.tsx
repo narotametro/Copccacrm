@@ -10,13 +10,15 @@ import { Register } from '@/pages/auth/Register';
 import { ForgotPassword } from '@/pages/auth/ForgotPassword';
 import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { COPCCAAdminLogin } from '@/pages/auth/COPCCAAdminLogin';
+import { AcceptInvite } from '@/pages/auth/AcceptInvite';
 import Dashboard from '@/pages/Dashboard';
 import { Customers } from '@/pages/Customers';
 import { SalesPipeline } from '@/pages/SalesPipeline';
+import { Sales } from '@/pages/Sales';
 import { AfterSales } from '@/pages/AfterSales';
 import { DebtCollection } from '@/pages/DebtCollection';
 import { Competitors } from '@/pages/Competitors';
-import { SalesStrategies } from '@/pages/SalesStrategies';
+import { Marketing } from '@/pages/Marketing';
 import { KPITracking } from '@/pages/KPITracking';
 import { Reports } from '@/pages/Reports';
 import { UserManagement } from '@/pages/UserManagement';
@@ -25,11 +27,13 @@ import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { MyWorkplace } from '@/pages/MyWorkplace';
 import { LandingPage } from '@/pages/LandingPage';
+import { Notifications } from '@/pages/Notifications';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { AdminCompanies } from '@/pages/admin/AdminCompanies';
 import { AdminSubscriptions } from '@/pages/admin/AdminSubscriptions';
 import { AdminSystem } from '@/pages/admin/AdminSystem';
 import { CurrencyProvider } from '@/context/CurrencyContext';
+import { SharedDataProvider } from '@/context/SharedDataContext';
 
 const AppRoutes = () => {
   const { user, loading } = useAuthStore();
@@ -59,6 +63,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/invite" element={<AcceptInvite />} />
       <Route
         path="/login"
         element={user ? <Navigate to="/app/dashboard" replace /> : <Login />}
@@ -105,13 +110,15 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="customers" element={<Customers />} />
         <Route path="pipeline" element={<SalesPipeline />} />
+        <Route path="sales" element={<Sales />} />
         <Route path="after-sales" element={<AfterSales />} />
         <Route path="debt-collection" element={<DebtCollection />} />
         <Route path="competitors" element={<Competitors />} />
-        <Route path="strategies" element={<SalesStrategies />} />
+        <Route path="marketing" element={<Marketing />} />
         <Route path="kpi-tracking" element={<KPITracking />} />
         <Route path="reports" element={<Reports />} />
         <Route path="products" element={<Products />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route 
           path="users" 
           element={
@@ -150,14 +157,16 @@ const App = () => {
 
   return (
     <CurrencyProvider>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <AppRoutes />
-      </BrowserRouter>
+      <SharedDataProvider>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <AppRoutes />
+        </BrowserRouter>
+      </SharedDataProvider>
     </CurrencyProvider>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { LoadingPage } from '@/components/ui/LoadingSpinner';
@@ -15,11 +15,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
   const loading = useAuthStore((state) => state.loading);
-  const initialize = useAuthStore((state) => state.initialize);
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const roleHierarchy = { admin: 3, manager: 2, user: 1 } as const;
+  const effectiveRole = (profile?.role || user?.user_metadata?.role || 'user') as 'admin' | 'manager' | 'user';
 
   if (loading) {
     return <LoadingPage />;
@@ -29,9 +27,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && profile) {
-    const roleHierarchy = { admin: 3, manager: 2, user: 1 };
-    if (roleHierarchy[profile.role] < roleHierarchy[requiredRole]) {
+  if (requiredRole) {
+    if (!roleHierarchy[effectiveRole] || roleHierarchy[effectiveRole] < roleHierarchy[requiredRole]) {
       return <Navigate to="/app/dashboard" replace />;
     }
   }

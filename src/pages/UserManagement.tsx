@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   Users,
   Plus,
@@ -33,12 +34,15 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
+import type { Database } from '@/lib/types/database';
 
 interface UserType {
   id: string;
   full_name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'manager' | 'user';
   department: string;
   phone: string;
   status: 'active' | 'inactive';
@@ -107,22 +111,120 @@ const demoUsers: UserType[] = [
   },
 ];
 
+type DbUser = Database['public']['Tables']['users']['Row'];
+type DbInvite = Database['public']['Tables']['invitation_links']['Row'];
+type DbPermission = Database['public']['Tables']['user_permissions']['Row'];
+
+const isSupabaseConfigured = Boolean(
+  import.meta.env.VITE_SUPABASE_URL &&
+  import.meta.env.VITE_SUPABASE_ANON_KEY &&
+  import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co'
+);
+
+const defaultPermissionsForRole = (role: UserType['role']): UserType['permissions'] => {
+  if (role === 'admin') {
+    return { customers: true, sales: true, marketing: true, products: true, competitors: true, debt_collection: true, reports: true, admin: true };
+  }
+  return { customers: true, sales: true, marketing: role === 'manager', products: true, competitors: role === 'manager', debt_collection: false, reports: true, admin: false };
+};
+
+const mapPermissionsFromRows = (rows: DbPermission[], userId: string, role: UserType['role']): UserType['permissions'] => {
+  const base = { ...defaultPermissionsForRole(role) };
+  rows
+    .filter((row) => row.user_id === userId)
+    .forEach((row) => {
+      const key = row.module_name as keyof UserType['permissions'];
+      if (key in base) {
+        base[key] = row.can_view;
+      }
+    });
+  return base;
+};
+
 export const UserManagement: React.FC = () => {
+  const { user } = useAuthStore();
   const [users, setUsers] = useState<UserType[]>(demoUsers);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'manager' | 'user'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [invitationLink, setInvitationLink] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [invites, setInvites] = useState<DbInvite[]>([]);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'user' as 'admin' | 'manager' | 'user',
     department: '',
     phone: '',
   });
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (!isSupabaseConfigured || !user) {
+        setUsers(demoUsers);
+        return;
+      }
+
+      setLoadingUsers(true);
+      try {
+        const { data: dbUsers, error: usersError } = await supabase
+          .from('users')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (usersError || !dbUsers) {
+          console.warn('Falling back to demo users:', usersError?.message);
+          setUsers(demoUsers);
+          return;
+        }
+
+        const userIds = dbUsers.map((u) => u.id);
+        const { data: dbPermissions } = await supabase
+          .from('user_permissions')
+          .select('*')
+          .in('user_id', userIds);
+
+        const mappedUsers: UserType[] = dbUsers.map((row: DbUser) => {
+          const role = (row.role as UserType['role']) ?? 'user';
+          return {
+            id: row.id,
+            full_name: row.full_name,
+            email: row.email,
+            role,
+            department: row.department || '—',
+            phone: row.phone || '—',
+            status: (row.status as UserType['status']) || 'active',
+            permissions: mapPermissionsFromRows(dbPermissions || [], row.id, role),
+            created_at: row.created_at?.split('T')[0] || '—',
+            last_login: '—',
+          };
+        });
+
+        setUsers(mappedUsers);
+
+        const { data: dbInvites, error: inviteError } = await supabase
+          .from('invitation_links')
+          .select('*')
+          .eq('used', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
+
+        if (!inviteError && dbInvites) {
+          setInvites(dbInvites);
+        }
+      } catch (error) {
+        console.warn('User load failed, using demo users', error);
+        setUsers(demoUsers);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, [user]);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,44 +238,94 @@ export const UserManagement: React.FC = () => {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Fallback to demo mode when Supabase is not configured
+    if (!isSupabaseConfigured || !user) {
+      try {
+        const newUser: UserType = {
+          id: String(users.length + 1),
+          ...formData,
+          status: 'active',
+          permissions: defaultPermissionsForRole(formData.role),
+          created_at: new Date().toISOString().split('T')[0],
+          last_login: 'Never',
+        };
+
+        await toast.promise(
+          new Promise((resolve) => setTimeout(resolve, 1000)),
+          {
+            loading: 'Adding user...',
+            success: `${formatName(formData.full_name)} added successfully!`,
+            error: 'Failed to add user',
+          }
+        );
+
+        setUsers([...users, newUser]);
+        setShowAddModal(false);
+
+        const baseUrl = window.location.origin;
+        const token = btoa(`${newUser.email}:${Date.now()}`);
+        const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(newUser.email)}`;
+        setInvitationLink(link);
+        setSelectedUser(newUser);
+        setShowInvitationModal(true);
+
+        setFormData({ full_name: '', email: '', role: 'user', department: '', phone: '' });
+      } catch (error) {
+        console.error('Failed to add user:', error);
+      }
+      return;
+    }
+
+    const token = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
     try {
-      const newUser: UserType = {
-        id: String(users.length + 1),
-        ...formData,
-        status: 'active',
-        permissions: formData.role === 'admin' ? {
-          customers: true, sales: true, marketing: true, products: true, competitors: true, debt_collection: true, reports: true, admin: true,
-        } : {
-          customers: true, sales: true, marketing: false, products: true, competitors: false, debt_collection: false, reports: true, admin: false,
-        },
+      toast.loading('Creating invitation...');
+      
+      const { data: invite, error } = await supabase
+        .from('invitation_links')
+        .insert({
+          token,
+          email: formData.email.toLowerCase(),
+          role: formData.role,
+          created_by: user.id,
+          expires_at: expiresAt,
+        })
+        .select()
+        .single();
+
+      if (error || !invite) {
+        console.error('Invitation creation failed', error);
+        toast.dismiss();
+        toast.error('Failed to create invitation');
+        return;
+      }
+      
+      toast.dismiss();
+      toast.success('Invitation link generated');
+
+      const link = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
+      setInvitationLink(link);
+      setSelectedUser({
+        id: invite.id,
+        full_name: formData.full_name,
+        email: invite.email,
+        role: invite.role as UserType['role'],
+        department: formData.department,
+        phone: formData.phone,
+        status: 'inactive',
+        permissions: defaultPermissionsForRole(invite.role as UserType['role']),
         created_at: new Date().toISOString().split('T')[0],
         last_login: 'Never',
-      };
-      
-      await toast.promise(
-        new Promise(resolve => setTimeout(resolve, 1000)),
-        {
-          loading: 'Adding user...',
-          success: `${formatName(formData.full_name)} added successfully!`,
-          error: 'Failed to add user',
-        }
-      );
-      
-      setUsers([...users, newUser]);
-      setShowAddModal(false);
-      
-      // Generate invitation link
-      const baseUrl = window.location.origin;
-      const token = btoa(`${newUser.email}:${Date.now()}`);
-      const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(newUser.email)}`;
-      setInvitationLink(link);
-      setSelectedUser(newUser);
+      });
       setShowInvitationModal(true);
-      
+      setShowAddModal(false);
+      setInvites([invite, ...invites]);
       setFormData({ full_name: '', email: '', role: 'user', department: '', phone: '' });
     } catch (error) {
-      console.error('Failed to add user:', error);
+      console.error('Failed to add user via Supabase:', error);
+      toast.error('Could not create invitation');
     }
   };
 
@@ -188,21 +340,56 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const handleSendInvitation = (email: string) => {
-    // Generate invitation link
-    const baseUrl = window.location.origin;
-    const token = btoa(`${email}:${Date.now()}`);
-    const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(email)}`;
-    setInvitationLink(link);
-    setShowInvitationModal(true);
-    toast.success('Invitation link generated', {
-      description: `Ready to send to ${email}`
-    });
+  const handleSendInvitation = async (email: string, role: UserType['role'] = 'user') => {
+    if (!isSupabaseConfigured || !user) {
+      const baseUrl = window.location.origin;
+      const token = btoa(`${email}:${Date.now()}`);
+      const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(email)}`;
+      setInvitationLink(link);
+      setShowInvitationModal(true);
+      toast.success('Invitation link generated', {
+        description: `Ready to send to ${email}`
+      });
+      return;
+    }
+
+    const token = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    try {
+      const invitePromise = supabase
+        .from('invitation_links')
+        .insert({
+          token,
+          email: email.toLowerCase(),
+          role,
+          created_by: user?.id,
+          expires_at: expiresAt,
+        })
+        .select()
+        .single();
+
+      const { data: invite, error } = await toast.promise(invitePromise, {
+        loading: 'Generating invitation...',
+        success: 'Invitation ready',
+        error: 'Failed to generate invitation',
+      });
+
+      if (error || !invite) return;
+
+      setInvites([invite, ...invites.filter((i) => i.email !== invite.email || i.token !== invite.token)]);
+      const link = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
+      setInvitationLink(link);
+      setShowInvitationModal(true);
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      toast.error('Could not create invitation');
+    }
   };
 
   const handleSendViaWhatsApp = () => {
     if (!selectedUser) return;
-    const message = `Hi ${formatName(selectedUser.full_name)}! 👋\n\nYou've been invited to join COPCCA CRM as a ${formatRole(selectedUser.role)}.\n\n🔗 Click here to complete your registration:\n${invitationLink}\n\n📋 Your Details:\n• Email: ${formatEmail(selectedUser.email)}\n• Department: ${selectedUser.department}\n• Role: ${formatRole(selectedUser.role)}\n\nThis link will expire in 7 days.\n\nWelcome to the team! 🎉`;
+    const message = `Hi ${formatName(selectedUser.full_name)}! 👋\n\nYou've been invited to join COPCCA CRM as a ${formatRole(selectedUser.role)}.\n\n🔗 *Click here to complete your registration:*\n${invitationLink}\n\n📋 *Your Details:*\n• Email: ${formatEmail(selectedUser.email)}\n• Department: ${selectedUser.department}\n• Role: ${formatRole(selectedUser.role)}\n\nThis link will expire in 7 days.\n\nWelcome to the team! 🎉`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     toast.success('Opening WhatsApp...');
@@ -218,23 +405,43 @@ export const UserManagement: React.FC = () => {
   };
 
   const handleToggleStatus = async (userId: string) => {
-    try {
-      await toast.promise(
-        new Promise(resolve => setTimeout(resolve, 500)),
-        {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const nextStatus: UserType['status'] = target.status === 'active' ? 'inactive' : 'active';
+
+    if (!isSupabaseConfigured || !user) {
+      try {
+        await toast.promise(new Promise((resolve) => setTimeout(resolve, 500)), {
           loading: 'Updating user status...',
           success: 'User status updated successfully',
           error: 'Failed to update status',
-        }
-      );
-      
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' }
-          : user
-      ));
+        });
+
+        setUsers(users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u)));
+      } catch (error) {
+        console.error('Failed to toggle status:', error);
+      }
+      return;
+    }
+
+    try {
+      const updatePromise = supabase
+        .from('users')
+        .update({ status: nextStatus })
+        .eq('id', userId);
+
+      const { error } = await toast.promise(updatePromise, {
+        loading: 'Updating user status...',
+        success: 'User status updated successfully',
+        error: 'Failed to update status',
+      });
+
+      if (!error) {
+        setUsers(users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u)));
+      }
     } catch (error) {
-      console.error('Failed to toggle status:', error);
+      console.error('Failed to toggle status via Supabase:', error);
     }
   };
 
@@ -245,25 +452,49 @@ export const UserManagement: React.FC = () => {
           ...selectedUser,
           permissions: { ...selectedUser.permissions, [permission]: !selectedUser.permissions[permission] },
         };
-        
-        await toast.promise(
-          new Promise(resolve => setTimeout(resolve, 300)),
-          {
-            loading: 'Updating permissions...',
-            success: 'Permissions updated successfully',
-            error: 'Failed to update permissions',
-          }
-        );
-        
-        setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
-        setSelectedUser(updatedUser);
+
+        if (!isSupabaseConfigured || !user) {
+          await toast.promise(
+            new Promise((resolve) => setTimeout(resolve, 300)),
+            {
+              loading: 'Updating permissions...',
+              success: 'Permissions updated successfully',
+              error: 'Failed to update permissions',
+            }
+          );
+
+          setUsers(users.map((u) => (u.id === selectedUser.id ? updatedUser : u)));
+          setSelectedUser(updatedUser);
+          return;
+        }
+
+        const upsertPromise = supabase
+          .from('user_permissions')
+          .upsert({
+            user_id: selectedUser.id,
+            module_name: permission,
+            can_view: updatedUser.permissions[permission],
+            can_edit: false,
+            can_delete: false,
+          });
+
+        const { error } = await toast.promise(upsertPromise, {
+          loading: 'Updating permissions...',
+          success: 'Permissions updated successfully',
+          error: 'Failed to update permissions',
+        });
+
+        if (!error) {
+          setUsers(users.map((u) => (u.id === selectedUser.id ? updatedUser : u)));
+          setSelectedUser(updatedUser);
+        }
       } catch (error) {
         console.error('Failed to update permissions:', error);
       }
     }
   };
 
-  const permissionLabels: Array<{ key: keyof UserType['permissions']; label: string; icon: any }> = [
+  const permissionLabels: Array<{ key: keyof UserType['permissions']; label: string; icon: LucideIcon }> = [
     { key: 'customers', label: 'Customers', icon: Users },
     { key: 'sales', label: 'Sales Pipeline', icon: TrendingUp },
     { key: 'marketing', label: 'Marketing', icon: Target },
@@ -284,6 +515,10 @@ export const UserManagement: React.FC = () => {
             Admin Panel - User Management
           </h1>
           <p className="text-slate-600 mt-1">Manage team members, roles, and permissions</p>
+          {loadingUsers && <p className="text-xs text-slate-500">Loading users from Supabase...</p>}
+          {invites.length > 0 && (
+            <p className="text-xs text-emerald-600">Pending invitations: {invites.length}</p>
+          )}
         </div>
         <Button icon={Plus} onClick={() => setShowAddModal(true)}>
           Add New Member
@@ -324,9 +559,9 @@ export const UserManagement: React.FC = () => {
           <div className="flex items-center gap-2">
             <Filter className="text-slate-600" size={18} />
             <div className="flex gap-2">
-              {['all', 'admin', 'user'].map((role) => (
+              {['all', 'admin', 'manager', 'user'].map((role) => (
                 <button key={role} onClick={() => setFilterRole(role as typeof filterRole)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterRole === role ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                  {role === 'all' ? 'All Roles' : role === 'admin' ? 'Admins' : 'Users'}
+                  {role === 'all' ? 'All Roles' : role === 'admin' ? 'Admins' : role === 'manager' ? 'Managers' : 'Users'}
                 </button>
               ))}
             </div>
@@ -390,7 +625,7 @@ export const UserManagement: React.FC = () => {
                   <td className="p-3 text-sm text-slate-600">{user.last_login}</td>
                   <td className="p-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setSelectedUser(user); handleSendInvitation(user.email); }} className="p-1.5 hover:bg-green-100 rounded-lg transition-colors text-green-600" title="Send Invitation Link">
+                      <button onClick={() => { setSelectedUser(user); handleSendInvitation(user.email, user.role); }} className="p-1.5 hover:bg-green-100 rounded-lg transition-colors text-green-600" title="Send Invitation Link">
                         <Send size={16} />
                       </button>
                       <button onClick={() => { setSelectedUser(user); setShowPermissionsModal(true); }} className="p-1.5 hover:bg-primary-100 rounded-lg transition-colors text-primary-600" title="Manage Permissions">
@@ -428,8 +663,9 @@ export const UserManagement: React.FC = () => {
             <Input label="Email Address" type="email" placeholder="john.doe@copcca.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
-              <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
+              <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' | 'user' })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
                 <option value="user">User - Limited Access</option>
+                <option value="manager">Manager - Elevated Access</option>
                 <option value="admin">Admin - Full Access</option>
               </select>
             </div>
@@ -628,16 +864,26 @@ export const UserManagement: React.FC = () => {
           </div>
 
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={invitationLink}
-                readOnly
-                className="flex-1 px-3 py-2 border-0 bg-white rounded text-xs font-mono text-slate-700"
-              />
-              <Button size="sm" icon={Copy} onClick={handleCopyInvitationLink}>
-                Copy
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={invitationLink}
+                  readOnly
+                  className="flex-1 px-3 py-2 border-0 bg-white rounded text-xs font-mono text-slate-700"
+                />
+                <Button size="sm" icon={Copy} onClick={handleCopyInvitationLink}>
+                  Copy
+                </Button>
+              </div>
+              <a 
+                href={invitationLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-center rounded text-sm font-medium transition-colors"
+              >
+                🔗 Open Invitation Link
+              </a>
             </div>
           </div>
 

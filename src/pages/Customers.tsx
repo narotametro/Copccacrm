@@ -196,7 +196,7 @@ export const Customers: React.FC = () => {
   const [selectedAction, setSelectedAction] = useState('');
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('09:00');
-  const [escalateFeedback, setEscalateFeedback] = useState<any>(null);
+  const [escalateFeedback, setEscalateFeedback] = useState<Company['feedback_history'][number] | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights'>('overview');
   const [formData, setFormData] = useState({
@@ -205,6 +205,14 @@ export const Customers: React.FC = () => {
     email: '',
     phone: '',
     website: '',
+  });
+  const [quickCustomer, setQuickCustomer] = useState({
+    name: '',
+    industry: '',
+    email: '',
+    phone: '',
+    website: '',
+    tier: 'bronze' as 'bronze' | 'silver' | 'gold' | 'platinum',
   });
   const [feedbackData, setFeedbackData] = useState({
     type: 'positive' as 'positive' | 'negative' | 'neutral',
@@ -240,9 +248,45 @@ export const Customers: React.FC = () => {
     if (sentiment === 'negative') return <ThumbsDown className="text-red-600" size={16} />;
     return <MessageSquare className="text-slate-600" size={16} />;
   };
+
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCustomer.name.trim()) return;
+
+    const newCompany: Company = {
+      id: crypto.randomUUID(),
+      name: quickCustomer.name.trim(),
+      industry: quickCustomer.industry || 'General',
+      status: 'active',
+      customer_type: 'lead',
+      health_score: 72,
+      churn_risk: 25,
+      upsell_potential: 55,
+      email: quickCustomer.email || null,
+      phone: quickCustomer.phone || null,
+      website: quickCustomer.website || null,
+      linkedin: undefined,
+      twitter: undefined,
+      total_revenue: 0,
+      purchases: 0,
+      avg_order_value: 0,
+      last_purchase: new Date().toISOString().split('T')[0],
+      tier: quickCustomer.tier,
+      sentiment: 'neutral',
+      feedback_count: 0,
+      jtbd: 'New customer onboarding',
+      pain_points: [],
+      feedback_history: [],
+      priority_actions: ['Schedule onboarding call'],
+    };
+
+    setCompanies((prev) => [newCompany, ...prev]);
+    toast.success('Customer added (demo only)');
+    setQuickCustomer({ name: '', industry: '', email: '', phone: '', website: '', tier: 'bronze' });
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCompany: any = {
+    const newCompany: Company = {
       id: Date.now().toString(),
       ...formData,
       status: 'prospect',
@@ -260,6 +304,12 @@ export const Customers: React.FC = () => {
       avg_resolution_time: 0,
       active_projects: 0,
       upcoming_renewals: 0,
+      tier: 'bronze',
+      feedback_count: 0,
+      jtbd: 'New customer onboarding',
+      pain_points: [],
+      feedback_history: [],
+      priority_actions: ['Initial contact'],
     };
     setCompanies([newCompany, ...companies]);
     toast.success('Customer added successfully');
@@ -291,6 +341,56 @@ export const Customers: React.FC = () => {
         onChange={(e) => setSearchTerm(e.target.value)}
         icon={Search}
       />
+
+      {/* Quick Add Customer (demo) */}
+      <Card>
+        <h3 className="text-lg font-semibold text-slate-900 mb-3">Quick add customer (demo)</h3>
+        <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleQuickAdd}>
+          <Input
+            label="Company Name"
+            value={quickCustomer.name}
+            onChange={(e) => setQuickCustomer({ ...quickCustomer, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Industry"
+            value={quickCustomer.industry}
+            onChange={(e) => setQuickCustomer({ ...quickCustomer, industry: e.target.value })}
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={quickCustomer.email}
+            onChange={(e) => setQuickCustomer({ ...quickCustomer, email: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            value={quickCustomer.phone}
+            onChange={(e) => setQuickCustomer({ ...quickCustomer, phone: e.target.value })}
+          />
+          <Input
+            label="Website"
+            value={quickCustomer.website}
+            onChange={(e) => setQuickCustomer({ ...quickCustomer, website: e.target.value })}
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Tier</label>
+            <select
+              value={quickCustomer.tier}
+              onChange={(e) => setQuickCustomer({ ...quickCustomer, tier: e.target.value as typeof quickCustomer.tier })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+            </select>
+          </div>
+          <div className="md:col-span-3 flex justify-end">
+            <Button type="submit">Add Customer</Button>
+          </div>
+        </form>
+      </Card>
 
       {/* Customers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
@@ -1214,7 +1314,8 @@ export const Customers: React.FC = () => {
           <form className="space-y-4" onSubmit={(e) => {
             e.preventDefault();
             const phone = selectedCustomer.phone || '+234';
-            const message = (e.target as any).message.value;
+            const formData = new FormData(e.currentTarget);
+            const message = String(formData.get('message') || '');
             window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
             toast.success('Opening WhatsApp...');
             setShowWhatsAppModal(false);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Plus,
   CheckCircle,
@@ -25,6 +25,9 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import type { Database } from '@/lib/types/database';
+import { useAuthStore } from '@/store/authStore';
 
 interface Task {
   id: string;
@@ -68,6 +71,8 @@ interface Task {
     comment: string;
   }>;
 }
+  type AfterSalesTaskRow = Database['public']['Tables']['after_sales_tasks']['Row'];
+  type AfterSalesFeedbackRow = Database['public']['Tables']['after_sales_feedback']['Row'];
 
 const demoTasks: Task[] = [
   // OVERDUE TASK
@@ -274,10 +279,42 @@ const demoTasks: Task[] = [
 ];
 
 export const AfterSales: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>(demoTasks);
+  const user = useAuthStore((state) => state.user);
+  const supabaseReady = Boolean(
+    import.meta.env.VITE_SUPABASE_URL &&
+    import.meta.env.VITE_SUPABASE_ANON_KEY &&
+    !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
+  );
+
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState({ comment: '', user: 'You', date: new Date().toISOString() });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    status: 'todo',
+    assigned_to: '',
+    due_date: '',
+  });
+  const [linkedModal, setLinkedModal] = useState<{ type: string | null; id: string | null; name: string | null } | null>(null);
+  const [addForm, setAddForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    due_date: '',
+    assigned_to: '',
+    estimated_hours: '',
+    tags: '',
+    linked_type: '',
+    linked_name: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [, setSyncing] = useState(false);
 
   const columns = [
     { id: 'todo', title: '📋 To Do', color: 'slate' },
@@ -319,19 +356,168 @@ export const AfterSales: React.FC = () => {
     return null;
   };
 
+  const mapRowToTask = (row: AfterSalesTaskRow & { after_sales_feedback?: AfterSalesFeedbackRow[] }): Task => {
+    const dueDate = row.due_date ? new Date(row.due_date) : null;
+    const now = new Date();
+    const isOverdueComputed = row.is_overdue ?? (dueDate ? dueDate.getTime() < now.getTime() && row.status !== 'done' : false);
+    const daysOverdueComputed = row.days_overdue ?? (isOverdueComputed && dueDate
+      ? Math.max(0, Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0);
+
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      status: row.status,
+      priority: row.priority,
+      assigned_to: row.assigned_to || 'Unassigned',
+      assigned_by: row.assigned_by || 'Manager',
+      linked_to: {
+        type: row.linked_type,
+        id: row.linked_id,
+        name: row.linked_name,
+      },
+      created_at: row.created_at,
+      due_date: row.due_date || new Date().toISOString(),
+      completed_at: row.completed_at,
+      ai_priority_score: row.ai_priority_score ?? 50,
+      ai_suggested_priority: (row.ai_suggested_priority as Task['priority']) || 'medium',
+      is_overdue: isOverdueComputed,
+      days_overdue: daysOverdueComputed,
+      estimated_hours: Number(row.estimated_hours || 0),
+      actual_hours: Number(row.actual_hours || 0),
+      tags: row.tags || [],
+      feedback: (row.after_sales_feedback || []).map((f) => ({
+        id: f.id,
+        date: f.created_at,
+        user: f.user_name,
+        comment: f.comment,
+      })),
+    };
+  };
+
+  const toDbPayload = (task: Task): Partial<AfterSalesTaskRow> => ({
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    assigned_to: task.assigned_to,
+    assigned_by: task.assigned_by,
+    linked_type: task.linked_to.type,
+    linked_id: task.linked_to.id,
+    linked_name: task.linked_to.name,
+    due_date: task.due_date,
+    completed_at: task.completed_at,
+    ai_priority_score: task.ai_priority_score,
+    ai_suggested_priority: task.ai_suggested_priority,
+    is_overdue: task.is_overdue,
+    days_overdue: task.days_overdue,
+    estimated_hours: task.estimated_hours,
+    actual_hours: task.actual_hours,
+    tags: task.tags,
+  });
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!supabaseReady || !user) {
+        setTasks(demoTasks);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('after_sales_tasks')
+        .select('*, after_sales_feedback(*)')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to load tasks, falling back to demo data:', error.message);
+        setTasks(demoTasks);
+        setLoading(false);
+        return;
+      }
+
+      const mapped = (data || []).map(mapRowToTask);
+      setTasks(mapped.length ? mapped : demoTasks);
+      setLoading(false);
+    };
+
+    fetchTasks();
+  }, [supabaseReady, user]);
+
+  const upsertTask = async (task: Task): Promise<Task> => {
+    if (!supabaseReady || !user) return task;
+    setSyncing(true);
+    const { data, error } = await supabase
+      .from('after_sales_tasks')
+      .upsert({ ...toDbPayload(task), created_by: user.id }, { onConflict: 'id' })
+      .select('*, after_sales_feedback(*)')
+      .single();
+    setSyncing(false);
+
+    if (error || !data) {
+      console.error('Failed to save task:', error);
+      toast.error('Could not sync task to database');
+      return task;
+    }
+
+    return mapRowToTask(data);
+  };
+
+  const deleteTaskInDb = async (taskId: string) => {
+    if (!supabaseReady || !user) return;
+    setSyncing(true);
+    const { error } = await supabase.from('after_sales_tasks').delete().eq('id', taskId).eq('created_by', user.id);
+    setSyncing(false);
+    if (error) {
+      console.error('Failed to delete task:', error);
+      toast.error('Could not delete task from database');
+    }
+  };
+
+  const addFeedbackToDb = async (taskId: string, feedback: { user: string; comment: string }): Promise<AfterSalesFeedbackRow | null> => {
+    if (!supabaseReady || !user) return null;
+    setSyncing(true);
+    const { data, error } = await supabase
+      .from('after_sales_feedback')
+      .insert({
+        task_id: taskId,
+        user_name: feedback.user,
+        comment: feedback.comment,
+        created_by: user.id,
+      })
+      .select('*')
+      .single();
+    setSyncing(false);
+
+    if (error) {
+      console.error('Failed to add feedback:', error);
+      toast.error('Could not save feedback to database');
+      return null;
+    }
+
+    return data;
+  };
+
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'done').length;
   const overdueTasks = tasks.filter(t => t.is_overdue).length;
   const urgentTasks = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
   const avgCompletionTime = 5.3; // Demo value
 
+  if (loading) {
+    return <div className="p-6 text-sm text-slate-600">Loading after-sales tasks...</div>;
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">✅ Task Management</h1>
-          <p className="text-slate-600 mt-1 text-sm md:text-base">AI-powered task prioritization & tracking</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">✅ After Sales & Tasks Management</h1>
+          <p className="text-slate-600 mt-1 text-sm md:text-base">Comprehensive after-sales service & task tracking</p>
         </div>
         <Button icon={Plus} onClick={() => setShowAddModal(true)} className="text-sm md:text-base">Add Task</Button>
       </div>
@@ -625,9 +811,7 @@ export const AfterSales: React.FC = () => {
                     size="sm" 
                     icon={Eye} 
                     onClick={() => {
-                      toast.info(`Opening ${selectedTask.linked_to.type}: ${selectedTask.linked_to.name}`, {
-                        description: 'Navigating to details page...'
-                      });
+                      setLinkedModal(selectedTask.linked_to);
                     }}
                   >
                     View
@@ -660,9 +844,9 @@ export const AfterSales: React.FC = () => {
                   size="sm" 
                   icon={Plus} 
                   onClick={() => {
-                    toast.success('Feedback form opened', {
-                      description: 'Add your update in the form below'
-                    });
+                    if (!selectedTask) return;
+                    setFeedbackForm({ comment: '', user: 'You', date: new Date().toISOString() });
+                    setShowFeedbackModal(true);
                   }}
                 >
                   Add Feedback
@@ -700,9 +884,16 @@ export const AfterSales: React.FC = () => {
               <Button 
                 icon={Edit} 
                 onClick={() => {
-                  toast.info('Edit mode enabled', {
-                    description: 'Make your changes below'
+                  if (!selectedTask) return;
+                  setEditForm({
+                    title: selectedTask.title,
+                    description: selectedTask.description,
+                    priority: selectedTask.priority,
+                    status: selectedTask.status,
+                    assigned_to: selectedTask.assigned_to,
+                    due_date: selectedTask.due_date,
                   });
+                  setShowEditModal(true);
                 }}
               >
                 Edit Task
@@ -720,12 +911,9 @@ export const AfterSales: React.FC = () => {
                           error: 'Failed to update task',
                         }
                       );
-                      // Update task status in state
-                      setTasks(tasks.map(t => 
-                        t.id === selectedTask.id 
-                          ? { ...t, status: 'done', completed_at: new Date().toISOString() }
-                          : t
-                      ));
+                      const updated = { ...selectedTask, status: 'done', completed_at: new Date().toISOString() };
+                      const saved = await upsertTask(updated);
+                      setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
                       setSelectedTask(null);
                     } catch (error) {
                       console.error('Failed to complete task:', error);
@@ -750,6 +938,7 @@ export const AfterSales: React.FC = () => {
                         error: 'Failed to delete task',
                       }
                     );
+                    await deleteTaskInDb(selectedTask.id);
                     setTasks(tasks.filter(t => t.id !== selectedTask.id));
                     setSelectedTask(null);
                   } catch (error) {
@@ -773,24 +962,62 @@ export const AfterSales: React.FC = () => {
       >
         <form className="space-y-4" onSubmit={async (e) => {
           e.preventDefault();
+          if (!addForm.title.trim()) {
+            toast.error('Title is required');
+            return;
+          }
+
+          const nowIso = new Date().toISOString();
+          const newTask: Task = {
+            id: crypto.randomUUID(),
+            title: addForm.title.trim(),
+            description: addForm.description.trim() || 'No description',
+            status: 'todo',
+            priority: addForm.priority as Task['priority'],
+            assigned_to: addForm.assigned_to.trim() || 'Unassigned',
+            assigned_by: 'You',
+            linked_to: {
+              type: (addForm.linked_type || null) as Task['linked_to']['type'],
+              id: null,
+              name: addForm.linked_name.trim() || null,
+            },
+            created_at: nowIso,
+            due_date: addForm.due_date || nowIso,
+            completed_at: null,
+            ai_priority_score: 75,
+            ai_suggested_priority: addForm.priority as Task['priority'],
+            is_overdue: false,
+            days_overdue: 0,
+            estimated_hours: Number(addForm.estimated_hours || 0),
+            actual_hours: 0,
+            tags: addForm.tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean),
+            feedback: [],
+          };
+
           try {
-            await toast.promise(
-              new Promise(resolve => setTimeout(resolve, 1500)),
-              {
-                loading: 'Creating task and analyzing priority...',
-                success: 'Task created successfully!',
-                error: 'Failed to create task',
-              }
-            );
+            const saved = await upsertTask(newTask);
+            setTasks((prev) => [saved, ...prev]);
             setShowAddModal(false);
+            setAddForm({ title: '', description: '', priority: 'medium', due_date: '', assigned_to: '', estimated_hours: '', tags: '', linked_type: '', linked_name: '' });
+            toast.success('Task created');
           } catch (error) {
             console.error('Failed to create task:', error);
+            toast.error('Failed to create task');
           }
         }}>
           <p className="text-sm text-slate-600">AI will automatically prioritize and suggest optimizations</p>
           
           <div className="space-y-4">
-            <Input label="Task Title" placeholder="Follow up on deal..." required />
+            <Input 
+              label="Task Title" 
+              placeholder="Follow up on deal..." 
+              required 
+              value={addForm.title}
+              onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+            />
             
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
@@ -798,30 +1025,58 @@ export const AfterSales: React.FC = () => {
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 rows={3}
                 placeholder="Describe the task..."
+                value={addForm.description}
+                onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
-                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                <select 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  value={addForm.priority}
+                  onChange={(e) => setAddForm({ ...addForm, priority: e.target.value })}
+                >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="urgent">Urgent</option>
                 </select>
               </div>
-              <Input label="Due Date" type="date" required />
+              <Input 
+                label="Due Date" 
+                type="date" 
+                required 
+                value={addForm.due_date}
+                onChange={(e) => setAddForm({ ...addForm, due_date: e.target.value })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Assign To" placeholder="John Smith" required />
-              <Input label="Estimated Hours" type="number" placeholder="2" />
+              <Input 
+                label="Assign To" 
+                placeholder="John Smith" 
+                required 
+                value={addForm.assigned_to}
+                onChange={(e) => setAddForm({ ...addForm, assigned_to: e.target.value })}
+              />
+              <Input 
+                label="Estimated Hours" 
+                type="number" 
+                placeholder="2" 
+                value={addForm.estimated_hours}
+                onChange={(e) => setAddForm({ ...addForm, estimated_hours: e.target.value })}
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Link to (optional)</label>
-              <select className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+              <select 
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                value={addForm.linked_type}
+                onChange={(e) => setAddForm({ ...addForm, linked_type: e.target.value })}
+              >
                 <option value="">None</option>
                 <option value="customer">Customer</option>
                 <option value="deal">Deal</option>
@@ -831,8 +1086,21 @@ export const AfterSales: React.FC = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Linked Name</label>
+              <Input 
+                placeholder="Acme Corp"
+                value={addForm.linked_name}
+                onChange={(e) => setAddForm({ ...addForm, linked_name: e.target.value })}
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Tags</label>
-              <Input placeholder="sales, high-value, enterprise (comma separated)" />
+              <Input 
+                placeholder="sales, high-value, enterprise (comma separated)"
+                value={addForm.tags}
+                onChange={(e) => setAddForm({ ...addForm, tags: e.target.value })}
+              />
             </div>
           </div>
 
@@ -843,6 +1111,203 @@ export const AfterSales: React.FC = () => {
             <Button type="submit">Create Task & Get AI Priority</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Feedback Modal */}
+      <Modal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        title="Add Feedback"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!selectedTask) return;
+            const trimmedComment = feedbackForm.comment.trim();
+            if (!trimmedComment) {
+              toast.error('Please enter feedback');
+              return;
+            }
+
+            const baseFeedback = {
+              id: Date.now().toString(),
+              date: new Date().toISOString(),
+              user: feedbackForm.user || 'You',
+              comment: trimmedComment,
+            };
+
+            let feedbackToUse = baseFeedback;
+            if (supabaseReady) {
+              const dbFeedback = await addFeedbackToDb(selectedTask.id, { user: baseFeedback.user, comment: baseFeedback.comment });
+              if (dbFeedback) {
+                feedbackToUse = {
+                  id: dbFeedback.id,
+                  date: dbFeedback.created_at,
+                  user: dbFeedback.user_name,
+                  comment: dbFeedback.comment,
+                };
+              }
+            }
+
+            const updatedTask = {
+              ...selectedTask,
+              feedback: [...(selectedTask.feedback || []), feedbackToUse],
+            };
+            setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? updatedTask : t)));
+            setSelectedTask(updatedTask);
+            setShowFeedbackModal(false);
+            toast.success('Feedback added');
+          }}
+        >
+          <Input
+            label="Your Name"
+            value={feedbackForm.user}
+            onChange={(e) => setFeedbackForm({ ...feedbackForm, user: e.target.value })}
+            placeholder="You"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Comment</label>
+            <textarea
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              rows={4}
+              value={feedbackForm.comment}
+              onChange={(e) => setFeedbackForm({ ...feedbackForm, comment: e.target.value })}
+              placeholder="Share an update..."
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setShowFeedbackModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Submit Feedback</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Task Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Task"
+        size="lg"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!selectedTask) return;
+            const updatedTask = {
+              ...selectedTask,
+              ...editForm,
+            };
+            const saved = await upsertTask(updatedTask);
+            setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
+            setSelectedTask(saved);
+            setShowEditModal(false);
+            toast.success('Task updated');
+          }}
+        >
+          <Input
+            label="Title"
+            value={editForm.title}
+            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+            <textarea
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              rows={3}
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value as Task['status'] })}
+              >
+                <option value="todo">To Do</option>
+                <option value="in-progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                value={editForm.priority}
+                onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as Task['priority'] })}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Assigned To"
+              value={editForm.assigned_to}
+              onChange={(e) => setEditForm({ ...editForm, assigned_to: e.target.value })}
+              required
+            />
+            <Input
+              label="Due Date"
+              type="date"
+              value={editForm.due_date}
+              onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Save Changes</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Linked Item Modal */}
+      <Modal
+        isOpen={!!linkedModal}
+        onClose={() => setLinkedModal(null)}
+        title="Linked Item"
+      >
+        {linkedModal ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-slate-700">
+              <span className="font-semibold capitalize">Type:</span>
+              <span className="capitalize">{linkedModal.type}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-700">
+              <span className="font-semibold">Name:</span>
+              <span>{linkedModal.name}</span>
+            </div>
+            {linkedModal.id && (
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <span className="font-semibold">ID:</span>
+                <span>{linkedModal.id}</span>
+              </div>
+            )}
+            <p className="text-sm text-slate-600">Navigate to the relevant record to view full details.</p>
+            <div className="flex justify-end">
+              <Button onClick={() => setLinkedModal(null)}>Close</Button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

@@ -74,7 +74,7 @@ export function isValidFileSize(file: File): boolean {
 /**
  * Validates required field
  */
-export function isRequired(value: any): boolean {
+export function isRequired(value: unknown): boolean {
   if (typeof value === 'string') {
     return value.trim().length > 0;
   }
@@ -102,7 +102,7 @@ export function isLengthValid(value: string, min: number, max?: number): boolean
 /**
  * Generic form validation function
  */
-export function validateForm<T extends Record<string, any>>(
+export function validateForm<T extends Record<string, unknown>>(
   data: T,
   rules: {
     [K in keyof T]?: {

@@ -7,7 +7,7 @@ import { useState } from 'react';
 export function useModal<T>(initialState: T) {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState<T>(initialState);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<T | null>(null);
 
   const openModal = () => setIsOpen(true);
   
@@ -17,13 +17,13 @@ export function useModal<T>(initialState: T) {
     setFormData(initialState);
   };
 
-  const openEditModal = (item: any) => {
+  const openEditModal = (item: T) => {
     setEditingItem(item);
     setFormData(item);
     setIsOpen(true);
   };
 
-  const updateFormData = (field: keyof T, value: any) => {
+  const updateFormData = (field: keyof T, value: T[keyof T]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

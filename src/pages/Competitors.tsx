@@ -160,10 +160,20 @@ const demoCompetitors: Competitor[] = [
 ];
 
 export const Competitors: React.FC = () => {
-  const [competitors] = useState<Competitor[]>(demoCompetitors);
+  const [competitors, setCompetitors] = useState<Competitor[]>(demoCompetitors);
   const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'comparison' | 'ai-strategy'>('overview');
+  const [form, setForm] = useState({
+    name: '',
+    brand: '',
+    website: '',
+    industry: '',
+    price: '',
+    market_share: '',
+    market_position: 'leader',
+    threat_level: 'medium',
+  });
 
   const getThreatColor = (level: string) => {
     const colors = {
@@ -180,6 +190,57 @@ export const Competitors: React.FC = () => {
     if (position === 'challenger') return <Zap className="text-orange-500" size={20} />;
     if (position === 'follower') return <TrendingDown className="text-slate-500" size={20} />;
     return <Target className="text-blue-500" size={20} />;
+  };
+
+  const handleAddCompetitor = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    const newCompetitor: Competitor = {
+      id: crypto.randomUUID(),
+      name: form.name.trim(),
+      brand: form.brand.trim() || form.name.trim(),
+      website: form.website.trim() || 'example.com',
+      industry: form.industry.trim() || 'General',
+      competitor_type: 'Direct',
+      price: Number(form.price) || 0,
+      market_share: Number(form.market_share) || 0,
+      threat_level: form.threat_level as Competitor['threat_level'],
+      market_position: form.market_position as Competitor['market_position'],
+      product_quality: 7,
+      pricing_strategy: 'competitive',
+      innovation_level: 6,
+      customer_satisfaction: 7,
+      usp: 'Newly added competitor (demo)',
+      package_design: 'N/A',
+      key_features: [],
+      target_audience: 'TBD',
+      pain_points: 'TBD',
+      strengths: 'TBD',
+      weaknesses: 'TBD',
+      distribution_channels: [],
+      marketing_channels: [],
+      ai_threat_score: 55,
+      ai_recommendations: ['Track this competitor closely'],
+      last_activity: new Date().toISOString().slice(0, 10),
+    };
+
+    setCompetitors((prev) => [newCompetitor, ...prev]);
+    toast.success('Competitor added (demo only)');
+    setShowAddModal(false);
+    setForm({
+      name: '',
+      brand: '',
+      website: '',
+      industry: '',
+      price: '',
+      market_share: '',
+      market_position: 'leader',
+      threat_level: 'medium',
+    });
   };
 
   return (
@@ -734,11 +795,7 @@ export const Competitors: React.FC = () => {
         title="🎯 Add New Competitor - Deep Analysis"
         size="xl"
       >
-        <form className="space-y-6 max-h-[600px] overflow-y-auto pr-2" onSubmit={(e) => {
-          e.preventDefault();
-          toast.success('Competitor added successfully with full analysis!');
-          setShowAddModal(false);
-        }}>
+        <form className="space-y-6 max-h-[600px] overflow-y-auto pr-2" onSubmit={handleAddCompetitor}>
           <p className="text-sm text-slate-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
             🤖 Complete this form to activate AI-powered competitive intelligence and strategic counter-moves
           </p>
@@ -747,9 +804,33 @@ export const Competitors: React.FC = () => {
           <Card className="border-l-4 border-blue-500">
             <h3 className="font-bold text-slate-900 mb-4">📋 Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Product Name" placeholder="RivalTech Pro" required />
-              <Input label="Brand" placeholder="RivalTech" required />
-              <Input label="Website" placeholder="https://rivaltech.com" type="url" />
+              <Input
+                label="Product Name"
+                placeholder="RivalTech Pro"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <Input
+                label="Brand"
+                placeholder="RivalTech"
+                required
+                value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+              />
+              <Input
+                label="Website"
+                placeholder="https://rivaltech.com"
+                type="url"
+                value={form.website}
+                onChange={(e) => setForm({ ...form, website: e.target.value })}
+              />
+              <Input
+                label="Industry"
+                placeholder="SaaS, Fintech"
+                value={form.industry}
+                onChange={(e) => setForm({ ...form, industry: e.target.value })}
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Competitor Type</label>
                 <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
@@ -774,10 +855,30 @@ export const Competitors: React.FC = () => {
             <h3 className="font-bold text-slate-900 mb-4">📊 Market Analysis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Price (₦)" placeholder="29.99" type="number" step="0.01" required />
-              <Input label="Market Share (%)" placeholder="28" type="number" max="100" />
+              <Input
+                label="Price ($/mo)"
+                placeholder="49.99"
+                type="number"
+                step="0.01"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+              />
+              <Input
+                label="Market Share (%)"
+                placeholder="25"
+                type="number"
+                min="0"
+                max="100"
+                value={form.market_share}
+                onChange={(e) => setForm({ ...form, market_share: e.target.value })}
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Threat Level</label>
-                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  value={form.threat_level}
+                  onChange={(e) => setForm({ ...form, threat_level: e.target.value })}
+                >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
@@ -786,11 +887,15 @@ export const Competitors: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Market Position</label>
-                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
-                  <option value="leader">Market Leader</option>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  value={form.market_position}
+                  onChange={(e) => setForm({ ...form, market_position: e.target.value })}
+                >
+                  <option value="leader">Leader</option>
                   <option value="challenger">Challenger</option>
                   <option value="follower">Follower</option>
-                  <option value="niche">Niche Player</option>
+                  <option value="niche">Niche</option>
                 </select>
               </div>
             </div>

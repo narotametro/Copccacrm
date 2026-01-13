@@ -23,8 +23,9 @@ export const Register: React.FC = () => {
       await signUp(email, password, fullName);
       toast.success('Account created! Please check your email to verify.');
       navigate('/login');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

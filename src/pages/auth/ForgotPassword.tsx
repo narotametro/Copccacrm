@@ -20,8 +20,9 @@ export const ForgotPassword: React.FC = () => {
       await resetPassword(email);
       setSent(true);
       toast.success('Password reset email sent! Check your inbox.');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send reset email');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send reset email';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

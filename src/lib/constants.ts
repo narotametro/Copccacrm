@@ -59,7 +59,7 @@ export type TaskType = typeof TASK_TYPE[keyof typeof TASK_TYPE];
 export const VALIDATION = {
   MIN_PASSWORD_LENGTH: 8,
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
-  PHONE_REGEX: /^[\d\s\+\(\)-]+$/,
+  PHONE_REGEX: /^[\d\s+()-]+$/,
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   URL_REGEX: /^https?:\/\/.+/,
 } as const;

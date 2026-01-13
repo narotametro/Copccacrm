@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Database, Bot, Save, Eye, EyeOff, CheckCircle, AlertTriangle, Activity, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Database, Activity, Lock, Eye, EyeOff, UserPlus, Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -7,12 +7,6 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
 export const AdminSystem: React.FC = () => {
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -20,84 +14,11 @@ export const AdminSystem: React.FC = () => {
   const [showPasswords, setShowPasswords] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const { data } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', ['openai_api_key', 'ai_assistant_enabled']);
-
-      if (data) {
-        const keyData = data.find(s => s.key === 'openai_api_key');
-        const enabledData = data.find(s => s.key === 'ai_assistant_enabled');
-        
-        if (keyData?.value) setOpenaiKey(keyData.value);
-        if (enabledData?.value) setAiEnabled(enabledData.value === 'true');
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
-
-  const saveSettings = async () => {
-    setIsLoading(true);
-    try {
-      await toast.promise(
-        Promise.all([
-          supabase.rpc('update_system_setting', {
-            setting_key: 'openai_api_key',
-            setting_value: openaiKey
-          }),
-          supabase.rpc('update_system_setting', {
-            setting_key: 'ai_assistant_enabled',
-            setting_value: aiEnabled.toString()
-          })
-        ]),
-        {
-          loading: 'Saving system settings...',
-          success: 'System settings saved successfully!',
-          error: 'Failed to save settings'
-        }
-      );
-    } catch (error) {
-      console.error('Save error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const testOpenAIConnection = async () => {
-    if (!openaiKey) {
-      toast.error('Please enter an OpenAI API key first');
-      return;
-    }
-
-    setTestStatus('testing');
-    try {
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-        },
-      });
-
-      if (response.ok) {
-        setTestStatus('success');
-        toast.success('OpenAI connection successful! ✅');
-      } else {
-        setTestStatus('error');
-        toast.error('Invalid API key or connection failed');
-      }
-    } catch (error) {
-      setTestStatus('error');
-      toast.error('Connection test failed');
-    }
-
-    setTimeout(() => setTestStatus('idle'), 3000);
-  };
+  // Demo admin creation
+  const [admins, setAdmins] = useState<Array<{ id: string; email: string; role: string }>>([
+    { id: '1', email: 'superadmin@copcca.com', role: 'super_admin' },
+  ]);
+  const [adminForm, setAdminForm] = useState({ email: '', role: 'admin' });
 
   const handleChangePassword = async () => {
     const adminEmail = sessionStorage.getItem('copcca_admin_email');
@@ -155,6 +76,26 @@ export const AdminSystem: React.FC = () => {
     }
   };
 
+  const handleCreateAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminForm.email.trim()) {
+      toast.error('Admin email is required');
+      return;
+    }
+
+    const newAdmin = {
+      id: crypto.randomUUID(),
+      email: adminForm.email.trim().toLowerCase(),
+      role: adminForm.role,
+    };
+
+    setAdmins((prev) => [newAdmin, ...prev]);
+    toast.success('Admin created (demo only)', {
+      description: `${newAdmin.email} added with ${newAdmin.role} role for this session`,
+    });
+    setAdminForm({ email: '', role: 'admin' });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -173,7 +114,7 @@ export const AdminSystem: React.FC = () => {
             <p className="text-purple-200 text-sm">All systems operational</p>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
             <p className="text-green-400 text-sm mb-1">Database</p>
             <p className="text-2xl font-bold text-green-400">Online</p>
@@ -181,94 +122,6 @@ export const AdminSystem: React.FC = () => {
           <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
             <p className="text-green-400 text-sm mb-1">Authentication</p>
             <p className="text-2xl font-bold text-green-400">Active</p>
-          </div>
-          <div className={`p-4 rounded-lg border ${aiEnabled ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-            <p className={`text-sm mb-1 ${aiEnabled ? 'text-green-400' : 'text-red-400'}`}>AI Assistant</p>
-            <p className={`text-2xl font-bold ${aiEnabled ? 'text-green-400' : 'text-red-400'}`}>
-              {aiEnabled ? 'Enabled' : 'Disabled'}
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* OpenAI Configuration */}
-      <Card className="bg-white/10 backdrop-blur-sm border-white/20">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg">
-            <Bot className="text-purple-400" size={20} />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">AI Assistant Configuration</h3>
-            <p className="text-purple-200 text-sm">Configure OpenAI integration for all companies</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-white font-medium mb-2">OpenAI API Key</label>
-            <div className="relative">
-              <Input
-                type={showKey ? 'text' : 'password'}
-                value={openaiKey}
-                onChange={(e) => setOpenaiKey(e.target.value)}
-                placeholder="sk-proj-xxxxxxxxxxxxxxxxxxxxx"
-                className="bg-white/10 border-white/20 text-white placeholder:text-purple-200/50 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-200 hover:text-white"
-              >
-                {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <p className="text-purple-200 text-xs mt-1">
-              Get your key from: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" className="underline text-blue-400">platform.openai.com/api-keys</a>
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-            <div>
-              <p className="text-white font-medium">Enable AI Assistant Globally</p>
-              <p className="text-purple-200 text-sm">Allow all companies to use AI features</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={aiEnabled}
-                onChange={(e) => setAiEnabled(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-600 peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              icon={Save}
-              onClick={saveSettings}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save Configuration'}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={testOpenAIConnection}
-              disabled={testStatus === 'testing'}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              {testStatus === 'testing' && 'Testing...'}
-              {testStatus === 'success' && <><CheckCircle size={16} className="mr-2" /> Connected</>}
-              {testStatus === 'error' && <><AlertTriangle size={16} className="mr-2" /> Failed</>}
-              {testStatus === 'idle' && 'Test Connection'}
-            </Button>
-          </div>
-
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-            <p className="text-amber-200 text-xs">
-              <strong>Cost Estimate:</strong> Using gpt-4o-mini costs ~$0.15 per 1M input tokens. 
-              Average across all companies: $50-150/month for moderate usage.
-            </p>
           </div>
         </div>
       </Card>
@@ -360,6 +213,68 @@ export const AdminSystem: React.FC = () => {
               <strong>Security:</strong> Passwords are hashed using SHA-256 and stored securely in the database.
               This change affects only your admin account login.
             </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Admin creation (demo) */}
+      <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <UserPlus className="text-blue-300" size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Create Admin (demo)</h3>
+            <p className="text-purple-200 text-sm">Capture admin invites; stored locally only</p>
+          </div>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleCreateAdmin}>
+          <Input
+            type="email"
+            placeholder="admin@company.com"
+            value={adminForm.email}
+            onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+            className="bg-white/10 border-white/20 text-white placeholder:text-purple-200/60"
+            required
+          />
+          <div>
+            <label className="block text-purple-200 text-sm mb-2">Role</label>
+            <select
+              value={adminForm.role}
+              onChange={(e) => setAdminForm({ ...adminForm, role: e.target.value })}
+              className="w-full bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2"
+            >
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          </div>
+          <div className="flex gap-3">
+            <Button type="submit" icon={Save} className="bg-blue-500/80 hover:bg-blue-500 text-white">
+              Save Admin
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              onClick={() => setAdminForm({ email: '', role: 'admin' })}
+            >
+              Clear
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-5">
+          <p className="text-purple-200 text-sm mb-2">Recently added (local only)</p>
+          <div className="space-y-2">
+            {admins.map((admin) => (
+              <div key={admin.id} className="flex items-center justify-between p-2 bg-white/5 rounded-lg border border-white/10">
+                <span className="text-white text-sm">{admin.email}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-100 border border-blue-500/30 capitalize">
+                  {admin.role.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </Card>

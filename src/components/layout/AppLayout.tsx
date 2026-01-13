@@ -25,22 +25,25 @@ import {
   AlertCircle,
   Globe,
   Filter,
+  ClipboardCheck,
+  Activity,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { AIAssistant } from './AIAssistant';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { PaymentPopup } from '@/components/PaymentPopup';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
   { icon: Users, label: 'Customers', path: '/app/customers' },
-  { icon: TrendingUp, label: 'Sales', path: '/app/pipeline' },
-  { icon: BarChart3, label: 'Marketing', path: '/app/strategies' },
+  { icon: TrendingUp, label: 'Sales', path: '/app/sales' },
+  { icon: ClipboardCheck, label: 'After Sales & Tasks', path: '/app/after-sales' },
+  { icon: BarChart3, label: 'Marketing', path: '/app/marketing' },
   { icon: Package, label: 'Products', path: '/app/products' },
   { icon: Target, label: 'Competitors', path: '/app/competitors' },
   { icon: Coins, label: 'Debt Collection', path: '/app/debt-collection' },
+  { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
   { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
-  { icon: Settings, label: 'Admin', path: '/app/users' },
+  { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },
   { icon: Globe, label: 'My Workplace', path: '/app/my-workplace' },
 ];
 
@@ -73,7 +76,8 @@ export const AppLayout: React.FC = () => {
   ]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const isAdmin = profile?.role === 'admin';
+  const effectiveRole = profile?.role || (user?.user_metadata as { role?: string } | undefined)?.role || user?.role || 'user';
+  const isAdmin = effectiveRole === 'admin';
 
   // For demo, fallback profile info from user
   const displayProfile = user ? {
@@ -149,8 +153,8 @@ export const AppLayout: React.FC = () => {
           </button>
         </div>
 
-        <nav className="mt-8">
-          {menuItems.map((item) => {
+        <nav className="mt-4">
+          {menuItems.filter(item => !item.requiresAdmin || isAdmin).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -158,7 +162,7 @@ export const AppLayout: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all ${
+                className={`flex items-center gap-3 px-4 py-2 mx-2 rounded-lg transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-primary-600 to-purple-600 shadow-lg'
                     : 'hover:bg-slate-700'
@@ -177,7 +181,7 @@ export const AppLayout: React.FC = () => {
       <div className="flex-1 transition-all duration-300 lg:ml-20">
         {/* Header */}
         <header className="glass border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between">
+          <div className="px-4 lg:px-6 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2 lg:gap-4 flex-1">
               {/* Mobile Menu Button */}
               <button
@@ -309,9 +313,13 @@ export const AppLayout: React.FC = () => {
                       ))}
                     </div>
                     <div className="p-2 border-t border-slate-200">
-                      <button className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-1">
+                      <Link
+                        to="/app/notifications"
+                        onClick={() => setNotificationDropdownOpen(false)}
+                        className="block w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-1"
+                      >
                         View All Notifications
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 )}
@@ -420,9 +428,6 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      {/* Floating AI Assistant */}
-      <AIAssistant />
-
       {/* Payment Popup - Cannot be closed */}
       {showPaymentPopup && !isAdmin && (
         <PaymentPopup
