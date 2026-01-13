@@ -912,7 +912,7 @@ export const AfterSales: React.FC = () => {
                         }
                       );
                       const updated = { ...selectedTask, status: 'done', completed_at: new Date().toISOString() };
-                      const saved = await upsertTask(updated);
+                      const saved = await upsertTask({ ...updated, status: updated.status as 'todo' | 'in-progress' | 'review' | 'done' });
                       setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
                       setSelectedTask(null);
                     } catch (error) {
@@ -1201,7 +1201,11 @@ export const AfterSales: React.FC = () => {
               ...selectedTask,
               ...editForm,
             };
-            const saved = await upsertTask(updatedTask);
+            const saved = await upsertTask({ 
+              ...updatedTask, 
+              status: updatedTask.status as 'todo' | 'in-progress' | 'review' | 'done',
+              priority: updatedTask.priority as 'low' | 'medium' | 'high' | 'urgent'
+            });
             setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
             setSelectedTask(saved);
             setShowEditModal(false);

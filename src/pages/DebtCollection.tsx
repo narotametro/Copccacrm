@@ -124,15 +124,15 @@ export const DebtCollection: React.FC = () => {
       return;
     }
 
-    const newDebt = {
+    const newDebt: Debt = {
       id: crypto.randomUUID(),
       invoice_number: paymentForm.invoice_number.trim(),
       amount: Number(paymentForm.amount) || 0,
       due_date: paymentForm.due_date || new Date().toISOString().slice(0, 10),
-      status: 'pending',
+      status: 'pending' as const,
       days_overdue: 0,
       payment_probability: 70,
-      risk_score: paymentForm.risk_score,
+      risk_score: paymentForm.risk_score as 'low' | 'medium' | 'high',
       auto_reminder: true,
       companies: { name: paymentForm.company.trim(), contact_email: paymentForm.contact_email.trim() },
       payment_plan: `${paymentForm.installments} installments generated (demo)`,

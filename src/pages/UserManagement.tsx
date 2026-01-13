@@ -369,13 +369,16 @@ export const UserManagement: React.FC = () => {
         .select()
         .single();
 
-      const { data: invite, error } = await toast.promise(invitePromise, {
-        loading: 'Generating invitation...',
-        success: 'Invitation ready',
-        error: 'Failed to generate invitation',
-      });
+      const toastId = toast.loading('Generating invitation...');
+      const { data: invite, error } = await invitePromise;
 
-      if (error || !invite) return;
+      if (error || !invite) {
+        toast.dismiss(toastId);
+        toast.error('Failed to generate invitation');
+        return;
+      }
+      toast.dismiss(toastId);
+      toast.success('Invitation ready');
 
       setInvites([invite, ...invites.filter((i) => i.email !== invite.email || i.token !== invite.token)]);
       const link = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
@@ -431,13 +434,15 @@ export const UserManagement: React.FC = () => {
         .update({ status: nextStatus })
         .eq('id', userId);
 
-      const { error } = await toast.promise(updatePromise, {
-        loading: 'Updating user status...',
-        success: 'User status updated successfully',
-        error: 'Failed to update status',
-      });
+      const toastId = toast.loading('Updating user status...');
+      const { error } = await updatePromise;
 
-      if (!error) {
+      if (error) {
+        toast.dismiss(toastId);
+        toast.error('Failed to update status');
+      } else {
+        toast.dismiss(toastId);
+        toast.success('User status updated successfully');
         setUsers(users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u)));
       }
     } catch (error) {
@@ -478,13 +483,15 @@ export const UserManagement: React.FC = () => {
             can_delete: false,
           });
 
-        const { error } = await toast.promise(upsertPromise, {
-          loading: 'Updating permissions...',
-          success: 'Permissions updated successfully',
-          error: 'Failed to update permissions',
-        });
+        const toastId = toast.loading('Updating permissions...');
+        const { error } = await upsertPromise;
 
-        if (!error) {
+        if (error) {
+          toast.dismiss(toastId);
+          toast.error('Failed to update permissions');
+        } else {
+          toast.dismiss(toastId);
+          toast.success('Permissions updated successfully');
           setUsers(users.map((u) => (u.id === selectedUser.id ? updatedUser : u)));
           setSelectedUser(updatedUser);
         }
