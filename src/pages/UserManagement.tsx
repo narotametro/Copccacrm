@@ -60,56 +60,7 @@ interface UserType {
   last_login: string;
 }
 
-const demoUsers: UserType[] = [
-  {
-    id: '1',
-    full_name: 'Demo User',
-    email: 'demo@copcca.com',
-    role: 'admin',
-    department: 'Sales',
-    phone: '+234 801 234 5678',
-    status: 'active',
-    permissions: { customers: true, sales: true, marketing: true, products: true, competitors: true, debt_collection: true, reports: true, admin: true },
-    created_at: '2025-11-01',
-    last_login: '2026-01-08 09:15 AM',
-  },
-  {
-    id: '2',
-    full_name: 'John Smith',
-    email: 'john.smith@copcca.com',
-    role: 'user',
-    department: 'Sales',
-    phone: '+234 802 345 6789',
-    status: 'active',
-    permissions: { customers: true, sales: true, marketing: false, products: true, competitors: true, debt_collection: false, reports: true, admin: false },
-    created_at: '2025-12-10',
-    last_login: '2026-01-08 08:30 AM',
-  },
-  {
-    id: '3',
-    full_name: 'Sarah Johnson',
-    email: 'sarah.j@copcca.com',
-    role: 'user',
-    department: 'Marketing',
-    phone: '+234 803 456 7890',
-    status: 'active',
-    permissions: { customers: true, sales: false, marketing: true, products: true, competitors: true, debt_collection: false, reports: true, admin: false },
-    created_at: '2025-12-15',
-    last_login: '2026-01-07 05:45 PM',
-  },
-  {
-    id: '4',
-    full_name: 'Michael Chen',
-    email: 'michael.c@copcca.com',
-    role: 'user',
-    department: 'Finance',
-    phone: '+234 804 567 8901',
-    status: 'inactive',
-    permissions: { customers: false, sales: false, marketing: false, products: false, competitors: false, debt_collection: true, reports: true, admin: false },
-    created_at: '2025-11-20',
-    last_login: '2025-12-28 03:20 PM',
-  },
-];
+const demoUsers: UserType[] = [];
 
 type DbUser = Database['public']['Tables']['users']['Row'];
 type DbInvite = Database['public']['Tables']['invitation_links']['Row'];
