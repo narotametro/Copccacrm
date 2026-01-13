@@ -92,7 +92,6 @@ export const PlatformAdmin: React.FC = () => {
       users: [
         { id: 'u1', name: 'chukwuma okafor', email: 'admin@techcorp.ng', role: 'admin', status: 'active', lastActive: '2 hours ago' },
         { id: 'u2', name: 'james okoro', email: 'james@techcorp.ng', role: 'user', status: 'active', lastActive: '5 hours ago' },
-        { id: 'u3', name: 'ada nwosu', email: 'ada@techcorp.ng', role: 'user', status: 'disabled', lastActive: '3 days ago' },
       ],
     },
     {

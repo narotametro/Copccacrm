@@ -61,7 +61,7 @@ export const AppLayout: React.FC = () => {
   // Team members for filtering
   const teamMembers = [
     { id: 'all', name: 'All Users', role: '' },
-    { id: '1', name: 'Demo User', role: 'admin' },
+    // Demo user removed
     { id: '2', name: 'John Smith', role: 'user' },
     { id: '3', name: 'Sarah Johnson', role: 'user' },
     { id: '4', name: 'Michael Chen', role: 'user' },

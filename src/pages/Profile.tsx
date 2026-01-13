@@ -9,20 +9,21 @@ import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 
 export const Profile: React.FC = () => {
-  // const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
-  // Use demo profile if no real profile
-  const demoProfile = {
-    id: 'demo',
-    email: 'demo@copcca.com',
-    full_name: 'Demo User',
-    role: 'admin' as const,
-    avatar_url: null,
-    phone: '+234 801 234 5678',
-    department: 'Sales',
+  
+  // Fallback profile from user if no profile exists
+  const displayProfile = profile || {
+    id: user?.id || 'temp',
+    email: user?.email || '',
+    full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+    role: (user?.user_metadata?.role || 'user') as 'admin' | 'manager' | 'user',
+    avatar_url: user?.user_metadata?.avatar_url || null,
+    phone: user?.user_metadata?.phone || null,
+    department: user?.user_metadata?.department || null,
     status: 'active' as const,
+    company_id: null,
   };
-  const displayProfile = profile || demoProfile;
 
   const [formData, setFormData] = useState({
     full_name: displayProfile.full_name,

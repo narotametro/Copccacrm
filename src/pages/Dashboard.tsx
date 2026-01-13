@@ -18,7 +18,7 @@ const Dashboard = () => {
   const { currency, setCurrency, formatCurrency } = useCurrency();
   
   // Demo data state
-  const [hasDemoData, setHasDemoData] = useState<boolean>(true);
+  const [hasDemoData, setHasDemoData] = useState<boolean>(false);
   
   useEffect(() => {
     // Check if demo data flag exists in localStorage
