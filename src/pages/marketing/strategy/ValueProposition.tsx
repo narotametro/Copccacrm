@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 
 export const ValueProposition: React.FC = () => {
   const [valueProp, setValueProp] = useState({
-    statement: 'Premium industrial supplies at fair prices with unmatched local support',
-    pain: 'Businesses struggle with unreliable suppliers, delayed deliveries, and poor after-sales service',
-    differentiation: 'Same-day delivery, dedicated account managers, and 24/7 technical support',
-    proof: '98% customer retention, 4.8/5 satisfaction score, 500+ testimonials',
-    linkedProducts: ['Industrial Pumps', 'Solar Systems', 'Generators'],
+    statement: '',
+    pain: '',
+    differentiation: '',
+    proof: '',
+    linkedProducts: [] as string[],
   });
 
   const handleSave = () => {
