@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   TrendingUp,
-  Users,
   Banknote,
   Target,
   Sparkles,
@@ -12,6 +11,7 @@ import {
   Plus,
   Download,
   Filter,
+  type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -37,6 +37,22 @@ import { useCurrency } from '@/context/CurrencyContext';
 
 type MarketingKpiRow = Database['public']['Tables']['marketing_kpis']['Row'];
 
+interface KpiData {
+  label: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: LucideIcon;
+  color: string;
+}
+
+interface ChannelData {
+  channel: string;
+  leads: number;
+  conversion: number;
+  revenue: number;
+}
+
 export const MarketingOverview: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const user = useAuthStore((state) => state.user);
@@ -46,64 +62,9 @@ export const MarketingOverview: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  const initialKpis = useMemo(() => ([
-    {
-      label: 'Leads Generated',
-      value: '1,247',
-      change: '+18%',
-      trend: 'up',
-      icon: Users,
-      color: 'blue',
-    },
-    {
-      label: 'Conversion Rate',
-      value: '3.8%',
-      change: '+0.5%',
-      trend: 'up',
-      icon: TrendingUp,
-      color: 'green',
-    },
-    {
-      label: 'Cost per Lead',
-      value: formatCurrency(2450),
-      change: '-12%',
-      trend: 'up',
-      icon: Banknote,
-      color: 'purple',
-    },
-    {
-      label: 'Revenue Attributed',
-      value: formatCurrency(4250000),
-      change: '+24%',
-      trend: 'up',
-      icon: Target,
-      color: 'orange',
-    },
-    {
-      label: 'Active Strategies',
-      value: '8',
-      change: '+2',
-      trend: 'up',
-      icon: Sparkles,
-      color: 'pink',
-    },
-    {
-      label: 'Active Campaigns',
-      value: '14',
-      change: '+5',
-      trend: 'up',
-      icon: Target,
-      color: 'indigo',
-    },
-  ]), [formatCurrency]);
+  const initialKpis = useMemo<KpiData[]>(() => ([]), [formatCurrency]);
 
-  const initialChannels = useMemo(() => ([
-    { channel: 'Direct Sales', leads: 487, conversion: 4.2, revenue: 1850000 },
-    { channel: 'Digital Ads', leads: 312, conversion: 3.1, revenue: 980000 },
-    { channel: 'Social Media', leads: 289, conversion: 2.8, revenue: 750000 },
-    { channel: 'Email Marketing', leads: 98, conversion: 5.1, revenue: 420000 },
-    { channel: 'SMS Campaigns', leads: 61, conversion: 6.2, revenue: 250000 },
-  ]), []);
+  const initialChannels = useMemo<ChannelData[]>(() => ([]), []);
 
   const [kpis, setKpis] = useState(initialKpis);
   const [channelPerformance, setChannelPerformance] = useState(initialChannels);
