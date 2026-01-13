@@ -20,56 +20,7 @@ type Debt = {
   payment_plan?: string;
 };
 
-const demoDebts: Debt[] = [
-  { 
-    id: '1', 
-    invoice_number: 'INV-001', 
-    amount: 50000, 
-    due_date: '2026-02-15', 
-    status: 'paid', 
-    days_overdue: 0,
-    payment_probability: 95,
-    risk_score: 'low',
-    auto_reminder: true,
-    companies: { name: 'Acme Corp', contact_email: 'finance@acme.com' } 
-  },
-  { 
-    id: '2', 
-    invoice_number: 'INV-002', 
-    amount: 120000, 
-    due_date: '2026-01-25', 
-    status: 'pending', 
-    days_overdue: 0,
-    payment_probability: 78,
-    risk_score: 'medium',
-    auto_reminder: true,
-    companies: { name: 'GlobalTech Inc', contact_email: 'billing@globaltech.com' } 
-  },
-  { 
-    id: '3', 
-    invoice_number: 'INV-003', 
-    amount: 30000, 
-    due_date: '2025-12-20', 
-    status: 'overdue', 
-    days_overdue: 18,
-    payment_probability: 45,
-    risk_score: 'high',
-    auto_reminder: true,
-    companies: { name: 'MegaCorp Ltd', contact_email: 'ap@megacorp.com' } 
-  },
-  { 
-    id: '4', 
-    invoice_number: 'INV-004', 
-    amount: 15000, 
-    due_date: '2026-01-15', 
-    status: 'reminded', 
-    days_overdue: 0,
-    payment_probability: 88,
-    risk_score: 'low',
-    auto_reminder: true,
-    companies: { name: 'StartupX', contact_email: 'finance@startupx.io' } 
-  },
-];
+const demoDebts: Debt[] = [];
 
 export const DebtCollection: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
