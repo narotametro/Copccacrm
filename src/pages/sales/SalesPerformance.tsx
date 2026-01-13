@@ -33,87 +33,11 @@ interface WinLossReason {
   ai_insight: string;
 }
 
-const initialReps: SalesRep[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    deals_won: 24,
-    deals_lost: 6,
-    conversion_rate: 80,
-    revenue: 1450000,
-    target: 1500000,
-    avg_deal_size: 60400,
-    avg_cycle_days: 42,
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    deals_won: 18,
-    deals_lost: 9,
-    conversion_rate: 67,
-    revenue: 980000,
-    target: 1200000,
-    avg_deal_size: 54400,
-    avg_cycle_days: 38,
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    deals_won: 21,
-    deals_lost: 5,
-    conversion_rate: 81,
-    revenue: 1320000,
-    target: 1400000,
-    avg_deal_size: 62900,
-    avg_cycle_days: 45,
-  },
-];
+const initialReps: SalesRep[] = [];
 
-const initialWinReasons: WinLossReason[] = [
-  {
-    reason: 'Superior product features',
-    percentage: 45,
-    ai_insight: 'Highlight feature advantages early in sales process',
-  },
-  {
-    reason: 'Better pricing',
-    percentage: 30,
-    ai_insight: 'Maintain strategic discounts during competitive cycles',
-  },
-  {
-    reason: 'Faster implementation',
-    percentage: 16,
-    ai_insight: 'Show implementation timeline during discovery',
-  },
-  {
-    reason: 'Customer referrals',
-    percentage: 9,
-    ai_insight: 'Invest in referral program to accelerate wins',
-  },
-];
+const initialWinReasons: WinLossReason[] = [];
 
-const initialLossReasons: WinLossReason[] = [
-  {
-    reason: 'Price too high',
-    percentage: 48,
-    ai_insight: 'Consider value-based pricing tiers for price-sensitive segments',
-  },
-  {
-    reason: 'Chose competitor',
-    percentage: 28,
-    ai_insight: 'Monitor competitor positioning and strengthen differentiation',
-  },
-  {
-    reason: 'No budget approved',
-    percentage: 16,
-    ai_insight: 'Qualify budget early and engage financial decision makers sooner',
-  },
-  {
-    reason: 'Decision delayed',
-    percentage: 8,
-    ai_insight: 'Create urgency with time-bound offers or seasonal needs',
-  },
-];
+const initialLossReasons: WinLossReason[] = [];
 
 export const SalesPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();

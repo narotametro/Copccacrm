@@ -5,12 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 
 export const CampaignTasks: React.FC = () => {
-  const tasks = [
-    { title: 'Create LinkedIn ad creative', campaign: 'Enterprise Q1 Push', assignee: 'Sarah J.', due: '2026-01-15', status: 'in-progress', priority: 'high' },
-    { title: 'Write email copy for SME segment', campaign: 'SME Digital Campaign', assignee: 'Mike C.', due: '2026-01-18', status: 'todo', priority: 'medium' },
-    { title: 'Review A/B test results', campaign: 'WhatsApp Outreach', assignee: 'Demo User', due: '2026-01-20', status: 'todo', priority: 'low' },
-    { title: 'Launch social media ads', campaign: 'Brand Awareness', assignee: 'John S.', due: '2026-01-12', status: 'overdue', priority: 'high' },
-  ];
+  const tasks: Array<{ title: string; campaign: string; assignee: string; due: string; status: string; priority: string }> = [];
 
   return (
     <div className="space-y-6">
