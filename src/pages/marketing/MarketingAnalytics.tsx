@@ -18,12 +18,9 @@ const downloadText = (filename: string, content: string) => {
 };
 
 export const MarketingAnalytics: React.FC = () => {
-  const [budgets, setBudgets] = useState(
-    [
-      { id: '1', channel: 'SMS', monthly_budget: 1200000, target_leads: 320, target_roi: 4.5 },
-      { id: '2', channel: 'Email', monthly_budget: 800000, target_leads: 210, target_roi: 3.1 },
-    ] as Array<{ id: string; channel: string; monthly_budget: number; target_leads: number; target_roi: number }>
-  );
+  const [budgets, setBudgets] = useState<
+    Array<{ id: string; channel: string; monthly_budget: number; target_leads: number; target_roi: number }>
+  >([]);
   const [form, setForm] = useState({ channel: '', monthly_budget: '', target_leads: '', target_roi: '' });
 
   const totalBudget = useMemo(

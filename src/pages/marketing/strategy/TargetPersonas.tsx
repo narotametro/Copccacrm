@@ -10,38 +10,16 @@ export const TargetPersonas: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPersonaName, setNewPersonaName] = useState('');
   const [newPersonaSegment, setNewPersonaSegment] = useState('Small-Medium Business');
-  const personas = [
-    {
-      name: 'Enterprise James',
-      segment: 'Large Businesses',
-      location: 'Urban - Lagos, Abuja',
-      income: '₦5M - ₦20M monthly',
-      pain: ['Unreliable suppliers', 'Poor after-sales', 'Delayed delivery'],
-      jtbd: 'Keep operations running without supply chain issues',
-      channels: ['Direct Sales', 'LinkedIn', 'Industry Events'],
-      performance: { leads: 145, conversion: 4.2, revenue: 8500000 },
-    },
-    {
-      name: 'SME Sarah',
-      segment: 'Small-Medium Business',
-      location: 'Semi-Urban - State Capitals',
-      income: '₦500K - ₦2M monthly',
-      pain: ['High prices', 'Complex procurement', 'Limited support'],
-      jtbd: 'Affordable quality equipment with easy access',
-      channels: ['Online Store', 'WhatsApp', 'SMS', 'Email'],
-      performance: { leads: 312, conversion: 3.5, revenue: 4200000 },
-    },
-    {
-      name: 'Reseller Mike',
-      segment: 'Channel Partners',
-      location: 'Regional - All States',
-      income: '₦200K - ₦1M monthly',
-      pain: ['Margin pressure', 'Inventory management', 'Training gaps'],
-      jtbd: 'Reliable partner with good margins and support',
-      channels: ['Partner Portal', 'Direct Contact', 'Training Events'],
-      performance: { leads: 87, conversion: 5.1, revenue: 2100000 },
-    },
-  ];
+  const personas: Array<{
+    name: string;
+    segment: string;
+    location: string;
+    income: string;
+    pain: string[];
+    jtbd: string;
+    channels: string[];
+    performance: { leads: number; conversion: number; revenue: number };
+  }> = [];
 
   return (
     <div className="space-y-6">

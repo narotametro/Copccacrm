@@ -46,19 +46,19 @@ export const MarketingStrategy: React.FC = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Strategy Health</div>
-              <div className="text-2xl font-bold">87%</div>
+              <div className="text-2xl font-bold">0%</div>
             </Card>
             <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Active Personas</div>
-              <div className="text-2xl font-bold">5</div>
+              <div className="text-2xl font-bold">0</div>
             </Card>
             <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Budget Allocated</div>
-              <div className="text-2xl font-bold">92%</div>
+              <div className="text-2xl font-bold">0%</div>
             </Card>
             <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Campaigns Linked</div>
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">0</div>
             </Card>
           </div>
 

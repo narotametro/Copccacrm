@@ -20,12 +20,14 @@ const downloadText = (filename: string, content: string) => {
 export const CampaignPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();
 
-  const campaigns = [
-    { name: 'Enterprise Q1 Push', leads: 145, revenue: 8500000, roi: 3.2, conversion: 4.2, engagement: 8.5 },
-    { name: 'SME Digital Campaign', leads: 312, revenue: 4200000, roi: 2.1, conversion: 3.5, engagement: 6.8 },
-    { name: 'WhatsApp Outreach', leads: 189, revenue: 3100000, roi: 3.8, conversion: 4.8, engagement: 9.2 },
-    { name: 'LinkedIn Ads', leads: 87, revenue: 2100000, roi: 4.5, conversion: 5.1, engagement: 7.4 },
-  ];
+  const campaigns: Array<{
+    name: string;
+    leads: number;
+    revenue: number;
+    roi: number;
+    conversion: number;
+    engagement: number;
+  }> = [];
 
   return (
     <div className="space-y-6">

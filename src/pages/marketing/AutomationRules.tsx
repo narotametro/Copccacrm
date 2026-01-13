@@ -5,44 +5,12 @@ import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 
 export const AutomationRules: React.FC = () => {
-  const rules = [
-    {
-      name: 'Auto-create campaigns from strategy',
-      description: 'When new strategy is created, automatically suggest campaign templates',
-      status: 'active',
-      triggered: 12,
-    },
-    {
-      name: 'Auto-pause low ROI campaigns',
-      description: 'Pause campaigns with ROI < 1.5x after 2 weeks',
-      status: 'active',
-      triggered: 3,
-    },
-    {
-      name: 'Auto-shift budget',
-      description: 'Move 10% budget from low performers to high performers weekly',
-      status: 'active',
-      triggered: 8,
-    },
-    {
-      name: 'Trigger sales follow-ups',
-      description: 'Alert sales team when lead shows high engagement',
-      status: 'active',
-      triggered: 47,
-    },
-    {
-      name: 'Low lead volume alert',
-      description: 'Notify when weekly leads drop below 50',
-      status: 'paused',
-      triggered: 2,
-    },
-    {
-      name: 'Competitor activity alert',
-      description: 'Alert when competitor launches new campaign',
-      status: 'active',
-      triggered: 5,
-    },
-  ];
+  const rules: Array<{
+    name: string;
+    description: string;
+    status: string;
+    triggered: number;
+  }> = [];
 
   return (
     <div className="space-y-6">

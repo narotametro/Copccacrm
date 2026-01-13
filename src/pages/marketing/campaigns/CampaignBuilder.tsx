@@ -22,20 +22,7 @@ export const CampaignBuilder: React.FC = () => {
       endDate: string;
       notes: string;
     }>
-  >([
-    {
-      id: 'demo-1',
-      name: 'SME Q1 Digital Push',
-      strategy: 'SME Acquisition',
-      objective: 'Lead Generation',
-      audience: 'SME Sarah, Reseller Mike',
-      channels: ['Email', 'SMS', 'Social Media'],
-      budget: 1200000,
-      startDate: '2026-02-01',
-      endDate: '2026-03-31',
-      notes: 'Focus on WhatsApp retargeting and nurture automation.',
-    },
-  ]);
+  >([]);
 
   const [formData, setFormData] = useState({
     name: '',

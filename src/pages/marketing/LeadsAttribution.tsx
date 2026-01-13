@@ -20,19 +20,19 @@ const downloadText = (filename: string, content: string) => {
 export const LeadsAttribution: React.FC = () => {
   const { formatCurrency } = useCurrency();
 
-  const sources = [
-    { source: 'Direct Sales', firstTouch: 487, lastTouch: 512, revenue: 1850000, quality: 9.2 },
-    { source: 'Digital Ads', firstTouch: 312, lastTouch: 198, revenue: 980000, quality: 7.1 },
-    { source: 'Social Media', firstTouch: 289, lastTouch: 156, revenue: 750000, quality: 6.8 },
-    { source: 'Email', firstTouch: 98, lastTouch: 245, revenue: 420000, quality: 8.5 },
-    { source: 'SMS', firstTouch: 61, lastTouch: 136, revenue: 250000, quality: 8.9 },
-  ];
+  const sources: Array<{
+    source: string;
+    firstTouch: number;
+    lastTouch: number;
+    revenue: number;
+    quality: number;
+  }> = [];
 
-  const conversionPaths = [
-    { path: 'Social Media → Email → Direct Sales', count: 145, value: 8500000 },
-    { path: 'Digital Ads → Email → Website', count: 98, value: 4200000 },
-    { path: 'SMS → WhatsApp → Direct Sales', count: 67, value: 3100000 },
-  ];
+  const conversionPaths: Array<{
+    path: string;
+    count: number;
+    value: number;
+  }> = [];
 
   return (
     <div className="space-y-6">

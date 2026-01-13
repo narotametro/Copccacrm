@@ -17,20 +17,22 @@ export const CampaignDashboard: React.FC = () => {
   };
 
   const kpis = [
-    { label: 'Active Campaigns', value: '14', icon: Megaphone, color: 'green' },
-    { label: 'Total Leads', value: '1,247', icon: Users, color: 'blue' },
-    { label: 'Conversion Rate', value: '3.8%', icon: TrendingUp, color: 'purple' },
-    { label: 'Total Cost', value: formatCurrency(6540000), icon: Banknote, color: 'orange' },
-    { label: 'Revenue Generated', value: formatCurrency(18970000), icon: Target, color: 'pink' },
-    { label: 'ROI', value: '2.9x', icon: TrendingUp, color: 'green' },
+    { label: 'Active Campaigns', value: '0', icon: Megaphone, color: 'green' },
+    { label: 'Total Leads', value: '0', icon: Users, color: 'blue' },
+    { label: 'Conversion Rate', value: '0%', icon: TrendingUp, color: 'purple' },
+    { label: 'Total Cost', value: formatCurrency(0), icon: Banknote, color: 'orange' },
+    { label: 'Revenue Generated', value: formatCurrency(0), icon: Target, color: 'pink' },
+    { label: 'ROI', value: '0x', icon: TrendingUp, color: 'green' },
   ];
 
-  const campaigns = [
-    { name: 'Enterprise Q1 Push', status: 'active', leads: 145, budget: 2100000, roi: 3.2, endDate: '2026-03-31' },
-    { name: 'SME Digital Campaign', status: 'active', leads: 312, budget: 1950000, roi: 2.1, endDate: '2026-02-28' },
-    { name: 'LinkedIn Ads - Enterprise', status: 'active', leads: 87, budget: 890000, roi: 4.5, endDate: '2026-02-15' },
-    { name: 'WhatsApp Outreach', status: 'active', leads: 189, budget: 450000, roi: 3.8, endDate: '2026-03-10' },
-  ];
+  const campaigns: Array<{
+    name: string;
+    status: string;
+    leads: number;
+    budget: number;
+    roi: number;
+    endDate: string;
+  }> = [];
 
   return (
     <div className="space-y-6">

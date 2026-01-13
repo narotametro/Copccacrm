@@ -1,16 +1,11 @@
 import React from 'react';
-import { FileText, Image, Video, FileType, Sparkles, Upload, Wand2, FolderPlus } from 'lucide-react';
+import { Sparkles, Upload, Wand2, FolderPlus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 
 export const ContentAssets: React.FC = () => {
-  const assets = [
-    { name: 'Q1 Email Template', type: 'template', icon: FileText, uses: 12 },
-    { name: 'Product Banner', type: 'image', icon: Image, uses: 8 },
-    { name: 'Demo Video', type: 'video', icon: Video, uses: 15 },
-    { name: 'Sales Pitch Deck', type: 'document', icon: FileType, uses: 6 },
-  ];
+  const assets: Array<{ name: string; type: string; icon: any; uses: number }> = [];
 
   return (
     <div className="space-y-6">

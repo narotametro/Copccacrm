@@ -29,37 +29,27 @@ export const FourPsStrategy: React.FC = () => {
 
   const fourPs = {
     product: {
-      items: ['Industrial Pumps', 'Solar Systems', 'Generators', 'Water Treatment'],
-      benefits: ['Durability', 'Energy Efficiency', 'Easy Maintenance', 'Local Support'],
-      quality: 'Premium',
-      differentiators: ['24/7 Support', 'Same-day Service', 'Extended Warranty'],
+      items: [] as string[],
+      benefits: [] as string[],
+      quality: '',
+      differentiators: [] as string[],
     },
     price: {
-      model: 'Tiered Pricing',
-      basePrice: 150000,
-      discounts: ['5% bulk orders', '10% annual contracts', '3% early payment'],
-      sensitivity: 'Medium',
-      competitorComparison: [
-        { name: 'Competitor A', price: 165000, position: 'Higher' },
-        { name: 'Competitor B', price: 148000, position: 'Similar' },
-        { name: 'You', price: 150000, position: 'Competitive' },
-      ],
+      model: '',
+      basePrice: 0,
+      discounts: [] as string[],
+      sensitivity: '',
+      competitorComparison: [] as Array<{ name: string; price: number; position: string }>,
     },
     place: {
-      channels: [
-        { name: 'Direct Sales', performance: 92, active: true },
-        { name: 'Online Store', performance: 78, active: true },
-        { name: 'Retail Partners', performance: 65, active: true },
-        { name: 'Distributors', performance: 71, active: true },
-        { name: 'Resellers', performance: 58, active: false },
-      ],
-      coverage: ['Lagos', 'Abuja', 'Port Harcourt', 'Kano', 'Ibadan'],
+      channels: [] as Array<{ name: string; performance: number; active: boolean }>,
+      coverage: [] as string[],
     },
     promotion: {
-      messages: ['Reliable. Local. Always Available.', 'Your Partner in Growth'],
-      tone: 'Professional, trustworthy, solution-focused',
-      channels: ['Direct Sales', 'LinkedIn', 'Industry Events', 'Email', 'SMS'],
-      themes: ['Quality', 'Support', 'Reliability', 'Local Presence'],
+      messages: [] as string[],
+      tone: '',
+      channels: [] as string[],
+      themes: [] as string[],
     },
   };
 
