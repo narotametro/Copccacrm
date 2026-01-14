@@ -133,10 +133,10 @@ const AppRoutes = () => {
         <Route path="" element={<Navigate to="/app/dashboard" replace />} />
       </Route>
 
-      {/* Redirect root to dashboard if authenticated */}
+      {/* Catch-all: Redirect to login or dashboard - but not for admin routes */}
       <Route
         path="*"
-        element={<Navigate to={user ? "/app/dashboard" : "/login"} replace />}
+        element={<Navigate to="/" replace />}
       />
     </Routes>
   );
