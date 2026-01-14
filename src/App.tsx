@@ -142,6 +142,13 @@ const AppRoutes = () => {
   );
 };
 
+// Restore requested path BEFORE React Router initializes
+const requestedPath = sessionStorage.getItem('requested_path');
+if (requestedPath && requestedPath !== window.location.pathname) {
+  sessionStorage.removeItem('requested_path');
+  window.history.replaceState(null, '', requestedPath);
+}
+
 const App = () => {
   const initialize = useAuthStore((state) => state.initialize);
   const [initialized, setInitialized] = useState(false);
@@ -152,15 +159,8 @@ const App = () => {
         setInitialized(true);
       });
     }
-    
-    // Handle 404 redirect from server
-    const requestedPath = sessionStorage.getItem('requested_path');
-    if (requestedPath && requestedPath !== window.location.pathname) {
-      sessionStorage.removeItem('requested_path');
-      window.history.replaceState(null, '', requestedPath);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized]);
+  }, []);
 
   return (
     <CurrencyProvider>
