@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Shield, LogOut, Users, BarChart3, Clock, Database, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { useCurrency, currencies } from '@/context/CurrencyContext';
 
 export const COPCCAAdminLayout: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const adminEmail = sessionStorage.getItem('copcca_admin_email');
   const { currency, setCurrency } = useCurrency();
 
@@ -20,8 +21,8 @@ export const COPCCAAdminLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Top Bar */}
-      <div className="bg-black/30 backdrop-blur-sm border-b border-white/10">
+      {/* Top Bar - Sticky */}
+      <div className="sticky top-0 z-50 bg-black/30 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -72,34 +73,42 @@ export const COPCCAAdminLayout: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10">
+      {/* Navigation Tabs - Sticky */}
+      <div className="sticky top-16 z-40 bg-black/20 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-1 py-2">
             <button
               onClick={() => navigate('/copcca-admin/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/dashboard' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
             >
               <BarChart3 size={16} />
               <span className="text-sm font-medium">Dashboard</span>
             </button>
             <button
               onClick={() => navigate('/copcca-admin/companies')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/companies' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
             >
               <Users size={16} />
               <span className="text-sm font-medium">Companies</span>
             </button>
             <button
               onClick={() => navigate('/copcca-admin/subscriptions')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/subscriptions' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
             >
               <Clock size={16} />
               <span className="text-sm font-medium">Subscriptions</span>
             </button>
             <button
               onClick={() => navigate('/copcca-admin/system')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/system' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
             >
               <Database size={16} />
               <span className="text-sm font-medium">System</span>

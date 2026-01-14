@@ -277,14 +277,23 @@ export const PlatformAdmin: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <Shield className="text-purple-600" size={32} />
-            COPCCA CRM Platform Admin
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Shield className="text-white" size={32} />
+            Subscription Management
           </h1>
-          <p className="text-slate-600 mt-1">Manage subscriptions, users, and revenue</p>
+          <p className="text-white mt-1">Manage subscriptions, users, and revenue</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" icon={Download}>Export Report</Button>
+          <Button 
+            variant="secondary" 
+            icon={Download}
+            onClick={() => {
+              toast.success('Export functionality coming soon!');
+              console.log('Exporting report...');
+            }}
+          >
+            Export Report
+          </Button>
           <Button icon={CreditCard} onClick={() => setShowAddModal(true)}>New Subscription</Button>
         </div>
       </div>
@@ -475,15 +484,13 @@ export const PlatformAdmin: React.FC = () => {
                           <RefreshCw size={16} />
                         </button>
                       )}
-                      {sub.status === 'active' && (
-                        <button
-                          onClick={() => handleStatusChange(sub.id, 'suspended')}
-                          className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors text-orange-600"
-                          title="Suspend"
-                        >
-                          <AlertTriangle size={16} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleStatusChange(sub.id, sub.status === 'suspended' ? 'active' : 'suspended')}
+                        className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors text-orange-600"
+                        title={sub.status === 'suspended' ? 'Unsuspend' : 'Suspend'}
+                      >
+                        {sub.status === 'suspended' ? <Unlock size={16} /> : <Lock size={16} />}
+                      </button>
                       <button
                         onClick={() => handleTogglePaymentPopup(sub.id)}
                         className={`p-1.5 rounded-lg transition-colors ${
@@ -504,6 +511,18 @@ export const PlatformAdmin: React.FC = () => {
                         title="Manage Users"
                       >
                         <Users size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete ${sub.companyName}?`)) {
+                            setSubscriptions(subscriptions.filter(s => s.id !== sub.id));
+                            toast.success('Subscription deleted');
+                          }
+                        }}
+                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
