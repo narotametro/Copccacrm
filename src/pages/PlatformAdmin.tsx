@@ -449,8 +449,8 @@ export const PlatformAdmin: React.FC = () => {
         <Card className="border-l-4 border-emerald-500 bg-white/5 backdrop-blur-sm">
           <Banknote className="text-emerald-400 mb-2" size={24} />
           <p className="text-sm text-white/70">Monthly Revenue</p>
-          <p className="text-3xl font-bold text-white">₦{(stats.monthlyRevenue / 1000).toFixed(0)}K</p>
-          <p className="text-xs text-white/70 mt-1">Annual: ₦{(stats.monthlyRevenue * 12 / 1000000).toFixed(1)}M</p>
+          <p className="text-2xl font-bold text-white break-words">₦{(stats.monthlyRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-xs text-white/70 mt-1 break-words">Avg: ₦{(stats.monthlyRevenue / stats.activeSubscriptions / 1000).toFixed(0)}K</p>
         </Card>
       </div>
 
