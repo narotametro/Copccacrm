@@ -1,10 +1,23 @@
-﻿import React, { useState } from 'react';
-import { Bell, Globe, Palette, Database, Download, Trash2, Save, Lock, Eye, EyeOff } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { Bell, Globe, Palette, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabase';
 
 export const Settings: React.FC = () => {
+  const { user } = useAuthStore();
+  const [companyInfo, setCompanyInfo] = useState({
+    name: '',
+    industry: '',
+    size: '',
+    website: '',
+    phone: '',
+    address: '',
+  });
+  const [loadingCompany, setLoadingCompany] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -33,6 +46,50 @@ export const Settings: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Load company information
+  useEffect(() => {
+    const loadCompanyData = async () => {
+      if (!user) return;
+
+      try {
+        // Get user's role and company_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role, company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userData) {
+          setIsAdmin(userData.role === 'admin');
+
+          // Load company information if user has a company
+          if (userData.company_id) {
+            const { data: companyData } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('id', userData.company_id)
+              .single();
+
+            if (companyData) {
+              setCompanyInfo({
+                name: companyData.name || '',
+                industry: companyData.industry || '',
+                size: companyData.size || '',
+                website: companyData.website || '',
+                phone: companyData.phone || '',
+                address: companyData.address || '',
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load company data:', error);
+      }
+    };
+
+    loadCompanyData();
+  }, [user]);
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -56,8 +113,71 @@ export const Settings: React.FC = () => {
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
+  const handleCompanySave = async () => {
+    if (!user || !isAdmin) {
+      toast.error('Only admins can update company information');
+      return;
+    }
+
+    setLoadingCompany(true);
+    try {
+      // Get user's company_id
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) {
+        toast.error('No company associated with your account');
+        return;
+      }
+
+      // Update company information
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name: companyInfo.name,
+          industry: companyInfo.industry,
+          size: companyInfo.size,
+          website: companyInfo.website,
+          phone: companyInfo.phone,
+          address: companyInfo.address,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userData.company_id);
+
+      if (error) throw error;
+
+      toast.success('Company information updated successfully');
+    } catch (error) {
+      console.error('Failed to update company:', error);
+      toast.error('Failed to update company information');
+    } finally {
+      setLoadingCompany(false);
+    }
+  };
+
   const handleThemeChange = (value: 'light' | 'dark' | 'auto') => {
     setTheme(value);
+    // Store theme preference in localStorage
+    localStorage.setItem('theme', value);
+    
+    // Apply theme to document
+    if (value === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (value === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      // Auto: check system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+    
     toast.success(`Theme set to ${value}`);
   };
 
@@ -145,9 +265,98 @@ export const Settings: React.FC = () => {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900"> Settings</h1>
+        <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
         <p className="text-slate-600 mt-1">Manage notifications, preferences, appearance, and security.</p>
       </div>
+
+      {/* Company Information - Only for Admins */}
+      {isAdmin && (
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Building className="text-primary-600" size={20} />
+            <h2 className="text-xl font-bold text-slate-900">Company Information</h2>
+          </div>
+          <p className="text-sm text-slate-600 mb-4">
+            Manage your company profile. This information is shared with all users in your organization.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Company Name *</label>
+              <input
+                type="text"
+                value={companyInfo.name}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
+                placeholder="COPCCA Technologies"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Industry</label>
+              <input
+                type="text"
+                value={companyInfo.industry}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, industry: e.target.value })}
+                placeholder="Technology, Retail, etc."
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Company Size</label>
+              <select
+                value={companyInfo.size}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, size: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="">Select size</option>
+                <option value="1-10">1-10 employees</option>
+                <option value="11-50">11-50 employees</option>
+                <option value="51-200">51-200 employees</option>
+                <option value="201-500">201-500 employees</option>
+                <option value="500+">500+ employees</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+              <input
+                type="url"
+                value={companyInfo.website}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, website: e.target.value })}
+                placeholder="https://example.com"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                value={companyInfo.phone}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
+                placeholder="+234 800 000 0000"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+              <input
+                type="text"
+                value={companyInfo.address}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
+                placeholder="123 Business Ave, Lagos"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <Button 
+              icon={Save} 
+              onClick={handleCompanySave}
+              disabled={loadingCompany || !companyInfo.name}
+            >
+              {loadingCompany ? 'Saving...' : 'Save Company Information'}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

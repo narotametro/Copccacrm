@@ -121,10 +121,27 @@ export const UserManagement: React.FC = () => {
 
       setLoadingUsers(true);
       try {
-        const { data: dbUsers, error: usersError } = await supabase
+        // First, get current user's company info
+        const { data: currentUserData } = await supabase
+          .from('users')
+          .select('company_id, is_company_owner')
+          .eq('id', user.id)
+          .single();
+        
+        const userCompanyId = currentUserData?.company_id;
+
+        // Fetch only users from the same company (excluding other independent admins)
+        const query = supabase
           .from('users')
           .select('*')
           .order('created_at', { ascending: false });
+        
+        // Filter by company_id to show only company members
+        if (userCompanyId) {
+          query.eq('company_id', userCompanyId);
+        }
+
+        const { data: dbUsers, error: usersError } = await query;
 
         if (usersError || !dbUsers) {
           console.warn('Falling back to demo users:', usersError?.message);

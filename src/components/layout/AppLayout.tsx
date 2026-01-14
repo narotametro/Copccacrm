@@ -90,12 +90,20 @@ export const AppLayout: React.FC = () => {
 
   // Demo: Check if current user's company has payment popup enabled
   // In production, this would come from Supabase subscription data
-  const [showPaymentPopup] = useState(false); // Change to true for demo
+  const [showPaymentPopup, setShowPaymentPopup] = useState(true); // TEMPORARY DEMO: Set to true
   const demoCompanyData = {
     companyName: displayProfile?.full_name ? `${displayProfile.full_name}'s Company` : 'Your Company',
     daysOverdue: 15,
     amount: 120000,
   };
+  
+  // Auto-hide popup after 10 seconds for demo
+  React.useEffect(() => {
+    if (showPaymentPopup) {
+      const timer = setTimeout(() => setShowPaymentPopup(false), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [showPaymentPopup]);
 
   const markAsRead = (id: string) => {
     setNotifications(notifications.map(n =>
