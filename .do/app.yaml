@@ -1,19 +1,16 @@
 name: copcca-crm
-services:
+static_sites:
   - name: web
     github:
       repo: narotametro/Copccacrm
       branch: main
       deploy_on_push: true
     build_command: npm run build
-    run_command: npx serve -s dist -l 8080
-    environment_slug: node-js
-    instance_count: 1
-    instance_size_slug: basic-xxs
+    output_dir: dist
+    catchall_document: index.html
+    error_document: index.html
     routes:
       - path: /
     envs:
       - key: NODE_ENV
         value: production
-    source_dir: /
-    output_dir: dist
