@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   CreditCard,
@@ -24,6 +24,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { formatName, formatEmail } from '@/lib/textFormat';
+import { supabase } from '@/lib/supabase';
 
 interface Subscription {
   id: string;
@@ -71,90 +72,113 @@ export const PlatformAdmin: React.FC = () => {
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'trial' | 'expired' | 'suspended'>('all');
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Demo subscription data
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([
-    {
-      id: '1',
-      companyName: 'TechCorp Nigeria Ltd',
-      adminEmail: 'admin@techcorp.ng',
-      adminName: 'chukwuma okafor',
-      plan: 'enterprise',
-      status: 'active',
-      userCount: 45,
-      maxUsers: 100,
-      monthlyFee: 250000,
-      startDate: '2025-06-15',
-      renewalDate: '2026-02-15',
-      lastPayment: '2026-01-15',
-      totalRevenue: 1750000,
-      showPaymentPopup: false,
-      users: [
-        { id: 'u1', name: 'chukwuma okafor', email: 'admin@techcorp.ng', role: 'admin', status: 'active', lastActive: '2 hours ago' },
-        { id: 'u2', name: 'james okoro', email: 'james@techcorp.ng', role: 'user', status: 'active', lastActive: '5 hours ago' },
-      ],
-    },
-    {
-      id: '2',
-      companyName: 'Global Trade Solutions',
-      adminEmail: 'admin@gts.com',
-      adminName: 'amina mohammed',
-      plan: 'professional',
-      status: 'active',
-      userCount: 18,
-      maxUsers: 25,
-      monthlyFee: 120000,
-      startDate: '2025-09-01',
-      renewalDate: '2026-02-01',
-      lastPayment: '2026-01-01',
-      totalRevenue: 600000,
-      showPaymentPopup: false,
-      users: [
-        { id: 'u4', name: 'amina mohammed', email: 'admin@gts.com', role: 'admin', status: 'active', lastActive: '1 hour ago' },
-        { id: 'u5', name: 'paul eze', email: 'paul@gts.com', role: 'user', status: 'active', lastActive: '30 mins ago' },
-      ],
-    },
-    {
-      id: '3',
-      companyName: 'StartHub Africa',
-      adminEmail: 'ceo@starthub.africa',
-      adminName: 'john adebayo',
-      plan: 'starter',
-      status: 'trial',
-      userCount: 5,
-      maxUsers: 10,
-      monthlyFee: 45000,
-      startDate: '2026-01-05',
-      renewalDate: '2026-01-12',
-      lastPayment: 'N/A',
-      totalRevenue: 0,
-      trialDaysLeft: 1,
-      showPaymentPopup: false,
-      users: [
-        { id: 'u6', name: 'john adebayo', email: 'ceo@starthub.africa', role: 'admin', status: 'active', lastActive: '10 mins ago' },
-      ],
-    },
-    {
-      id: '4',
-      companyName: 'Legacy Industries',
-      adminEmail: 'admin@legacy.co',
-      adminName: 'SARAH THOMPSON',
-      plan: 'professional',
-      status: 'expired',
-      userCount: 12,
-      maxUsers: 25,
-      monthlyFee: 120000,
-      startDate: '2025-03-01',
-      renewalDate: '2025-12-01',
-      lastPayment: '2025-11-01',
-      totalRevenue: 1080000,
-      showPaymentPopup: true,
-      users: [
-        { id: 'u7', name: 'sarah thompson', email: 'admin@legacy.co', role: 'admin', status: 'active', lastActive: '1 day ago' },
-        { id: 'u8', name: 'mike johnson', email: 'mike@legacy.co', role: 'user', status: 'active', lastActive: '2 days ago' },
-      ],
-    },
-  ]);
+  // Fetch real data from Supabase
+  useEffect(() => {
+    fetchRealData();
+  }, []);
+
+  const fetchRealData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch user profiles and companies
+      const { data: profiles, error: profilesError } = await supabase
+        .from('users')
+        .select('*');
+
+      const { data: companies } = await supabase
+        .from('companies')
+        .select('*');
+
+      if (profilesError) {
+        console.error('Profiles error:', profilesError);
+        toast.error('Could not fetch users');
+        setSubscriptions([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!profiles || profiles.length === 0) {
+        toast.info('No users found in database');
+        setSubscriptions([]);
+        setLoading(false);
+        return;
+      }
+
+      // Group users by email domain to simulate companies
+      const usersByDomain: { [key: string]: any[] } = {};
+      
+      profiles.forEach(user => {
+        const emailDomain = user.email?.split('@')[1] || 'unknown';
+        if (!usersByDomain[emailDomain]) {
+          usersByDomain[emailDomain] = [];
+        }
+        usersByDomain[emailDomain].push(user);
+      });
+
+      // Convert to subscription format
+      const subs: Subscription[] = Object.entries(usersByDomain).map(([domain, users]) => {
+        const adminUser = users.find(u => u.role === 'admin') || users[0];
+        const company = companies?.find(c => c.email?.includes(domain));
+        
+        const createdDate = new Date(adminUser.created_at);
+        const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        const isTrial = daysSinceCreation <= 7;
+        
+        let plan: 'starter' | 'professional' | 'enterprise' = 'starter';
+        let maxUsers = 10;
+        let monthlyFee = 45000;
+        
+        if (users.length > 25) {
+          plan = 'enterprise';
+          maxUsers = 100;
+          monthlyFee = 250000;
+        } else if (users.length > 10) {
+          plan = 'professional';
+          maxUsers = 25;
+          monthlyFee = 120000;
+        }
+
+        return {
+          id: adminUser.id,
+          companyName: company?.name || `${domain.split('.')[0].toUpperCase()} Company`,
+          adminEmail: adminUser.email || '',
+          adminName: adminUser.full_name || adminUser.email?.split('@')[0] || 'Unknown',
+          plan,
+          status: isTrial ? 'trial' : 'active',
+          userCount: users.length,
+          maxUsers,
+          monthlyFee,
+          startDate: createdDate.toISOString().split('T')[0],
+          renewalDate: new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          lastPayment: isTrial ? 'N/A' : createdDate.toISOString().split('T')[0],
+          totalRevenue: isTrial ? 0 : monthlyFee * Math.ceil(daysSinceCreation / 30),
+          trialDaysLeft: isTrial ? Math.max(0, 7 - daysSinceCreation) : undefined,
+          showPaymentPopup: false,
+          users: users.map(u => ({
+            id: u.id,
+            name: u.full_name || u.email?.split('@')[0] || 'Unknown',
+            email: u.email || '',
+            role: u.role || 'user',
+            status: u.status === 'active' ? 'active' : 'disabled',
+            lastActive: new Date(u.updated_at || u.created_at).toLocaleDateString()
+          }))
+        };
+      });
+
+      setSubscriptions(subs);
+      toast.success(`Loaded ${subs.length} ${subs.length === 1 ? 'company' : 'companies'} from database`);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load real data');
+      setSubscriptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -176,6 +200,18 @@ export const PlatformAdmin: React.FC = () => {
     expiredAccounts: subscriptions.filter(s => s.status === 'expired').length,
     suspendedAccounts: subscriptions.filter(s => s.status === 'suspended').length,
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <RefreshCw className="animate-spin mx-auto mb-4 text-purple-600" size={48} />
+          <p className="text-white text-lg">Loading real data from database...</p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesSearch = sub.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
