@@ -56,6 +56,36 @@ export const PaymentPopup: React.FC<PaymentPopupProps> = ({
             <p className="text-xs text-red-600 mt-1">Per Month</p>
           </div>
 
+          {/* Pricing Details */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-300 rounded-lg p-4">
+            <p className="text-sm font-bold text-slate-900 mb-3 text-center">COPCCA CRM Pricing</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-md border border-blue-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <span className="text-sm font-medium text-slate-700">Admin Seat</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-blue-600">₦15,000</p>
+                  <p className="text-xs text-slate-500">/user/month</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-md border border-green-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <span className="text-sm font-medium text-slate-700">Member Seat</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-600">₦10,000</p>
+                  <p className="text-xs text-slate-500">/user/month</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 mt-3 text-center italic">
+              Full access to all features • No hidden fees • Cancel anytime
+            </p>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-slate-700">
               <div className="w-2 h-2 bg-red-500 rounded-full"></div>
