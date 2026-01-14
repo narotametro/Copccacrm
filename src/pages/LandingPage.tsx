@@ -91,6 +91,11 @@ export const LandingPage = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="text-center space-y-8">
           <div className="space-y-4">
+            <div className="inline-block px-6 py-2 border-2 border-slate-300 rounded-xl bg-white/80 backdrop-blur-sm">
+              <p className="text-sm md:text-base font-semibold text-slate-700 tracking-wide">
+                COPCCA — Convert Operations & Performance into Clear, Confident Action
+              </p>
+            </div>
             <h1 className="text-6xl md:text-8xl font-black text-slate-900 leading-tight">
               Turn Data into{' '}
               <span className="bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent font-black">
