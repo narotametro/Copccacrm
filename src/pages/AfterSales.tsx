@@ -111,7 +111,6 @@ export const AfterSales: React.FC = () => {
     linked_type: '',
     linked_name: '',
   });
-  const [loading, setLoading] = useState(true);
   const [, setSyncing] = useState(false);
 
   const columns = [
@@ -220,7 +219,6 @@ export const AfterSales: React.FC = () => {
     const fetchTasks = async () => {
       if (!supabaseReady || !user) {
         setTasks(demoTasks);
-        setLoading(false);
         return;
       }
 
@@ -233,13 +231,11 @@ export const AfterSales: React.FC = () => {
       if (error) {
         console.warn('Failed to load tasks, falling back to demo data:', error.message);
         setTasks(demoTasks);
-        setLoading(false);
         return;
       }
 
       const mapped = (data || []).map(mapRowToTask);
       setTasks(mapped.length ? mapped : demoTasks);
-      setLoading(false);
     };
 
     fetchTasks();
@@ -304,10 +300,6 @@ export const AfterSales: React.FC = () => {
   const overdueTasks = tasks.filter(t => t.is_overdue).length;
   const urgentTasks = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
   const avgCompletionTime = 5.3; // Demo value
-
-  if (loading) {
-    return <div className="p-6 text-sm text-slate-600">Loading after-sales tasks...</div>;
-  }
 
   return (
     <div className="space-y-4 md:space-y-6">
