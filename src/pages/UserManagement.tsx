@@ -130,15 +130,23 @@ export const UserManagement: React.FC = () => {
         
         const userCompanyId = currentUserData?.company_id;
 
-        // Fetch only users from the same company (excluding other independent admins)
+        // Fetch only users from the same company
+        // This ensures:
+        // 1. Other independent sign-ups (different company_id) are excluded
+        // 2. Only invited users within the same company are shown
+        // 3. The current admin sees themselves + their invited team members
         const query = supabase
           .from('users')
           .select('*')
           .order('created_at', { ascending: false });
         
-        // Filter by company_id to show only company members
+        // CRITICAL: Filter by company_id to show ONLY same-company users
+        // This prevents admins from seeing users from other companies
         if (userCompanyId) {
           query.eq('company_id', userCompanyId);
+        } else {
+          // If no company_id, only show the current user (edge case)
+          query.eq('id', user.id);
         }
 
         const { data: dbUsers, error: usersError } = await query;

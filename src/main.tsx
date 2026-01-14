@@ -5,6 +5,19 @@ import './index.css';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Toaster } from 'sonner';
 
+// Apply saved theme on app load
+const savedTheme = localStorage.getItem('theme') || 'light';
+if (savedTheme === 'dark') {
+  document.documentElement.classList.add('dark');
+  document.body.classList.add('bg-slate-900');
+} else if (savedTheme === 'auto') {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (prefersDark) {
+    document.documentElement.classList.add('dark');
+    document.body.classList.add('bg-slate-900');
+  }
+}
+
 // Check if root element exists
 const rootElement = document.getElementById('root');
 if (!rootElement) {

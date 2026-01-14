@@ -34,7 +34,10 @@ export const Settings: React.FC = () => {
     dateFormat: 'DD/MM/YYYY',
   });
 
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return (savedTheme as 'light' | 'dark' | 'auto') || 'light';
+  });
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -160,25 +163,29 @@ export const Settings: React.FC = () => {
 
   const handleThemeChange = (value: 'light' | 'dark' | 'auto') => {
     setTheme(value);
-    // Store theme preference in localStorage
     localStorage.setItem('theme', value);
     
-    // Apply theme to document
+    // Apply theme immediately
     if (value === 'dark') {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('bg-slate-900');
+      document.body.classList.remove('bg-white');
     } else if (value === 'light') {
       document.documentElement.classList.remove('dark');
+      document.body.classList.add('bg-white');
+      document.body.classList.remove('bg-slate-900');
     } else {
-      // Auto: check system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (prefersDark) {
         document.documentElement.classList.add('dark');
+        document.body.classList.add('bg-slate-900');
+        document.body.classList.remove('bg-white');
       } else {
         document.documentElement.classList.remove('dark');
+        document.body.classList.add('bg-white');
+        document.body.classList.remove('bg-slate-900');
       }
     }
-    
-    toast.success(`Theme set to ${value}`);
   };
 
   const handlePreferencesSave = () => {
@@ -215,10 +222,10 @@ export const Settings: React.FC = () => {
   };
 
   const renderToggle = (label: string, description: string, key: keyof typeof notifications) => (
-    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
       <div>
-        <p className="font-medium text-slate-900">{label}</p>
-        <p className="text-sm text-slate-600">{description}</p>
+        <p className="font-medium text-slate-900 dark:text-white">{label}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{description}</p>
       </div>
       <label className="relative inline-flex items-center cursor-pointer">
         <input
@@ -227,7 +234,7 @@ export const Settings: React.FC = () => {
           onChange={() => toggleNotification(key)}
           className="sr-only peer"
         />
-        <div className="w-11 h-6 bg-slate-300 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+        <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
       </label>
     </div>
   );
@@ -263,49 +270,49 @@ export const Settings: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 bg-white dark:bg-slate-900 min-h-screen">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600 mt-1">Manage notifications, preferences, appearance, and security.</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">Manage notifications, preferences, appearance, and security.</p>
       </div>
 
       {/* Company Information - Only for Admins */}
       {isAdmin && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
-            <Building className="text-primary-600" size={20} />
-            <h2 className="text-xl font-bold text-slate-900">Company Information</h2>
+            <Building className="text-primary-600 dark:text-primary-400" size={20} />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Company Information</h2>
           </div>
-          <p className="text-sm text-slate-600 mb-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
             Manage your company profile. This information is shared with all users in your organization.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Company Name *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Name *</label>
               <input
                 type="text"
                 value={companyInfo.name}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
                 placeholder="COPCCA Technologies"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Industry</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Industry</label>
               <input
                 type="text"
                 value={companyInfo.industry}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, industry: e.target.value })}
                 placeholder="Technology, Retail, etc."
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Company Size</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Size</label>
               <select
                 value={companyInfo.size}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, size: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               >
                 <option value="">Select size</option>
                 <option value="1-10">1-10 employees</option>
@@ -316,33 +323,33 @@ export const Settings: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Website</label>
               <input
                 type="url"
                 value={companyInfo.website}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, website: e.target.value })}
                 placeholder="https://example.com"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
               <input
                 type="tel"
                 value={companyInfo.phone}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
                 placeholder="+234 800 000 0000"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address</label>
               <input
                 type="text"
                 value={companyInfo.address}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
                 placeholder="123 Business Ave, Lagos"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
           </div>
@@ -361,19 +368,19 @@ export const Settings: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <div className="flex items-center gap-2 mb-4">
-            <Bell className="text-primary-600" size={20} />
-            <h2 className="text-xl font-bold text-slate-900">Notifications</h2>
+            <Bell className="text-primary-600 dark:text-primary-400" size={20} />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notifications</h2>
           </div>
           <div className="space-y-3">
             {renderToggle('Email alerts', 'Get updates via email for key events', 'email')}
             {renderToggle('Push notifications', 'Desktop and in-app alerts', 'push')}
             {renderToggle('SMS alerts', 'Critical account and billing notices', 'sms')}
           </div>
-          <div className="pt-4 border-t border-slate-200 mt-4">
-            <p className="font-medium text-slate-900 mb-3">Notify me about</p>
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 mt-4">
+            <p className="font-medium text-slate-900 dark:text-white mb-3">Notify me about</p>
             <div className="space-y-2">
               {['deals', 'tasks', 'reports'].map((key) => (
-                <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
+                <label key={key} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={notifications[key as keyof typeof notifications]}
@@ -389,16 +396,16 @@ export const Settings: React.FC = () => {
 
         <Card>
           <div className="flex items-center gap-2 mb-4">
-            <Globe className="text-primary-600" size={20} />
-            <h2 className="text-xl font-bold text-slate-900">Preferences</h2>
+            <Globe className="text-primary-600 dark:text-primary-400" size={20} />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Preferences</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Language</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
               <select
                 value={preferences.language}
                 onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               >
                 <option value="en">English</option>
                 <option value="fr">French</option>

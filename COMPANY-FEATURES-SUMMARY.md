@@ -89,14 +89,21 @@ const [showPaymentPopup, setShowPaymentPopup] = useState(true); // TEMPORARY DEM
 
 **Location:** [src/pages/UserManagement.tsx](src/pages/UserManagement.tsx#L122-L145)
 
+**Behavior:**
+- ✅ **Other independent sign-ups are HIDDEN** - Admins who registered separately (different companies) will NOT appear
+- ✅ **Only same-company users shown** - Users must share the same `company_id` to be visible
+- ✅ **Invited users only** - Only users invited by someone in the same company appear
+- ✅ **Company owner sees themselves + invited team** - The admin sees their own profile plus all invited users
+- ✅ **Cross-company isolation** - Company A cannot see Company B users, ever
+
 **Changes:**
 ```typescript
-// OLD: Fetch all users
+// OLD: Fetch all users (WRONG - shows everyone)
 const { data: dbUsers } = await supabase
   .from('users')
   .select('*')
 
-// NEW: Fetch only same-company users
+// NEW: Fetch only same-company users (CORRECT - isolated by company)
 const { data: currentUserData } = await supabase
   .from('users')
   .select('company_id, is_company_owner')
@@ -110,16 +117,26 @@ const query = supabase
   .select('*')
   .order('created_at', { ascending: false });
 
+// CRITICAL: Filter by company_id to prevent cross-company visibility
 if (userCompanyId) {
-  query.eq('company_id', userCompanyId); // Filter by company
+  query.eq('company_id', userCompanyId); // Show ONLY same company
+} else {
+  query.eq('id', user.id); // Edge case: show only self if no company
 }
 ```
 
+**Example Scenario:**
+- **Admin A** signs up → Gets Company 1, sees only Company 1 users
+- **Admin B** signs up → Gets Company 2, sees only Company 2 users
+- **Admin A invites User C** → User C joins Company 1, visible to Admin A only
+- **Admin B invites User D** → User D joins Company 2, visible to Admin B only
+- **Result:** Admin A never sees Admin B, User D, or any Company 2 users
+
 **Result:**
 - Admins only see users from their own company
-- Other independent admins (different companies) are hidden
+- Other independent admins (different companies) are completely hidden
 - Only invited users within the same company appear
-- Both Admin tab and user dropdown filtered
+- Both Admin tab and user dropdown filtered (user dropdown currently shows "All Users" only as placeholder)
 
 ---
 
@@ -187,26 +204,35 @@ psql <your-database-url> < database-add-company-to-users.sql
 
 ## 🎯 User Workflows
 
-### Workflow 1: New Company Sign-Up
-1. User registers account → Auto creates company
-2. User becomes admin and company owner
-3. User can edit company info in Settings
-4. User can invite team members
-5. Invited users belong to same company
+### Workflow 1: New Company Sign-Up (Independent Admin)
+1. **User A registers** → Auto creates "User A's Company" (company_id = 1)
+2. User A becomes admin and company owner (`is_company_owner = true`)
+3. User A can edit company info in Settings
+4. User A can invite team members (they get company_id = 1)
+5. All invited users belong to same company
 
-### Workflow 2: Inviting Users
+### Workflow 2: Another Independent Sign-Up (Different Company)
+1. **User B registers** (separately) → Auto creates "User B's Company" (company_id = 2)
+2. User B becomes admin and company owner of Company 2
+3. **User A CANNOT see User B** (different company_id)
+4. **User B CANNOT see User A** (different company_id)
+5. Complete isolation between companies
+
+### Workflow 3: Inviting Users
 1. Admin goes to User Management
 2. Clicks "Add User"
-3. Fills in user details
-4. System generates invitation link
-5. Invited user accepts → Gets assigned to admin's company
-6. Invited user appears in admin's user list
+3. Fills in user details (name, email, role)
+4. System generates invitation link with `created_by = admin.id`
+5. Invited user accepts → Gets assigned `company_id = admin.company_id`
+6. Invited user appears in admin's user list (same company_id)
+7. Invited user does NOT appear in other admins' lists (different company_id)
 
-### Workflow 3: Multi-Company Isolation
-- Company A admin sees only Company A users
-- Company B admin sees only Company B users
-- No cross-company data visibility
+### Workflow 4: Multi-Company Isolation (CRITICAL)
+- **Company A admin** sees only Company A users (company_id = 1)
+- **Company B admin** sees only Company B users (company_id = 2)
+- No cross-company data visibility whatsoever
 - Each company has independent subscription
+- Other independent sign-ups are completely hidden
 
 ---
 
