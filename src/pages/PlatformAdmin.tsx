@@ -242,11 +242,32 @@ export const PlatformAdmin: React.FC = () => {
     toast.success(`${newSub.companyName} added with 7-day free trial!`);
   };
 
-  const handleStatusChange = (id: string, newStatus: Subscription['status']) => {
-    setSubscriptions(subscriptions.map(sub =>
-      sub.id === id ? { ...sub, status: newStatus } : sub
-    ));
-    toast.success('Subscription status updated');
+  const handleStatusChange = async (id: string, newStatus: Subscription['status']) => {
+    try {
+      // Update local state immediately for responsive UI
+      setSubscriptions(subscriptions.map(sub =>
+        sub.id === id ? { ...sub, status: newStatus } : sub
+      ));
+      
+      // Update in database
+      const { error } = await supabase
+        .from('users')
+        .update({ status: newStatus === 'suspended' ? 'inactive' : 'active' })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error updating status:', error);
+        toast.error('Failed to update in database');
+        // Revert local state
+        fetchRealData();
+      } else {
+        toast.success(`Subscription status updated to ${newStatus}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to update status');
+      fetchRealData();
+    }
   };
 
   const handleTogglePaymentPopup = (id: string) => {
@@ -255,38 +276,109 @@ export const PlatformAdmin: React.FC = () => {
     ));
     const sub = subscriptions.find(s => s.id === id);
     if (sub) {
-      toast.success(sub.showPaymentPopup ? 'Payment popup removed' : 'Payment popup added');
+      toast.success(sub.showPaymentPopup ? 'Payment popup will be removed' : 'Payment popup will be shown');
     }
   };
 
-  const handleToggleUserStatus = (subscriptionId: string, userId: string) => {
-    setSubscriptions(subscriptions.map(sub =>
-      sub.id === subscriptionId
-        ? {
-            ...sub,
-            users: sub.users.map(user =>
-              user.id === userId
-                ? { ...user, status: user.status === 'active' ? 'disabled' : 'active' }
-                : user
-            ),
-          }
-        : sub
-    ));
-    toast.success('User status updated');
+  const handleDeleteSubscription = async (id: string, companyName: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${companyName}? This will disable all users from this company.`)) return;
+    
+    try {
+      // Disable all users from this subscription
+      const sub = subscriptions.find(s => s.id === id);
+      if (!sub) return;
+
+      const userIds = sub.users.map(u => u.id);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ status: 'inactive' })
+        .in('id', userIds);
+      
+      if (error) {
+        console.error('Error deleting subscription:', error);
+        toast.error('Failed to delete subscription');
+      } else {
+        // Remove from local state
+        setSubscriptions(subscriptions.filter(s => s.id !== id));
+        toast.success('Subscription deleted - all users disabled');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to delete subscription');
+    }
   };
 
-  const handleDeleteUser = (subscriptionId: string, userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
-    setSubscriptions(subscriptions.map(sub =>
-      sub.id === subscriptionId
-        ? {
-            ...sub,
-            users: sub.users.filter(user => user.id !== userId),
-            userCount: sub.userCount - 1,
-          }
-        : sub
-    ));
-    toast.success('User deleted successfully');
+  const handleToggleUserStatus = async (subscriptionId: string, userId: string) => {
+    try {
+      const sub = subscriptions.find(s => s.id === subscriptionId);
+      const user = sub?.users.find(u => u.id === userId);
+      
+      if (!user) return;
+
+      const newStatus = user.status === 'active' ? 'inactive' : 'active';
+      
+      // Update in database
+      const { error } = await supabase
+        .from('users')
+        .update({ status: newStatus })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('Error updating user status:', error);
+        toast.error('Failed to update user status');
+      } else {
+        // Update local state
+        setSubscriptions(subscriptions.map(sub =>
+          sub.id === subscriptionId
+            ? {
+                ...sub,
+                users: sub.users.map(user =>
+                  user.id === userId
+                    ? { ...user, status: newStatus === 'active' ? 'active' : 'disabled' }
+                    : user
+                ),
+              }
+            : sub
+        ));
+        toast.success(`User ${newStatus === 'active' ? 'enabled' : 'disabled'}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to update user');
+    }
+  };
+
+  const handleDeleteUser = async (subscriptionId: string, userId: string) => {
+    if (!window.confirm('Are you sure you want to delete this user? This will permanently remove them.')) return;
+    
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast.error('Failed to delete user');
+      } else {
+        // Update local state
+        setSubscriptions(subscriptions.map(sub =>
+          sub.id === subscriptionId
+            ? {
+                ...sub,
+                users: sub.users.filter(user => user.id !== userId),
+                userCount: sub.userCount - 1,
+              }
+            : sub
+        ));
+        toast.success('User deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to delete user');
+    }
   };
 
   const getPlanColor = (plan: string) => {
@@ -549,12 +641,7 @@ export const PlatformAdmin: React.FC = () => {
                         <Users size={16} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Are you sure you want to delete ${sub.companyName}?`)) {
-                            setSubscriptions(subscriptions.filter(s => s.id !== sub.id));
-                            toast.success('Subscription deleted');
-                          }
-                        }}
+                        onClick={() => handleDeleteSubscription(sub.id, sub.companyName)}
                         className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600"
                         title="Delete"
                       >
