@@ -383,20 +383,20 @@ export const PlatformAdmin: React.FC = () => {
 
   const getPlanColor = (plan: string) => {
     switch (plan) {
-      case 'enterprise': return 'text-purple-700 bg-purple-100 border-purple-300';
-      case 'professional': return 'text-blue-700 bg-blue-100 border-blue-300';
-      case 'starter': return 'text-green-700 bg-green-100 border-green-300';
-      default: return 'text-slate-700 bg-slate-100 border-slate-300';
+      case 'enterprise': return 'text-purple-300 bg-purple-500/20 border-purple-400/30';
+      case 'professional': return 'text-blue-300 bg-blue-500/20 border-blue-400/30';
+      case 'starter': return 'text-green-300 bg-green-500/20 border-green-400/30';
+      default: return 'text-white/70 bg-white/10 border-white/20';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'text-green-700 bg-green-100 border-green-300';
-      case 'trial': return 'text-blue-700 bg-blue-100 border-blue-300';
-      case 'expired': return 'text-red-700 bg-red-100 border-red-300';
-      case 'suspended': return 'text-orange-700 bg-orange-100 border-orange-300';
-      default: return 'text-slate-700 bg-slate-100 border-slate-300';
+      case 'active': return 'text-green-300 bg-green-500/20 border-green-400/30';
+      case 'trial': return 'text-blue-300 bg-blue-500/20 border-blue-400/30';
+      case 'expired': return 'text-red-300 bg-red-500/20 border-red-400/30';
+      case 'suspended': return 'text-orange-300 bg-orange-500/20 border-orange-400/30';
+      default: return 'text-white/70 bg-white/10 border-white/20';
     }
   };
 
@@ -428,71 +428,72 @@ export const PlatformAdmin: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-blue-500">
-          <Users className="text-blue-600 mb-2" size={24} />
-          <p className="text-sm text-slate-600">Total Companies</p>
-          <p className="text-3xl font-bold text-slate-900">{stats.totalCompanies}</p>
-          <p className="text-xs text-green-600 mt-1">↑ +{stats.trialAccounts} on trial</p>
+        <Card className="border-l-4 border-blue-500 bg-white/5 backdrop-blur-sm">
+          <Users className="text-blue-400 mb-2" size={24} />
+          <p className="text-sm text-white/70">Total Companies</p>
+          <p className="text-3xl font-bold text-white">{stats.totalCompanies}</p>
+          <p className="text-xs text-green-400 mt-1">↑ +{stats.trialAccounts} on trial</p>
         </Card>
-        <Card className="border-l-4 border-green-500">
-          <CheckCircle className="text-green-600 mb-2" size={24} />
-          <p className="text-sm text-slate-600">Active Subscriptions</p>
-          <p className="text-3xl font-bold text-green-600">{stats.activeSubscriptions}</p>
-          <p className="text-xs text-slate-600 mt-1">{((stats.activeSubscriptions / stats.totalCompanies) * 100).toFixed(0)}% of total</p>
+        <Card className="border-l-4 border-green-500 bg-white/5 backdrop-blur-sm">
+          <CheckCircle className="text-green-400 mb-2" size={24} />
+          <p className="text-sm text-white/70">Active Subscriptions</p>
+          <p className="text-3xl font-bold text-white">{stats.activeSubscriptions}</p>
+          <p className="text-xs text-white/70 mt-1">{stats.totalCompanies > 0 ? ((stats.activeSubscriptions / stats.totalCompanies) * 100).toFixed(0) : 0}% of total</p>
         </Card>
-        <Card className="border-l-4 border-purple-500">
-          <Activity className="text-purple-600 mb-2" size={24} />
-          <p className="text-sm text-slate-600">Active Users</p>
-          <p className="text-3xl font-bold text-purple-600">{stats.activeUsers}</p>
-          <p className="text-xs text-slate-600 mt-1">of {stats.totalUsers} total users</p>
+        <Card className="border-l-4 border-purple-500 bg-white/5 backdrop-blur-sm">
+          <Activity className="text-purple-400 mb-2" size={24} />
+          <p className="text-sm text-white/70">Active Users</p>
+          <p className="text-3xl font-bold text-white">{stats.activeUsers}</p>
+          <p className="text-xs text-white/70 mt-1">of {stats.totalUsers} total users</p>
         </Card>
-        <Card className="border-l-4 border-emerald-500">
-          <Banknote className="text-emerald-600 mb-2" size={24} />
-          <p className="text-sm text-slate-600">Monthly Revenue</p>
-          <p className="text-3xl font-bold text-emerald-600">₦{(stats.monthlyRevenue / 1000).toFixed(0)}K</p>
-          <p className="text-xs text-slate-600 mt-1">Annual: ₦{(stats.monthlyRevenue * 12 / 1000000).toFixed(1)}M</p>
+        <Card className="border-l-4 border-emerald-500 bg-white/5 backdrop-blur-sm">
+          <Banknote className="text-emerald-400 mb-2" size={24} />
+          <p className="text-sm text-white/70">Monthly Revenue</p>
+          <p className="text-3xl font-bold text-white">₦{(stats.monthlyRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-xs text-white/70 mt-1">Annual: ₦{(stats.monthlyRevenue * 12 / 1000000).toFixed(1)}M</p>
         </Card>
       </div>
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-white/5 backdrop-blur-sm border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-700 font-medium">Trial Accounts</p>
-              <p className="text-2xl font-bold text-blue-900">{stats.trialAccounts}</p>
+              <p className="text-sm text-white/70 font-medium">Trial Accounts</p>
+              <p className="text-2xl font-bold text-white">{stats.trialAccounts}</p>
             </div>
-            <Clock className="text-blue-600" size={32} />
+            <Clock className="text-blue-400" size={32} />
           </div>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-white/5 backdrop-blur-sm border-red-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-red-700 font-medium">Expired Accounts</p>
-              <p className="text-2xl font-bold text-red-900">{stats.expiredAccounts}</p>
+              <p className="text-sm text-white/70 font-medium">Expired Accounts</p>
+              <p className="text-2xl font-bold text-white">{stats.expiredAccounts}</p>
             </div>
-            <XCircle className="text-red-600" size={32} />
+            <XCircle className="text-red-400" size={32} />
           </div>
         </Card>
-        <Card className="bg-orange-50 border-orange-200">
+        <Card className="bg-white/5 backdrop-blur-sm border-orange-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-orange-700 font-medium">Suspended Accounts</p>
-              <p className="text-2xl font-bold text-orange-900">{stats.suspendedAccounts}</p>
+              <p className="text-sm text-white/70 font-medium">Suspended Accounts</p>
+              <p className="text-2xl font-bold text-white">{stats.suspendedAccounts}</p>
             </div>
-            <AlertTriangle className="text-orange-600" size={32} />
+            <AlertTriangle className="text-orange-400" size={32} />
           </div>
         </Card>
       </div>
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="bg-white/5 backdrop-blur-sm">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <Input
               placeholder="Search by company, email, or admin name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
             />
           </div>
           <div className="flex gap-2">
@@ -503,7 +504,7 @@ export const PlatformAdmin: React.FC = () => {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   filterStatus === status
                     ? 'bg-primary-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -514,28 +515,28 @@ export const PlatformAdmin: React.FC = () => {
       </Card>
 
       {/* Subscriptions Table */}
-      <Card>
+      <Card className="bg-white/5 backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Company</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Plan</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Status</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Users</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Monthly Fee</th>
-                <th className="text-left p-3 text-sm font-semibold text-slate-700">Renewal Date</th>
-                <th className="text-right p-3 text-sm font-semibold text-slate-700">Actions</th>
+              <tr className="border-b border-white/20">
+                <th className="text-left p-3 text-sm font-semibold text-white">Company</th>
+                <th className="text-left p-3 text-sm font-semibold text-white">Plan</th>
+                <th className="text-left p-3 text-sm font-semibold text-white">Status</th>
+                <th className="text-left p-3 text-sm font-semibold text-white">Users</th>
+                <th className="text-left p-3 text-sm font-semibold text-white">Monthly Fee</th>
+                <th className="text-left p-3 text-sm font-semibold text-white">Renewal Date</th>
+                <th className="text-right p-3 text-sm font-semibold text-white">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredSubscriptions.map((sub) => (
-                <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50">
+                <tr key={sub.id} className="border-b border-white/10 hover:bg-white/5">
                   <td className="p-3">
                     <div>
-                      <p className="font-semibold text-slate-900">{sub.companyName}</p>
-                      <p className="text-xs text-slate-600">{formatEmail(sub.adminEmail)}</p>
-                      <p className="text-xs text-slate-500">{formatName(sub.adminName)}</p>
+                      <p className="font-semibold text-white">{sub.companyName}</p>
+                      <p className="text-xs text-white/70">{formatEmail(sub.adminEmail)}</p>
+                      <p className="text-xs text-white/60">{formatName(sub.adminName)}</p>
                     </div>
                   </td>
                   <td className="p-3">
@@ -552,20 +553,20 @@ export const PlatformAdmin: React.FC = () => {
                       {sub.status.toUpperCase()}
                     </span>
                     {sub.status === 'trial' && sub.trialDaysLeft !== undefined && (
-                      <p className="text-xs text-orange-600 font-semibold mt-1">
+                      <p className="text-xs text-orange-300 font-semibold mt-1">
                         {sub.trialDaysLeft} {sub.trialDaysLeft === 1 ? 'day' : 'days'} left
                       </p>
                     )}
                     {sub.showPaymentPopup && (
-                      <p className="text-xs text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <p className="text-xs text-red-300 font-semibold mt-1 flex items-center gap-1">
                         <Bell size={10} /> Popup Active
                       </p>
                     )}
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium text-slate-900">{sub.userCount}/{sub.maxUsers}</div>
-                      <div className="w-20 bg-slate-200 rounded-full h-2">\n                        <div
+                      <div className="text-sm font-medium text-white">{sub.userCount}/{sub.maxUsers}</div>
+                      <div className="w-20 bg-white/20 rounded-full h-2">\n                        <div
                           className={`h-2 rounded-full ${
                             (sub.userCount / sub.maxUsers) > 0.8 ? 'bg-orange-500' : 'bg-blue-500'
                           }`}
@@ -575,12 +576,12 @@ export const PlatformAdmin: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-3">
-                    <p className="font-semibold text-slate-900">₦{(sub.monthlyFee / 1000).toFixed(0)}K</p>
-                    <p className="text-xs text-slate-500">₦{(sub.totalRevenue / 1000).toFixed(0)}K total</p>
+                    <p className="font-semibold text-white">₦{(sub.monthlyFee / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-white/60">₦{(sub.totalRevenue / 1000).toFixed(0)}K total</p>
                   </td>
                   <td className="p-3">
-                    <p className="text-sm text-slate-700">{new Date(sub.renewalDate).toLocaleDateString()}</p>
-                    <p className="text-xs text-slate-500">{Math.ceil((new Date(sub.renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days</p>
+                    <p className="text-sm text-white">{new Date(sub.renewalDate).toLocaleDateString()}</p>
+                    <p className="text-xs text-white/60">{Math.ceil((new Date(sub.renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days</p>
                   </td>
                   <td className="p-3">
                     <div className="flex items-center justify-end gap-2">
@@ -589,7 +590,7 @@ export const PlatformAdmin: React.FC = () => {
                           setSelectedSubscription(sub);
                           setShowDetailsModal(true);
                         }}
-                        className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+                        className="p-1.5 hover:bg-blue-500/20 rounded-lg transition-colors text-blue-300"
                         title="View Details"
                       >
                         <BarChart3 size={16} />
@@ -597,7 +598,7 @@ export const PlatformAdmin: React.FC = () => {
                       {sub.status === 'trial' && (
                         <button
                           onClick={() => handleStatusChange(sub.id, 'active')}
-                          className="p-1.5 hover:bg-green-100 rounded-lg transition-colors text-green-600"
+                          className="p-1.5 hover:bg-green-500/20 rounded-lg transition-colors text-green-300"
                           title="Activate"
                         >
                           <CheckCircle size={16} />
@@ -606,7 +607,7 @@ export const PlatformAdmin: React.FC = () => {
                       {sub.status === 'expired' && (
                         <button
                           onClick={() => handleStatusChange(sub.id, 'active')}
-                          className="p-1.5 hover:bg-green-100 rounded-lg transition-colors text-green-600"
+                          className="p-1.5 hover:bg-green-500/20 rounded-lg transition-colors text-green-300"
                           title="Renew"
                         >
                           <RefreshCw size={16} />
@@ -614,7 +615,7 @@ export const PlatformAdmin: React.FC = () => {
                       )}
                       <button
                         onClick={() => handleStatusChange(sub.id, sub.status === 'suspended' ? 'active' : 'suspended')}
-                        className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors text-orange-600"
+                        className="p-1.5 hover:bg-orange-500/20 rounded-lg transition-colors text-orange-300"
                         title={sub.status === 'suspended' ? 'Unsuspend' : 'Suspend'}
                       >
                         {sub.status === 'suspended' ? <Unlock size={16} /> : <Lock size={16} />}
@@ -623,8 +624,8 @@ export const PlatformAdmin: React.FC = () => {
                         onClick={() => handleTogglePaymentPopup(sub.id)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           sub.showPaymentPopup
-                            ? 'hover:bg-green-100 text-green-600'
-                            : 'hover:bg-red-100 text-red-600'
+                            ? 'hover:bg-green-500/20 text-green-300'
+                            : 'hover:bg-red-500/20 text-red-300'
                         }`}
                         title={sub.showPaymentPopup ? 'Remove Payment Popup' : 'Add Payment Popup'}
                       >
@@ -635,14 +636,14 @@ export const PlatformAdmin: React.FC = () => {
                           setSelectedSubscription(sub);
                           setShowUsersModal(true);
                         }}
-                        className="p-1.5 hover:bg-purple-100 rounded-lg transition-colors text-purple-600"
+                        className="p-1.5 hover:bg-purple-500/20 rounded-lg transition-colors text-purple-300"
                         title="Manage Users"
                       >
                         <Users size={16} />
                       </button>
                       <button
                         onClick={() => handleDeleteSubscription(sub.id, sub.companyName)}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                        className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors text-red-300"
                         title="Delete"
                       >
                         <Trash2 size={16} />
@@ -685,7 +686,7 @@ export const PlatformAdmin: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Plan</label>
+              <label className="block text-sm font-medium text-white mb-2">Plan</label>
               <select
                 value={formData.plan}
                 onChange={(e) => {
@@ -694,7 +695,7 @@ export const PlatformAdmin: React.FC = () => {
                   const users = { starter: 10, professional: 25, enterprise: 100 };
                   setFormData({ ...formData, plan, monthlyFee: fees[plan], maxUsers: users[plan] });
                 }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-white/20 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-primary-500"
               >
                 <option value="starter">Starter - ₦45K/mo</option>
                 <option value="professional">Professional - ₦120K/mo</option>
@@ -733,29 +734,29 @@ export const PlatformAdmin: React.FC = () => {
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Admin Name</p>
-                <p className="text-lg font-semibold text-slate-900">{formatName(selectedSubscription.adminName)}</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Admin Name</p>
+                <p className="text-lg font-semibold text-white">{formatName(selectedSubscription.adminName)}</p>
               </Card>
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Admin Email</p>
-                <p className="text-lg font-semibold text-slate-900">{formatEmail(selectedSubscription.adminEmail)}</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Admin Email</p>
+                <p className="text-lg font-semibold text-white">{formatEmail(selectedSubscription.adminEmail)}</p>
               </Card>
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Start Date</p>
-                <p className="text-lg font-semibold text-slate-900">{new Date(selectedSubscription.startDate).toLocaleDateString()}</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Start Date</p>
+                <p className="text-lg font-semibold text-white">{new Date(selectedSubscription.startDate).toLocaleDateString()}</p>
               </Card>
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Last Payment</p>
-                <p className="text-lg font-semibold text-slate-900">{selectedSubscription.lastPayment}</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Last Payment</p>
+                <p className="text-lg font-semibold text-white">{selectedSubscription.lastPayment}</p>
               </Card>
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Total Revenue</p>
-                <p className="text-lg font-semibold text-emerald-600">₦{(selectedSubscription.totalRevenue / 1000).toFixed(0)}K</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Total Revenue</p>
+                <p className="text-lg font-semibold text-emerald-300">₦{(selectedSubscription.totalRevenue / 1000).toFixed(0)}K</p>
               </Card>
-              <Card className="bg-slate-50">
-                <p className="text-sm text-slate-600">Next Renewal</p>
-                <p className="text-lg font-semibold text-slate-900">{new Date(selectedSubscription.renewalDate).toLocaleDateString()}</p>
+              <Card className="bg-white/5 backdrop-blur-sm">
+                <p className="text-sm text-white/70">Next Renewal</p>
+                <p className="text-lg font-semibold text-white">{new Date(selectedSubscription.renewalDate).toLocaleDateString()}</p>
               </Card>
             </div>
           </div>
@@ -780,35 +781,35 @@ export const PlatformAdmin: React.FC = () => {
 
             <div className="space-y-2">
               {selectedSubscription.users.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
+                <div className="text-center py-8 text-white/70">
                   <Users size={48} className="mx-auto mb-2 opacity-50" />
                   <p>No users found for this company</p>
                 </div>
               ) : (
                 selectedSubscription.users.map((user) => (
-                  <Card key={user.id} className="p-4">
+                  <Card key={user.id} className="p-4 bg-white/5 backdrop-blur-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                          user.status === 'active' ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-slate-400'
+                          user.status === 'active' ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-white/20'
                         }`}>
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900">{formatName(user.name)}</p>
-                          <p className="text-xs text-slate-600">{formatEmail(user.email)}</p>
+                          <p className="font-semibold text-white">{formatName(user.name)}</p>
+                          <p className="text-xs text-white/70">{formatEmail(user.email)}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                              user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                              user.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
                             }`}>
                               {user.role.toUpperCase()}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                              user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              user.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
                             }`}>
                               {user.status.toUpperCase()}
                             </span>
-                            <span className="text-xs text-slate-500">• Last active: {user.lastActive}</span>
+                            <span className="text-xs text-white/60">• Last active: {user.lastActive}</span>
                           </div>
                         </div>
                       </div>
@@ -817,8 +818,8 @@ export const PlatformAdmin: React.FC = () => {
                           onClick={() => handleToggleUserStatus(selectedSubscription.id, user.id)}
                           className={`p-2 rounded-lg transition-colors ${
                             user.status === 'active'
-                              ? 'hover:bg-orange-100 text-orange-600'
-                              : 'hover:bg-green-100 text-green-600'
+                              ? 'hover:bg-orange-500/20 text-orange-300'
+                              : 'hover:bg-green-500/20 text-green-300'
                           }`}
                           title={user.status === 'active' ? 'Disable User' : 'Enable User'}
                         >
@@ -827,7 +828,7 @@ export const PlatformAdmin: React.FC = () => {
                         {user.role !== 'admin' && (
                           <button
                             onClick={() => handleDeleteUser(selectedSubscription.id, user.id)}
-                            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+                            className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-300"
                             title="Delete User"
                           >
                             <Trash2 size={16} />
@@ -840,9 +841,9 @@ export const PlatformAdmin: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-4 border-t border-slate-200">
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
+            <div className="pt-4 border-t border-white/20">
+              <div className="p-3 bg-amber-500/20 border border-amber-400/30 rounded-lg">
+                <p className="text-sm text-amber-200">
                   <AlertTriangle className="inline mr-2" size={16} />
                   <strong>Note:</strong> Disabled users cannot access the system. Admin users cannot be deleted.
                 </p>
