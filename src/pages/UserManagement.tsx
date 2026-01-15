@@ -27,6 +27,8 @@ import {
   Link2,
   MessageCircle,
   Banknote,
+  Globe,
+  Briefcase,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -104,6 +106,8 @@ export const UserManagement: React.FC = () => {
   const [invitationLink, setInvitationLink] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [invites, setInvites] = useState<DbInvite[]>([]);
+  const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [loadingCompany, setLoadingCompany] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -199,7 +203,43 @@ export const UserManagement: React.FC = () => {
       }
     };
 
+    const loadCompanyInfo = async () => {
+      if (!isSupabaseConfigured || !user) return;
+
+      setLoadingCompany(true);
+      try {
+        const { data: currentUserData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (currentUserData?.company_id) {
+          const { data: company } = await supabase
+            .from('companies')
+            .select('*, created_by')
+            .eq('id', currentUserData.company_id)
+            .single();
+
+          if (company) {
+            // Get user count
+            const { count } = await supabase
+              .from('users')
+              .select('*', { count: 'exact', head: true })
+              .eq('company_id', company.id);
+
+            setCompanyInfo({ ...company, user_count: count || 0 });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading company:', error);
+      } finally {
+        setLoadingCompany(false);
+      }
+    };
+
     loadUsers();
+    loadCompanyInfo();
   }, [user]);
 
   const filteredUsers = users.filter((user) => {
@@ -531,6 +571,96 @@ export const UserManagement: React.FC = () => {
           <p className="text-3xl font-bold text-orange-600">{users.length - activeUsers}</p>
         </Card>
       </div>
+
+      {/* Company Information Section */}
+      {companyInfo && (
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-600 rounded-xl">
+                <Briefcase className="text-white" size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Company Information</h3>
+                <p className="text-sm text-slate-600">Manage your company profile and subscription</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            <div className="bg-white p-4 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Building className="text-blue-600" size={18} />
+                <p className="text-xs font-medium text-slate-500 uppercase">Company Name</p>
+              </div>
+              <p className="text-lg font-bold text-slate-900">{companyInfo.name}</p>
+            </div>
+
+            {companyInfo.industry && (
+              <div className="bg-white p-4 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Briefcase className="text-blue-600" size={18} />
+                  <p className="text-xs font-medium text-slate-500 uppercase">Industry</p>
+                </div>
+                <p className="text-lg font-bold text-slate-900">{companyInfo.industry}</p>
+              </div>
+            )}
+
+            <div className="bg-white p-4 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="text-blue-600" size={18} />
+                <p className="text-xs font-medium text-slate-500 uppercase">Users</p>
+              </div>
+              <p className="text-lg font-bold text-slate-900">
+                {companyInfo.user_count}/{companyInfo.max_users || 10}
+              </p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="text-blue-600" size={18} />
+                <p className="text-xs font-medium text-slate-500 uppercase">Subscription Plan</p>
+              </div>
+              <p className="text-lg font-bold text-slate-900 capitalize">
+                {companyInfo.subscription_plan || 'Starter'}
+              </p>
+            </div>
+
+            {companyInfo.website && (
+              <div className="bg-white p-4 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Globe className="text-blue-600" size={18} />
+                  <p className="text-xs font-medium text-slate-500 uppercase">Website</p>
+                </div>
+                <a 
+                  href={companyInfo.website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline truncate block"
+                >
+                  {companyInfo.website}
+                </a>
+              </div>
+            )}
+
+            {companyInfo.phone && (
+              <div className="bg-white p-4 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Phone className="text-blue-600" size={18} />
+                  <p className="text-xs font-medium text-slate-500 uppercase">Phone</p>
+                </div>
+                <p className="text-sm text-slate-900">{companyInfo.phone}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <p className="text-xs text-slate-600">
+              <strong>Note:</strong> To update company information, go to Settings → Company Information
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* Search and Filters */}
       <Card>

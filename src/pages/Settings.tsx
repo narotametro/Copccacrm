@@ -16,9 +16,11 @@ export const Settings: React.FC = () => {
     phone: '',
     address: '',
   });
+  const [showCompanyNameInNavbar, setShowCompanyNameInNavbar] = useState(false);
   const [loadingCompany, setLoadingCompany] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -61,6 +63,7 @@ export const Settings: React.FC = () => {
         if (userData) {
           setIsAdmin(userData.role === 'admin');
           setIsCompanyOwner(userData.is_company_owner || false);
+          setCompanyId(userData.company_id);
 
           // Only company owners need to manage company information
           // Invited users automatically inherit the company from their inviter
@@ -69,7 +72,7 @@ export const Settings: React.FC = () => {
             if (userData.company_id) {
               const { data: companyData } = await supabase
                 .from('companies')
-                .select('*')
+                .select('*, show_company_name_in_navbar')
                 .eq('id', userData.company_id)
                 .single();
 
@@ -82,6 +85,7 @@ export const Settings: React.FC = () => {
                   phone: companyData.phone || '',
                   address: companyData.address || '',
                 });
+                setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar || false);
               }
             }
             return; // Exit early - invited users don't need auto-creation
@@ -137,7 +141,7 @@ export const Settings: React.FC = () => {
             // Load existing company information
             const { data: companyData } = await supabase
               .from('companies')
-              .select('*')
+              .select('*, show_company_name_in_navbar')
               .eq('id', userData.company_id)
               .single();
 
@@ -150,6 +154,7 @@ export const Settings: React.FC = () => {
                 phone: companyData.phone || '',
                 address: companyData.address || '',
               });
+              setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar || false);
             }
           }
         }
@@ -214,6 +219,7 @@ export const Settings: React.FC = () => {
           website: companyInfo.website,
           phone: companyInfo.phone,
           address: companyInfo.address,
+          show_company_name_in_navbar: showCompanyNameInNavbar,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userData.company_id);
@@ -403,6 +409,31 @@ export const Settings: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Display Settings */}
+          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Display Settings</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">Show Company Name in Navbar</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Display company name in the navbar for all team members
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showCompanyNameInNavbar}
+                    onChange={(e) => setShowCompanyNameInNavbar(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-4">
             <Button 
               icon={Save} 

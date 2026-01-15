@@ -45,7 +45,6 @@ const menuItems = [
   { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
   { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
   { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },
-  { icon: Building, label: 'Companies', path: '/app/companies', requiresAdmin: true },
   { icon: Globe, label: 'My Workplace', path: '/app/my-workplace' },
 ];
 
@@ -59,11 +58,11 @@ export const AppLayout: React.FC = () => {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [userFilterDropdownOpen, setUserFilterDropdownOpen] = useState(false);
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
-
-  // Team members for filtering
-  const teamMembers = [
+  const [showCompanyName, setShowCompanyName] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([
     { id: 'all', name: 'All Users', role: '' },
-  ];
+  ]);
 
   // Notification state with sender info
   const [notifications, setNotifications] = useState<Array<{
@@ -81,6 +80,17 @@ export const AppLayout: React.FC = () => {
   const effectiveRole = profile?.role || (user?.user_metadata as { role?: string } | undefined)?.role || user?.role || 'user';
   const isAdmin = effectiveRole === 'admin';
 
+  // Debug: Log role detection
+  React.useEffect(() => {
+    console.log('Role Detection:', {
+      profile_role: profile?.role,
+      user_metadata_role: user?.user_metadata?.role,
+      user_role: user?.role,
+      effectiveRole,
+      isAdmin
+    });
+  }, [profile, user, effectiveRole, isAdmin]);
+
   // For demo, fallback profile info from user
   const displayProfile = user ? {
     full_name: user.user_metadata?.full_name || user.email || 'User',
@@ -90,15 +100,7 @@ export const AppLayout: React.FC = () => {
     phone: user.user_metadata?.phone || '',
   } : null;
 
-  // Fetch popup visibility from database (managed by COPCCA admin platform)
-  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
-  const [companyData, setCompanyData] = useState<{
-    companyName: string;
-    daysOverdue: number;
-    amount: number;
-  } | null>(null);
-  
-  // Load company popup settings from database
+  // Load company settings from database
   React.useEffect(() => {
     const loadCompanyPopupSettings = async () => {
       if (!user) return;
@@ -112,29 +114,40 @@ export const AppLayout: React.FC = () => {
           .single();
 
         if (userData?.company_id) {
-          // Fetch company data including show_payment_popup
+          // Fetch company data
           const { data: companyInfo } = await supabase
             .from('companies')
-            .select('name, show_payment_popup, subscription_end_date, subscription_plan')
+            .select('name, show_company_name_in_navbar')
             .eq('id', userData.company_id)
             .single();
 
-          if (companyInfo && companyInfo.show_payment_popup) {
-            // Calculate days overdue (if subscription_end_date is past)
-            const endDate = new Date(companyInfo.subscription_end_date);
-            const today = new Date();
-            const daysOverdue = Math.max(0, Math.floor((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)));
-            
-            setCompanyData({
-              companyName: companyInfo.name || 'Your Company',
-              daysOverdue: daysOverdue,
-              amount: 120000, // This could be fetched from subscription_plan pricing
+          // Set company name visibility
+          if (companyInfo) {
+            setShowCompanyName(companyInfo.show_company_name_in_navbar || false);
+            setCompanyName(companyInfo.name || '');
+            console.log('Company Display Settings:', {
+              show_company_name_in_navbar: companyInfo.show_company_name_in_navbar,
+              company_name: companyInfo.name,
+              will_show: companyInfo.show_company_name_in_navbar && companyInfo.name
             });
-            setShowPaymentPopup(true);
+          }
 
-            // Auto-hide popup after 10 seconds
-            const timer = setTimeout(() => setShowPaymentPopup(false), 10000);
-            return () => clearTimeout(timer);
+          // Load team members for filter
+          const { data: companyUsers } = await supabase
+            .from('users')
+            .select('id, full_name, role')
+            .eq('company_id', userData.company_id)
+            .order('full_name');
+
+          if (companyUsers) {
+            setTeamMembers([
+              { id: 'all', name: 'All Users', role: '' },
+              ...companyUsers.map(u => ({
+                id: u.id,
+                name: u.full_name,
+                role: u.role,
+              })),
+            ]);
           }
         }
       } catch (error) {
@@ -238,6 +251,15 @@ export const AppLayout: React.FC = () => {
               >
                 <Menu size={20} />
               </button>
+
+              {/* Company Name Display */}
+              {showCompanyName && companyName && (
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                  <Building size={16} className="text-blue-600" />
+                  <span className="text-sm font-semibold text-slate-900">{companyName}</span>
+                </div>
+              )}
+
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -476,14 +498,6 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      {/* Payment Popup - Controlled by COPCCA admin platform database */}
-      {showPaymentPopup && companyData && (
-        <PaymentPopup
-          companyName={companyData.companyName}
-          daysOverdue={companyData.daysOverdue}
-          amount={companyData.amount}
-        />
-      )}
     </div>
   );
 };
