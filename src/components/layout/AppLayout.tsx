@@ -58,6 +58,7 @@ export const AppLayout: React.FC = () => {
   const [userFilterDropdownOpen, setUserFilterDropdownOpen] = useState(false);
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
   const [companyName, setCompanyName] = useState('');
+  const [showCompanyNameInNavbar, setShowCompanyNameInNavbar] = useState(false);
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([
     { id: 'all', name: 'All Users', role: '' },
   ]);
@@ -104,31 +105,45 @@ export const AppLayout: React.FC = () => {
     const loadCompanyPopupSettings = async () => {
       if (!user) return;
 
+      console.log('Loading company for user:', user.id, 'metadata:', user.user_metadata);
+
       try {
         // Get user's company_id
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('company_id')
           .eq('id', user.id)
           .maybeSingle();
 
+        if (userError) {
+          console.error('Error fetching user data:', userError);
+          return;
+        }
+
         const companyId = userData?.company_id || user.user_metadata?.company_id;
+        console.log('Company ID found:', companyId, 'from userData:', userData?.company_id, 'from metadata:', user.user_metadata?.company_id);
 
         if (companyId) {
           // Fetch company data
-          const { data: companyInfo } = await supabase
+          const { data: companyInfo, error: companyError } = await supabase
             .from('companies')
             .select('name, show_company_name_in_navbar')
             .eq('id', companyId)
             .single();
 
+          if (companyError) {
+            console.error('Error fetching company data:', companyError);
+            return;
+          }
+
           // Set company name visibility
           if (companyInfo) {
             setCompanyName(companyInfo.name || '');
+            setShowCompanyNameInNavbar(companyInfo.show_company_name_in_navbar !== false); // Show by default if not explicitly set to false
             console.log('Company Display Settings:', {
               show_company_name_in_navbar: companyInfo.show_company_name_in_navbar,
               company_name: companyInfo.name,
-              will_show: companyInfo.show_company_name_in_navbar && companyInfo.name
+              will_show: companyInfo.show_company_name_in_navbar !== false && companyInfo.name
             });
           }
 
@@ -253,7 +268,7 @@ export const AppLayout: React.FC = () => {
               </button>
 
               {/* Company Name Display */}
-              {companyName && (
+              {companyName && showCompanyNameInNavbar && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                   <Building size={16} className="text-blue-600" />
                   <span className="text-sm font-semibold text-slate-900">{companyName}</span>

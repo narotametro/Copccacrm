@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Target,
   TrendingUp,
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { useCurrency } from '@/context/CurrencyContext';
 
 interface Competitor {
   id: string;
@@ -60,13 +61,21 @@ interface Competitor {
   last_activity: string;
 }
 
-const demoCompetitors: Competitor[] = [];
-
 export const Competitors: React.FC = () => {
-  const [competitors, setCompetitors] = useState<Competitor[]>(demoCompetitors);
+  const [competitors, setCompetitors] = useState<Competitor[]>(() => {
+    // Load competitors from localStorage on initial render
+    try {
+      const saved = localStorage.getItem('copcca-competitors');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Failed to load competitors from localStorage:', error);
+      return [];
+    }
+  });
   const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'comparison' | 'ai-strategy'>('overview');
+  const { formatCurrency, convertAmount } = useCurrency();
   const [form, setForm] = useState({
     name: '',
     brand: '',
@@ -74,9 +83,35 @@ export const Competitors: React.FC = () => {
     industry: '',
     price: '',
     market_share: '',
-    market_position: 'leader',
-    threat_level: 'medium',
+    market_position: 'leader' as Competitor['market_position'],
+    threat_level: 'medium' as Competitor['threat_level'],
+    // Product Strategy
+    product_quality: 7,
+    pricing_strategy: 'competitive' as Competitor['pricing_strategy'],
+    innovation_level: 6,
+    customer_satisfaction: 7,
+    // USP & Product Details
+    usp: '',
+    package_design: '',
+    key_features: [] as string[],
+    // Customer & Market
+    target_audience: '',
+    pain_points: '',
+    strengths: '',
+    weaknesses: '',
+    // Distribution & Marketing
+    distribution_channels: [] as string[],
+    marketing_channels: [] as string[],
   });
+
+  // Save competitors to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('copcca-competitors', JSON.stringify(competitors));
+    } catch (error) {
+      console.error('Failed to save competitors to localStorage:', error);
+    }
+  }, [competitors]);
 
   const getThreatColor = (level: string) => {
     const colors = {
@@ -98,8 +133,38 @@ export const Competitors: React.FC = () => {
   const handleAddCompetitor = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      toast.error('Name is required');
+      toast.error('Competitor name is required');
       return;
+    }
+
+    // Generate AI threat score based on form data
+    const aiThreatScore = Math.floor(
+      (form.market_share ? Number(form.market_share) : 0) * 0.3 +
+      (form.product_quality / 10) * 20 +
+      (form.innovation_level / 10) * 25 +
+      (form.customer_satisfaction / 10) * 15 +
+      (form.threat_level === 'critical' ? 40 : form.threat_level === 'high' ? 25 : form.threat_level === 'medium' ? 10 : 5)
+    );
+
+    // Generate AI recommendations based on competitor data
+    const aiRecommendations = [];
+    if (form.market_share && Number(form.market_share) > 20) {
+      aiRecommendations.push('High market share - monitor pricing closely');
+    }
+    if (form.innovation_level > 7) {
+      aiRecommendations.push('High innovation - invest in R&D to stay competitive');
+    }
+    if (form.customer_satisfaction > 8) {
+      aiRecommendations.push('Strong customer satisfaction - focus on customer experience');
+    }
+    if (form.strengths) {
+      aiRecommendations.push(`Counter their strengths: ${form.strengths.slice(0, 50)}...`);
+    }
+    if (form.weaknesses) {
+      aiRecommendations.push(`Exploit their weaknesses: ${form.weaknesses.slice(0, 50)}...`);
+    }
+    if (aiRecommendations.length === 0) {
+      aiRecommendations.push('Monitor this competitor closely for emerging threats');
     }
 
     const newCompetitor: Competitor = {
@@ -111,28 +176,28 @@ export const Competitors: React.FC = () => {
       competitor_type: 'Direct',
       price: Number(form.price) || 0,
       market_share: Number(form.market_share) || 0,
-      threat_level: form.threat_level as Competitor['threat_level'],
-      market_position: form.market_position as Competitor['market_position'],
-      product_quality: 7,
-      pricing_strategy: 'competitive',
-      innovation_level: 6,
-      customer_satisfaction: 7,
-      usp: 'Newly added competitor (demo)',
-      package_design: 'N/A',
-      key_features: [],
-      target_audience: 'TBD',
-      pain_points: 'TBD',
-      strengths: 'TBD',
-      weaknesses: 'TBD',
-      distribution_channels: [],
-      marketing_channels: [],
-      ai_threat_score: 55,
-      ai_recommendations: ['Track this competitor closely'],
+      threat_level: form.threat_level,
+      market_position: form.market_position,
+      product_quality: form.product_quality,
+      pricing_strategy: form.pricing_strategy,
+      innovation_level: form.innovation_level,
+      customer_satisfaction: form.customer_satisfaction,
+      usp: form.usp || 'Newly added competitor',
+      package_design: form.package_design || 'N/A',
+      key_features: form.key_features,
+      target_audience: form.target_audience || 'TBD',
+      pain_points: form.pain_points || 'TBD',
+      strengths: form.strengths || 'TBD',
+      weaknesses: form.weaknesses || 'TBD',
+      distribution_channels: form.distribution_channels,
+      marketing_channels: form.marketing_channels,
+      ai_threat_score: Math.min(aiThreatScore, 100),
+      ai_recommendations: aiRecommendations,
       last_activity: new Date().toISOString().slice(0, 10),
     };
 
     setCompetitors((prev) => [newCompetitor, ...prev]);
-    toast.success('Competitor added (demo only)');
+    toast.success('Competitor added with AI analysis activated! 🧠');
     setShowAddModal(false);
     setForm({
       name: '',
@@ -143,6 +208,19 @@ export const Competitors: React.FC = () => {
       market_share: '',
       market_position: 'leader',
       threat_level: 'medium',
+      product_quality: 7,
+      pricing_strategy: 'competitive',
+      innovation_level: 6,
+      customer_satisfaction: 7,
+      usp: '',
+      package_design: '',
+      key_features: [],
+      target_audience: '',
+      pain_points: '',
+      strengths: '',
+      weaknesses: '',
+      distribution_channels: [],
+      marketing_channels: [],
     });
   };
 
@@ -214,7 +292,7 @@ export const Competitors: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">Price</p>
-                <p className="text-xl font-bold text-slate-900">${competitor.price}</p>
+                <p className="text-xl font-bold text-slate-900">{formatCurrency(convertAmount(competitor.price))}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">AI Threat</p>
@@ -361,7 +439,7 @@ export const Competitors: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-sm text-slate-600 mb-1">Price</p>
-                        <p className="text-2xl font-bold text-slate-900">${selectedCompetitor.price}/mo</p>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(convertAmount(selectedCompetitor.price))}</p>
                         <p className="text-xs text-slate-600 capitalize">{selectedCompetitor.pricing_strategy} strategy</p>
                       </div>
                       <div>
@@ -510,8 +588,8 @@ export const Competitors: React.FC = () => {
                         <tbody>
                           <tr className="border-b border-slate-100">
                             <td className="py-3 px-4 font-medium">Price</td>
-                            <td className="py-3 px-4 text-center text-green-700 font-bold">$24.99</td>
-                            <td className="py-3 px-4 text-center text-red-700 font-bold">${selectedCompetitor.price}</td>
+                            <td className="py-3 px-4 text-center text-green-700 font-bold">{formatCurrency(convertAmount(24.99))}</td>
+                            <td className="py-3 px-4 text-center text-red-700 font-bold">{formatCurrency(convertAmount(selectedCompetitor.price))}</td>
                             <td className="py-3 px-4 text-center">
                               {24.99 < selectedCompetitor.price ? '🏆 You' : '🏆 Them'}
                             </td>
@@ -748,6 +826,8 @@ export const Competitors: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500" 
                   rows={2}
                   placeholder="Describe packaging: colors, size, materials, unique features..."
+                  value={form.package_design}
+                  onChange={(e) => setForm({ ...form, package_design: e.target.value })}
                 />
               </div>
             </div>
@@ -757,12 +837,12 @@ export const Competitors: React.FC = () => {
           <Card className="border-l-4 border-orange-500">
             <h3 className="font-bold text-slate-900 mb-4">📊 Market Analysis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Price (₦)" placeholder="29.99" type="number" step="0.01" required />
-              <Input
-                label="Price ($/mo)"
-                placeholder="49.99"
-                type="number"
-                step="0.01"
+              <Input 
+                label="Price (₦)" 
+                placeholder="29.99" 
+                type="number" 
+                step="0.01" 
+                required
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
               />
@@ -780,7 +860,7 @@ export const Competitors: React.FC = () => {
                 <select
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   value={form.threat_level}
-                  onChange={(e) => setForm({ ...form, threat_level: e.target.value })}
+                  onChange={(e) => setForm({ ...form, threat_level: e.target.value as Competitor['threat_level'] })}
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -793,7 +873,7 @@ export const Competitors: React.FC = () => {
                 <select
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   value={form.market_position}
-                  onChange={(e) => setForm({ ...form, market_position: e.target.value })}
+                  onChange={(e) => setForm({ ...form, market_position: e.target.value as Competitor['market_position'] })}
                 >
                   <option value="leader">Leader</option>
                   <option value="challenger">Challenger</option>
@@ -808,18 +888,46 @@ export const Competitors: React.FC = () => {
           <Card className="border-l-4 border-purple-500">
             <h3 className="font-bold text-slate-900 mb-4">🎯 Product Strategy</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Product Quality (1-10)" placeholder="8" type="number" min="1" max="10" />
+              <Input 
+                label="Product Quality (1-10)" 
+                placeholder="8" 
+                type="number" 
+                min="1" 
+                max="10"
+                value={form.product_quality}
+                onChange={(e) => setForm({ ...form, product_quality: Number(e.target.value) })}
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Pricing Strategy</label>
-                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500">
+                <select 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  value={form.pricing_strategy}
+                  onChange={(e) => setForm({ ...form, pricing_strategy: e.target.value as Competitor['pricing_strategy'] })}
+                >
                   <option value="premium">Premium</option>
                   <option value="competitive">Competitive</option>
                   <option value="budget">Budget</option>
                   <option value="value">Value-Based</option>
                 </select>
               </div>
-              <Input label="Innovation Level (1-10)" placeholder="9" type="number" min="1" max="10" />
-              <Input label="Customer Satisfaction (1-10)" placeholder="7" type="number" min="1" max="10" />
+              <Input 
+                label="Innovation Level (1-10)" 
+                placeholder="9" 
+                type="number" 
+                min="1" 
+                max="10"
+                value={form.innovation_level}
+                onChange={(e) => setForm({ ...form, innovation_level: Number(e.target.value) })}
+              />
+              <Input 
+                label="Customer Satisfaction (1-10)" 
+                placeholder="7" 
+                type="number" 
+                min="1" 
+                max="10"
+                value={form.customer_satisfaction}
+                onChange={(e) => setForm({ ...form, customer_satisfaction: Number(e.target.value) })}
+              />
             </div>
           </Card>
 
@@ -833,11 +941,17 @@ export const Competitors: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500" 
                   rows={2}
                   placeholder="What makes them unique? Their main competitive advantage..."
+                  value={form.usp}
+                  onChange={(e) => setForm({ ...form, usp: e.target.value })}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Key Features (comma-separated)</label>
-                <Input placeholder="AI-powered analytics, Real-time reporting, Mobile app, 24/7 support" />
+                <Input 
+                  placeholder="AI-powered analytics, Real-time reporting, Mobile app, 24/7 support"
+                  value={form.key_features.join(', ')}
+                  onChange={(e) => setForm({ ...form, key_features: e.target.value.split(',').map(f => f.trim()).filter(f => f) })}
+                />
               </div>
             </div>
           </Card>
@@ -848,7 +962,11 @@ export const Competitors: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Target Audience</label>
-                <Input placeholder="SMBs, Startups, Enterprise customers..." />
+                <Input 
+                  placeholder="SMBs, Startups, Enterprise customers..."
+                  value={form.target_audience}
+                  onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Customer Pain Points</label>
@@ -856,6 +974,8 @@ export const Competitors: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500" 
                   rows={2}
                   placeholder="What problems do their customers face?"
+                  value={form.pain_points}
+                  onChange={(e) => setForm({ ...form, pain_points: e.target.value })}
                 />
               </div>
               <div>
@@ -864,6 +984,8 @@ export const Competitors: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500" 
                   rows={2}
                   placeholder="What are they doing well?"
+                  value={form.strengths}
+                  onChange={(e) => setForm({ ...form, strengths: e.target.value })}
                 />
               </div>
               <div>
@@ -872,6 +994,8 @@ export const Competitors: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500" 
                   rows={2}
                   placeholder="Where can we beat them?"
+                  value={form.weaknesses}
+                  onChange={(e) => setForm({ ...form, weaknesses: e.target.value })}
                 />
               </div>
             </div>
@@ -884,7 +1008,18 @@ export const Competitors: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {['Online Store', 'Retail Stores', 'Wholesale', 'Direct Sales', 'Distributors', 'Social Media'].map((channel) => (
                 <label key={channel} className="flex items-center gap-2 p-2 border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 text-primary-600" />
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-primary-600"
+                    checked={form.distribution_channels.includes(channel)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm({ ...form, distribution_channels: [...form.distribution_channels, channel] });
+                      } else {
+                        setForm({ ...form, distribution_channels: form.distribution_channels.filter(c => c !== channel) });
+                      }
+                    }}
+                  />
                   <span className="text-sm text-slate-700">{channel}</span>
                 </label>
               ))}
@@ -898,7 +1033,18 @@ export const Competitors: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {['Social Media', 'TV Ads', 'Radio', 'Print Media', 'Digital Ads', 'Influencers', 'SEO/Content', 'Email Marketing'].map((channel) => (
                 <label key={channel} className="flex items-center gap-2 p-2 border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 text-primary-600" />
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-primary-600"
+                    checked={form.marketing_channels.includes(channel)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm({ ...form, marketing_channels: [...form.marketing_channels, channel] });
+                      } else {
+                        setForm({ ...form, marketing_channels: form.marketing_channels.filter(c => c !== channel) });
+                      }
+                    }}
+                  />
                   <span className="text-sm text-slate-700">{channel}</span>
                 </label>
               ))}

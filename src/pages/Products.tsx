@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   TrendingUp,
@@ -70,18 +70,24 @@ interface Product {
   revenue_trend: number[];
 }
 
-const demoProducts: Product[] = [];
-
 export const Products: React.FC = () => {
-  const { formatCurrency } = useCurrency();
-  const [products, setProducts] = useState<Product[]>(demoProducts);
+  const { formatCurrency, convertAmount } = useCurrency();
+  const [products, setProducts] = useState<Product[]>(() => {
+    // Load products from localStorage on initial render
+    try {
+      const saved = localStorage.getItem('copcca-products');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Failed to load products from localStorage:', error);
+      return [];
+    }
+  });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'competitive' | 'feedback' | 'ai-insights'>('overview');
   const [productForm, setProductForm] = useState({
     name: '',
     category: '',
-    price: '',
     units_sold: '',
     monthly_revenue: '',
     market_share: '',
@@ -89,6 +95,15 @@ export const Products: React.FC = () => {
     ai_score: '',
     growth_rate: '',
   });
+
+  // Save products to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('copcca-products', JSON.stringify(products));
+    } catch (error) {
+      console.error('Failed to save products to localStorage:', error);
+    }
+  }, [products]);
 
   const getPositionColor = (position: string) => {
     const colors = {
@@ -122,7 +137,7 @@ export const Products: React.FC = () => {
       id: crypto.randomUUID(),
       name: productForm.name.trim(),
       category: productForm.category.trim() || 'General',
-      price: Number(productForm.price) || 0,
+      price: 29.99, // Default price since field was removed
       monthly_revenue: monthlyRevenue,
       total_revenue: monthlyRevenue * 12,
       units_sold: unitsSold,
@@ -159,7 +174,6 @@ export const Products: React.FC = () => {
     setProductForm({
       name: '',
       category: '',
-      price: '',
       units_sold: '',
       monthly_revenue: '',
       market_share: '',
@@ -356,7 +370,7 @@ export const Products: React.FC = () => {
                       {selectedProduct.market_position.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-slate-600">{selectedProduct.category} • ${selectedProduct.price}/month</p>
+                  <p className="text-slate-600">{selectedProduct.category} • {formatCurrency(convertAmount(selectedProduct.price))}</p>
                 </div>
               </div>
             </div>
@@ -537,7 +551,7 @@ export const Products: React.FC = () => {
                               <p className="text-sm text-slate-600">{comp.competitor}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xl font-bold text-slate-900">${comp.price}</p>
+                              <p className="text-xl font-bold text-slate-900">{formatCurrency(convertAmount(comp.price))}</p>
                               <p className="text-xs text-slate-600">Quality: {comp.quality}/10</p>
                             </div>
                           </div>
@@ -860,15 +874,6 @@ export const Products: React.FC = () => {
               required
               value={productForm.category}
               onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-            />
-            <Input
-              label="Price ($/month)"
-              placeholder="29.99"
-              type="number"
-              step="0.01"
-              required
-              value={productForm.price}
-              onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
             />
             <Input
               label="Units Sold"

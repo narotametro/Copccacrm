@@ -87,11 +87,63 @@ export const AcceptInvite: React.FC = () => {
     setLoading(true);
     try {
       // Get the inviting admin's company_id
-      const { data: inviterData } = await supabase
+      const { data: inviterData, error: inviterError } = await supabase
         .from('users')
         .select('company_id')
         .eq('id', invite.created_by)
         .single();
+
+      if (inviterError) {
+        console.error('Error getting inviter data:', inviterError);
+      }
+
+      console.log('Inviter data:', inviterData);
+
+      let companyId = inviterData?.company_id;
+
+      // If inviter doesn't have a company, create one
+      if (!companyId) {
+        console.log('Inviter has no company, creating one...');
+        const { data: inviterUserData } = await supabase
+          .from('users')
+          .select('full_name, email')
+          .eq('id', invite.created_by)
+          .single();
+
+        const companyName = inviterUserData?.full_name 
+          ? `${inviterUserData.full_name}'s Company`
+          : `${inviterUserData?.email?.split('@')[0] || 'Company'}`;
+
+        const { data: newCompany, error: createError } = await supabase
+          .from('companies')
+          .insert({
+            name: companyName,
+            email: inviterUserData?.email,
+            status: 'active',
+            subscription_plan: 'starter',
+            subscription_status: 'trial',
+            max_users: 10,
+            created_by: invite.created_by,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating company for inviter:', createError);
+        } else if (newCompany) {
+          companyId = newCompany.id;
+          console.log('Created company for inviter:', companyId);
+
+          // Update the inviter with the company_id
+          await supabase
+            .from('users')
+            .update({
+              company_id: companyId,
+              is_company_owner: true,
+            })
+            .eq('id', invite.created_by);
+        }
+      }
 
       const signup = await supabase.auth.signUp({
         email: invite.email,
@@ -100,7 +152,7 @@ export const AcceptInvite: React.FC = () => {
           data: {
             full_name: fullName || invite.email,
             role: invite.role,
-            company_id: inviterData?.company_id,
+            company_id: companyId,
           },
         },
       });
@@ -110,6 +162,7 @@ export const AcceptInvite: React.FC = () => {
       const userId = signup.data.user?.id;
 
       if (userId) {
+        console.log('Creating user record for invited user:', userId, 'with company_id:', companyId);
         // Create user record - automatically inherit admin's company
         const { error: upsertError } = await supabase.from('users').upsert({
           id: userId,
@@ -117,12 +170,17 @@ export const AcceptInvite: React.FC = () => {
           full_name: fullName || invite.email,
           role: invite.role,
           status: 'active',
-          company_id: inviterData?.company_id, // Inherit admin's company
+          company_id: companyId, // Inherit admin's company
           invited_by: invite.created_by, // Track who invited them
           is_company_owner: false, // Invited users are not company owners
         });
 
-        if (upsertError) throw upsertError;
+        if (upsertError) {
+          console.error('Error upserting user:', upsertError);
+          throw upsertError;
+        } else {
+          console.log('Successfully created user record with company_id');
+        }
 
         const { error: updateError } = await supabase
           .from('invitation_links')

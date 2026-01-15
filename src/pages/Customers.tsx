@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Search,
@@ -20,6 +20,7 @@ import {
   ThumbsDown,
   BarChart3,
   Banknote,
+  User,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +32,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 interface Company {
   id: string;
   name: string;
-  industry: string | null;
+  contactPerson: string | null;
   status: string;
   customer_type: 'lead' | 'active' | 'vip' | 'at-risk';
   health_score: number | null;
@@ -66,7 +67,12 @@ const demoCompanies: Company[] = [];
 
 export const Customers: React.FC = () => {
   const { formatCurrency } = useCurrency();
-  const [companies, setCompanies] = useState<Company[]>(demoCompanies);
+
+  // Load companies from localStorage or use empty array
+  const [companies, setCompanies] = useState<Company[]>(() => {
+    const saved = localStorage.getItem('copcca-customers');
+    return saved ? JSON.parse(saved) : demoCompanies;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -88,18 +94,10 @@ export const Customers: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights'>('overview');
   const [formData, setFormData] = useState({
     name: '',
-    industry: '',
+    contactPerson: '',
     email: '',
     phone: '',
     website: '',
-  });
-  const [quickCustomer, setQuickCustomer] = useState({
-    name: '',
-    industry: '',
-    email: '',
-    phone: '',
-    website: '',
-    tier: 'bronze' as 'bronze' | 'silver' | 'gold' | 'platinum',
   });
   const [feedbackData, setFeedbackData] = useState({
     type: 'positive' as 'positive' | 'negative' | 'neutral',
@@ -109,6 +107,11 @@ export const Customers: React.FC = () => {
   const [painPointData, setPainPointData] = useState('');
   const [escalateNote, setEscalateNote] = useState('');
   const [escalatePriority, setEscalatePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+
+  // Save companies to localStorage whenever companies change
+  useEffect(() => {
+    localStorage.setItem('copcca-customers', JSON.stringify(companies));
+  }, [companies]);
 
   const getCustomerTypeColor = (type: string) => {
     const colors = {
@@ -136,41 +139,6 @@ export const Customers: React.FC = () => {
     return <MessageSquare className="text-slate-600" size={16} />;
   };
 
-  const handleQuickAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickCustomer.name.trim()) return;
-
-    const newCompany: Company = {
-      id: crypto.randomUUID(),
-      name: quickCustomer.name.trim(),
-      industry: quickCustomer.industry || 'General',
-      status: 'active',
-      customer_type: 'lead',
-      health_score: 72,
-      churn_risk: 25,
-      upsell_potential: 55,
-      email: quickCustomer.email || null,
-      phone: quickCustomer.phone || null,
-      website: quickCustomer.website || null,
-      linkedin: undefined,
-      twitter: undefined,
-      total_revenue: 0,
-      purchases: 0,
-      avg_order_value: 0,
-      last_purchase: new Date().toISOString().split('T')[0],
-      tier: quickCustomer.tier,
-      sentiment: 'neutral',
-      feedback_count: 0,
-      jtbd: 'New customer onboarding',
-      pain_points: [],
-      feedback_history: [],
-      priority_actions: ['Schedule onboarding call'],
-    };
-
-    setCompanies((prev) => [newCompany, ...prev]);
-    toast.success('Customer added (demo only)');
-    setQuickCustomer({ name: '', industry: '', email: '', phone: '', website: '', tier: 'bronze' });
-  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newCompany: Company = {
@@ -196,7 +164,7 @@ export const Customers: React.FC = () => {
     setCompanies([newCompany, ...companies]);
     toast.success('Customer added successfully');
     setShowModal(false);
-    setFormData({ name: '', industry: '', email: '', phone: '', website: '' });
+    setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '' });
   };
 
   const filteredCompanies = companies.filter((company) =>
@@ -224,56 +192,6 @@ export const Customers: React.FC = () => {
         icon={Search}
       />
 
-      {/* Quick Add Customer (demo) */}
-      <Card>
-        <h3 className="text-lg font-semibold text-slate-900 mb-3">Quick add customer (demo)</h3>
-        <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleQuickAdd}>
-          <Input
-            label="Company Name"
-            value={quickCustomer.name}
-            onChange={(e) => setQuickCustomer({ ...quickCustomer, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Industry"
-            value={quickCustomer.industry}
-            onChange={(e) => setQuickCustomer({ ...quickCustomer, industry: e.target.value })}
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={quickCustomer.email}
-            onChange={(e) => setQuickCustomer({ ...quickCustomer, email: e.target.value })}
-          />
-          <Input
-            label="Phone"
-            value={quickCustomer.phone}
-            onChange={(e) => setQuickCustomer({ ...quickCustomer, phone: e.target.value })}
-          />
-          <Input
-            label="Website"
-            value={quickCustomer.website}
-            onChange={(e) => setQuickCustomer({ ...quickCustomer, website: e.target.value })}
-          />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tier</label>
-            <select
-              value={quickCustomer.tier}
-              onChange={(e) => setQuickCustomer({ ...quickCustomer, tier: e.target.value as typeof quickCustomer.tier })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg"
-            >
-              <option value="bronze">Bronze</option>
-              <option value="silver">Silver</option>
-              <option value="gold">Gold</option>
-              <option value="platinum">Platinum</option>
-            </select>
-          </div>
-          <div className="md:col-span-3 flex justify-end">
-            <Button type="submit">Add Customer</Button>
-          </div>
-        </form>
-      </Card>
-
       {/* Customers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {filteredCompanies.map((company) => (
@@ -295,7 +213,7 @@ export const Customers: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-slate-900 text-sm md:text-base truncate">{company.name}</h3>
-                  <p className="text-xs md:text-sm text-slate-600 truncate">{company.industry || 'N/A'}</p>
+                  <p className="text-xs md:text-sm text-slate-600 truncate">{company.contactPerson || 'N/A'}</p>
                 </div>
               </div>
               <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getCustomerTypeColor(company.customer_type)}`}>
@@ -400,10 +318,10 @@ export const Customers: React.FC = () => {
             required
           />
           <Input
-            label="Industry"
-            placeholder="Technology"
-            value={formData.industry}
-            onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+            label="Contact Person"
+            placeholder="John Doe"
+            value={formData.contactPerson}
+            onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
           />
           <Input
             label="Email"
@@ -463,7 +381,7 @@ export const Customers: React.FC = () => {
                       {selectedCustomer.customer_type.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-slate-600">{selectedCustomer.industry}</p>
+                  <p className="text-slate-600">{selectedCustomer.contactPerson}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -528,6 +446,13 @@ export const Customers: React.FC = () => {
                         <div>
                           <p className="text-xs text-slate-600">Website</p>
                           <p className="font-medium text-slate-900">{selectedCustomer.website}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <User className="text-purple-600" size={20} />
+                        <div>
+                          <p className="text-xs text-slate-600">Contact Person</p>
+                          <p className="font-medium text-slate-900">{selectedCustomer.contactPerson}</p>
                         </div>
                       </div>
                       {selectedCustomer.linkedin && (

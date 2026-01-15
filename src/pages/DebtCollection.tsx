@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target, Plus, Search } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 
@@ -16,25 +17,74 @@ type Debt = {
   payment_probability: number;
   risk_score: 'low' | 'medium' | 'high';
   auto_reminder: boolean;
-  companies: { name: string; contact_email: string };
+  companies: { name: string; contact_email: string; id?: string };
   payment_plan?: string;
 };
 
-const demoDebts: Debt[] = [];
+interface Company {
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  total_revenue: number;
+  purchases: number;
+  avg_order_value: number;
+  last_purchase: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+}
 
 export const DebtCollection: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
-  const [debts, setDebts] = useState<Debt[]>(demoDebts);
+  const [debts, setDebts] = useState<Debt[]>(() => {
+    // Load debts from localStorage on initial render
+    try {
+      const saved = localStorage.getItem('copcca-debts');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Failed to load debts from localStorage:', error);
+      return [];
+    }
+  });
   const [automationEnabled, setAutomationEnabled] = useState(true);
-  const [paymentForm, setPaymentForm] = useState({
-    company: '',
-    contact_email: '',
+  const [showAddDebtModal, setShowAddDebtModal] = useState(false);
+  const [customers, setCustomers] = useState<Company[]>([]);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Company | null>(null);
+  const [debtForm, setDebtForm] = useState({
     invoice_number: '',
     amount: '',
     due_date: '',
-    risk_score: 'medium',
-    installments: '3',
+    risk_score: 'medium' as 'low' | 'medium' | 'high',
   });
+
+  // Load customers from localStorage
+  useEffect(() => {
+    const savedCustomers = localStorage.getItem('copcca-customers');
+    if (savedCustomers) {
+      try {
+        setCustomers(JSON.parse(savedCustomers));
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+      }
+    }
+  }, []);
+
+  // Save debts to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('copcca-debts', JSON.stringify(debts));
+    } catch (error) {
+      console.error('Failed to save debts to localStorage:', error);
+    }
+  }, [debts]);
+
+  // Filter customers based on search term
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+    (customer.email && customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase()))
+  );
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -68,38 +118,43 @@ export const DebtCollection: React.FC = () => {
     toast.warning('Case escalated to senior collections team');
   };
 
-  const handleAddPaymentPlan = (e: React.FormEvent) => {
+  const handleAddDebt = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentForm.company.trim() || !paymentForm.invoice_number.trim()) {
-      toast.error('Company and invoice number are required');
+    if (!selectedCustomer || !debtForm.invoice_number.trim() || !debtForm.amount) {
+      toast.error('Please select a customer and fill in all required fields');
       return;
     }
 
     const newDebt: Debt = {
       id: crypto.randomUUID(),
-      invoice_number: paymentForm.invoice_number.trim(),
-      amount: Number(paymentForm.amount) || 0,
-      due_date: paymentForm.due_date || new Date().toISOString().slice(0, 10),
+      invoice_number: debtForm.invoice_number.trim(),
+      amount: Number(debtForm.amount),
+      due_date: debtForm.due_date || new Date().toISOString().slice(0, 10),
       status: 'pending' as const,
       days_overdue: 0,
       payment_probability: 70,
-      risk_score: paymentForm.risk_score as 'low' | 'medium' | 'high',
+      risk_score: debtForm.risk_score,
       auto_reminder: true,
-      companies: { name: paymentForm.company.trim(), contact_email: paymentForm.contact_email.trim() },
-      payment_plan: `${paymentForm.installments} installments generated (demo)`,
+      companies: {
+        name: selectedCustomer.name,
+        contact_email: selectedCustomer.email || '',
+        id: selectedCustomer.id
+      },
     };
 
     setDebts((prev) => [newDebt, ...prev]);
-    toast.success('Payment plan captured (demo only)');
-    setPaymentForm({
-      company: '',
-      contact_email: '',
+    toast.success('Debt record added successfully');
+
+    // Reset form
+    setDebtForm({
       invoice_number: '',
       amount: '',
       due_date: '',
       risk_score: 'medium',
-      installments: '3',
     });
+    setSelectedCustomer(null);
+    setCustomerSearchTerm('');
+    setShowAddDebtModal(false);
   };
 
   return (
@@ -213,74 +268,13 @@ export const DebtCollection: React.FC = () => {
         </Card>
       </div>
 
-      {/* Payment plan intake (demo) */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Capture payment plan (demo)</h3>
-            <p className="text-sm text-slate-600">Record a promise-to-pay with amount, due date, and risk</p>
-          </div>
-          <span className="text-xs px-3 py-1 rounded-full bg-primary-50 text-primary-700 border border-primary-100">New</span>
-        </div>
-        <form className="grid grid-cols-1 md:grid-cols-3 gap-3" onSubmit={handleAddPaymentPlan}>
-          <Input
-            label="Company"
-            placeholder="Acme Corp"
-            value={paymentForm.company}
-            onChange={(e) => setPaymentForm({ ...paymentForm, company: e.target.value })}
-            required
-          />
-          <Input
-            label="Contact Email"
-            placeholder="finance@acme.com"
-            type="email"
-            value={paymentForm.contact_email}
-            onChange={(e) => setPaymentForm({ ...paymentForm, contact_email: e.target.value })}
-          />
-          <Input
-            label="Invoice #"
-            placeholder="INV-010"
-            value={paymentForm.invoice_number}
-            onChange={(e) => setPaymentForm({ ...paymentForm, invoice_number: e.target.value })}
-            required
-          />
-          <Input
-            label="Amount"
-            type="number"
-            placeholder="50000"
-            value={paymentForm.amount}
-            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-          />
-          <Input
-            label="Due Date"
-            type="date"
-            value={paymentForm.due_date}
-            onChange={(e) => setPaymentForm({ ...paymentForm, due_date: e.target.value })}
-          />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Risk</label>
-            <select
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              value={paymentForm.risk_score}
-              onChange={(e) => setPaymentForm({ ...paymentForm, risk_score: e.target.value })}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-          <Input
-            label="Installments"
-            type="number"
-            min="1"
-            value={paymentForm.installments}
-            onChange={(e) => setPaymentForm({ ...paymentForm, installments: e.target.value })}
-          />
-          <div className="flex items-end justify-end">
-            <Button type="submit">Save plan</Button>
-          </div>
-        </form>
-      </Card>
+      {/* Add Debt Record Button */}
+      <div className="flex justify-end mb-6">
+        <Button onClick={() => setShowAddDebtModal(true)} className="flex items-center space-x-2">
+          <Plus className="w-4 h-4" />
+          <span>Add Debt Record</span>
+        </Button>
+      </div>
 
       {/* Debts List */}
       <Card>
@@ -396,6 +390,116 @@ export const DebtCollection: React.FC = () => {
           </table>
         </div>
       </Card>
+
+      {/* Add Debt Record Modal */}
+      <Modal
+        isOpen={showAddDebtModal}
+        onClose={() => setShowAddDebtModal(false)}
+        title="Add Debt Record"
+      >
+        <form onSubmit={handleAddDebt} className="space-y-4">
+          {/* Customer Search and Selection */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Customer <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search customers by name or email..."
+                value={customerSearchTerm}
+                onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {customerSearchTerm && (
+              <div className="mt-2 max-h-40 overflow-y-auto border border-slate-200 rounded-lg">
+                {filteredCustomers.length > 0 ? (
+                  filteredCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className={`p-3 cursor-pointer hover:bg-slate-50 border-b border-slate-100 last:border-b-0 ${
+                        selectedCustomer?.id === customer.id ? 'bg-blue-50 border-blue-200' : ''
+                      }`}
+                      onClick={() => setSelectedCustomer(customer)}
+                    >
+                      <div className="font-medium text-slate-900">{customer.name}</div>
+                      <div className="text-sm text-slate-600">{customer.email}</div>
+                      <div className="text-xs text-slate-500">
+                        Revenue: {formatCurrency(customer.total_revenue)} | {customer.purchases} purchases
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-sm text-slate-500 text-center">
+                    No customers found. Add customers in the Customers section first.
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedCustomer && (
+              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="font-medium text-green-900">Selected: {selectedCustomer.name}</div>
+                <div className="text-sm text-green-700">{selectedCustomer.email}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Invoice Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Invoice Number"
+              placeholder="INV-001"
+              value={debtForm.invoice_number}
+              onChange={(e) => setDebtForm({ ...debtForm, invoice_number: e.target.value })}
+              required
+            />
+            <Input
+              label="Amount"
+              type="number"
+              placeholder="50000"
+              value={debtForm.amount}
+              onChange={(e) => setDebtForm({ ...debtForm, amount: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Due Date"
+              type="date"
+              value={debtForm.due_date}
+              onChange={(e) => setDebtForm({ ...debtForm, due_date: e.target.value })}
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Risk Level</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                value={debtForm.risk_score}
+                onChange={(e) => setDebtForm({ ...debtForm, risk_score: e.target.value as 'low' | 'medium' | 'high' })}
+              >
+                <option value="low">Low Risk</option>
+                <option value="medium">Medium Risk</option>
+                <option value="high">High Risk</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowAddDebtModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              Add Debt Record
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
