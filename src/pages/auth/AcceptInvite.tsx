@@ -86,6 +86,13 @@ export const AcceptInvite: React.FC = () => {
 
     setLoading(true);
     try {
+      // Get the inviting admin's company_id
+      const { data: inviterData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', invite.created_by)
+        .single();
+
       const signup = await supabase.auth.signUp({
         email: invite.email,
         password,
@@ -93,6 +100,7 @@ export const AcceptInvite: React.FC = () => {
           data: {
             full_name: fullName || invite.email,
             role: invite.role,
+            company_id: inviterData?.company_id,
           },
         },
       });
@@ -102,15 +110,8 @@ export const AcceptInvite: React.FC = () => {
       const userId = signup.data.user?.id;
 
       if (userId) {
-        // Get the inviting admin's company_id
-        const { data: inviterData } = await supabase
-          .from('users')
-          .select('company_id')
-          .eq('id', invite.created_by)
-          .single();
-
         // Create user record - automatically inherit admin's company
-        await supabase.from('users').upsert({
+        const { error: upsertError } = await supabase.from('users').upsert({
           id: userId,
           email: invite.email,
           full_name: fullName || invite.email,
@@ -121,10 +122,14 @@ export const AcceptInvite: React.FC = () => {
           is_company_owner: false, // Invited users are not company owners
         });
 
-        await supabase
+        if (upsertError) throw upsertError;
+
+        const { error: updateError } = await supabase
           .from('invitation_links')
           .update({ used: true, used_at: new Date().toISOString() })
           .eq('id', invite.id);
+
+        if (updateError) throw updateError;
       }
 
       toast.success('Invitation accepted! Please sign in.');

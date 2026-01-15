@@ -321,8 +321,8 @@ export const Settings: React.FC = () => {
         <p className="text-slate-600 dark:text-slate-400 mt-1">Manage notifications, preferences, appearance, and security.</p>
       </div>
 
-      {/* Company Information - Only for Company Owners (not invited users) */}
-      {isAdmin && isCompanyOwner && (
+      {/* Company Information - Visible to all users, editable only for company owners */}
+      {user && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Building className="text-primary-600 dark:text-primary-400" size={20} />
@@ -330,16 +330,15 @@ export const Settings: React.FC = () => {
           </div>
           <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
-              📊 Required for Admin Platform Tracking
+              📊 Company Profile
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-200">
-              This information is used by the COPCCA admin platform to track your company and users. 
-              Invited team members automatically inherit this company profile.
+              {isCompanyOwner 
+                ? "Manage your company profile. This information is shared with all users in your organization."
+                : "View your company profile. Only company owners can edit this information."
+              }
             </p>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            Manage your company profile. This information is shared with all users in your organization.
-          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Name *</label>
@@ -348,7 +347,8 @@ export const Settings: React.FC = () => {
                 value={companyInfo.name}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
                 placeholder="COPCCA Technologies"
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -358,7 +358,8 @@ export const Settings: React.FC = () => {
                 value={companyInfo.industry}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, industry: e.target.value })}
                 placeholder="Technology, Retail, etc."
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -366,7 +367,8 @@ export const Settings: React.FC = () => {
               <select
                 value={companyInfo.size}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, size: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select size</option>
                 <option value="1-10">1-10 employees</option>
@@ -383,7 +385,8 @@ export const Settings: React.FC = () => {
                 value={companyInfo.website}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, website: e.target.value })}
                 placeholder="https://example.com"
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -393,7 +396,8 @@ export const Settings: React.FC = () => {
                 value={companyInfo.phone}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
                 placeholder="+234 800 000 0000"
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -403,7 +407,8 @@ export const Settings: React.FC = () => {
                 value={companyInfo.address}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
                 placeholder="123 Business Ave, Lagos"
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                disabled={!isCompanyOwner}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -424,6 +429,7 @@ export const Settings: React.FC = () => {
                     type="checkbox"
                     checked={showCompanyNameInNavbar}
                     onChange={(e) => setShowCompanyNameInNavbar(e.target.checked)}
+                    disabled={!isCompanyOwner}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
@@ -432,15 +438,17 @@ export const Settings: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4">
-            <Button 
-              icon={Save} 
-              onClick={handleCompanySave}
-              disabled={loadingCompany || !companyInfo.name}
-            >
-              {loadingCompany ? 'Saving...' : 'Save Company Information'}
-            </Button>
-          </div>
+          {isCompanyOwner && (
+            <div className="mt-4">
+              <Button 
+                icon={Save} 
+                onClick={handleCompanySave}
+                disabled={loadingCompany || !companyInfo.name}
+              >
+                {loadingCompany ? 'Saving...' : 'Save Company Information'}
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 

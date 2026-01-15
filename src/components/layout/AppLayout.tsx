@@ -57,7 +57,6 @@ export const AppLayout: React.FC = () => {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [userFilterDropdownOpen, setUserFilterDropdownOpen] = useState(false);
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
-  const [showCompanyName, setShowCompanyName] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([
     { id: 'all', name: 'All Users', role: '' },
@@ -78,6 +77,7 @@ export const AppLayout: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
   const effectiveRole = profile?.role || (user?.user_metadata as { role?: string } | undefined)?.role || user?.role || 'user';
   const isAdmin = effectiveRole === 'admin';
+  const canFilterUsers = isAdmin || effectiveRole === 'manager';
 
   // Debug: Log role detection
   React.useEffect(() => {
@@ -110,19 +110,20 @@ export const AppLayout: React.FC = () => {
           .from('users')
           .select('company_id')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (userData?.company_id) {
+        const companyId = userData?.company_id || user.user_metadata?.company_id;
+
+        if (companyId) {
           // Fetch company data
           const { data: companyInfo } = await supabase
             .from('companies')
             .select('name, show_company_name_in_navbar')
-            .eq('id', userData.company_id)
+            .eq('id', companyId)
             .single();
 
           // Set company name visibility
           if (companyInfo) {
-            setShowCompanyName(companyInfo.show_company_name_in_navbar || false);
             setCompanyName(companyInfo.name || '');
             console.log('Company Display Settings:', {
               show_company_name_in_navbar: companyInfo.show_company_name_in_navbar,
@@ -135,7 +136,7 @@ export const AppLayout: React.FC = () => {
           const { data: companyUsers } = await supabase
             .from('users')
             .select('id, full_name, role')
-            .eq('company_id', userData.company_id)
+            .eq('company_id', companyId)
             .order('full_name');
 
           if (companyUsers) {
@@ -252,8 +253,8 @@ export const AppLayout: React.FC = () => {
               </button>
 
               {/* Company Name Display */}
-              {showCompanyName && companyName && (
-                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              {companyName && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                   <Building size={16} className="text-blue-600" />
                   <span className="text-sm font-semibold text-slate-900">{companyName}</span>
                 </div>
@@ -275,54 +276,56 @@ export const AppLayout: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {/* User Filter Dropdown */}
-              <div className="relative" data-dropdown>
-                <button 
-                  onClick={() => {
-                    setUserFilterDropdownOpen(!userFilterDropdownOpen);
-                    setNotificationDropdownOpen(false);
-                    setProfileDropdownOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
-                >
-                  <Filter size={18} />
-                  <span className="hidden md:inline text-sm font-medium">
-                    {teamMembers.find(m => m.id === selectedUserFilter)?.name || 'All Users'}
-                  </span>
-                  <ChevronDown size={16} />
-                </button>
-                {userFilterDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
-                    <div className="p-2 border-b border-slate-200">
-                      <h3 className="font-semibold text-sm text-slate-900 px-2">Filter by Team Member</h3>
-                    </div>
-                    <div className="py-1">
-                      {teamMembers.map((member) => (
-                        <button
-                          key={member.id}
-                          onClick={() => {
-                            setSelectedUserFilter(member.id);
-                            setUserFilterDropdownOpen(false);
-                          }}
-                          className={`w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                            selectedUserFilter === member.id ? 'bg-primary-50 text-primary-700' : 'text-slate-700'
-                          }`}
-                        >
-                          <div>
-                            <p className="font-medium text-sm">{member.name}</p>
-                            {member.role && (
-                              <p className="text-xs text-slate-500">{formatRole(member.role)}</p>
+              {/* User Filter Dropdown - Admin and Manager Only */}
+              {canFilterUsers && (
+                <div className="relative" data-dropdown>
+                  <button 
+                    onClick={() => {
+                      setUserFilterDropdownOpen(!userFilterDropdownOpen);
+                      setNotificationDropdownOpen(false);
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                  >
+                    <Filter size={18} />
+                    <span className="hidden md:inline text-sm font-medium">
+                      {teamMembers.find(m => m.id === selectedUserFilter)?.name || 'All Users'}
+                    </span>
+                    <ChevronDown size={16} />
+                  </button>
+                  {userFilterDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
+                      <div className="p-2 border-b border-slate-200">
+                        <h3 className="font-semibold text-sm text-slate-900 px-2">Filter by Team Member</h3>
+                      </div>
+                      <div className="py-1">
+                        {teamMembers.map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => {
+                              setSelectedUserFilter(member.id);
+                              setUserFilterDropdownOpen(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                              selectedUserFilter === member.id ? 'bg-primary-50 text-primary-700' : 'text-slate-700'
+                            }`}
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{member.name}</p>
+                              {member.role && (
+                                <p className="text-xs text-slate-500">{formatRole(member.role)}</p>
+                              )}
+                            </div>
+                            {selectedUserFilter === member.id && (
+                              <CheckCircle size={16} className="text-primary-600" />
                             )}
-                          </div>
-                          {selectedUserFilter === member.id && (
-                            <CheckCircle size={16} className="text-primary-600" />
-                          )}
-                        </button>
-                      ))}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Notifications Dropdown */}
               <div className="relative" data-dropdown>
