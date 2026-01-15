@@ -23,6 +23,7 @@ import { KPITracking } from '@/pages/KPITracking';
 import { Reports } from '@/pages/Reports';
 import { UserManagement } from '@/pages/UserManagement';
 import { Products } from '@/pages/Products';
+import { Companies } from '@/pages/Companies';
 import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { MyWorkplace } from '@/pages/MyWorkplace';
@@ -124,6 +125,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requiredRole="admin">
               <UserManagement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="companies" 
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Companies />
             </ProtectedRoute>
           } 
         />

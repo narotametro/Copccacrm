@@ -31,6 +31,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { PaymentPopup } from '@/components/PaymentPopup';
+import { supabase } from '@/lib/supabase';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
@@ -44,6 +45,7 @@ const menuItems = [
   { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
   { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
   { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },
+  { icon: Building, label: 'Companies', path: '/app/companies', requiresAdmin: true },
   { icon: Globe, label: 'My Workplace', path: '/app/my-workplace' },
 ];
 
@@ -88,22 +90,60 @@ export const AppLayout: React.FC = () => {
     phone: user.user_metadata?.phone || '',
   } : null;
 
-  // Demo: Check if current user's company has payment popup enabled
-  // In production, this would come from Supabase subscription data
-  const [showPaymentPopup, setShowPaymentPopup] = useState(true); // TEMPORARY DEMO: Set to true
-  const demoCompanyData = {
-    companyName: displayProfile?.full_name ? `${displayProfile.full_name}'s Company` : 'Your Company',
-    daysOverdue: 15,
-    amount: 120000,
-  };
+  // Fetch popup visibility from database (managed by COPCCA admin platform)
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [companyData, setCompanyData] = useState<{
+    companyName: string;
+    daysOverdue: number;
+    amount: number;
+  } | null>(null);
   
-  // Auto-hide popup after 10 seconds for demo
+  // Load company popup settings from database
   React.useEffect(() => {
-    if (showPaymentPopup) {
-      const timer = setTimeout(() => setShowPaymentPopup(false), 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [showPaymentPopup]);
+    const loadCompanyPopupSettings = async () => {
+      if (!user) return;
+
+      try {
+        // Get user's company_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userData?.company_id) {
+          // Fetch company data including show_payment_popup
+          const { data: companyInfo } = await supabase
+            .from('companies')
+            .select('name, show_payment_popup, subscription_end_date, subscription_plan')
+            .eq('id', userData.company_id)
+            .single();
+
+          if (companyInfo && companyInfo.show_payment_popup) {
+            // Calculate days overdue (if subscription_end_date is past)
+            const endDate = new Date(companyInfo.subscription_end_date);
+            const today = new Date();
+            const daysOverdue = Math.max(0, Math.floor((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)));
+            
+            setCompanyData({
+              companyName: companyInfo.name || 'Your Company',
+              daysOverdue: daysOverdue,
+              amount: 120000, // This could be fetched from subscription_plan pricing
+            });
+            setShowPaymentPopup(true);
+
+            // Auto-hide popup after 10 seconds
+            const timer = setTimeout(() => setShowPaymentPopup(false), 10000);
+            return () => clearTimeout(timer);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load company popup settings:', error);
+      }
+    };
+
+    loadCompanyPopupSettings();
+  }, [user]);
 
   const markAsRead = (id: string) => {
     setNotifications(notifications.map(n =>
@@ -436,12 +476,12 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      {/* Payment Popup - Cannot be closed */}
-      {showPaymentPopup && !isAdmin && (
+      {/* Payment Popup - Controlled by COPCCA admin platform database */}
+      {showPaymentPopup && companyData && (
         <PaymentPopup
-          companyName={demoCompanyData.companyName}
-          daysOverdue={demoCompanyData.daysOverdue}
-          amount={demoCompanyData.amount}
+          companyName={companyData.companyName}
+          daysOverdue={companyData.daysOverdue}
+          amount={companyData.amount}
         />
       )}
     </div>

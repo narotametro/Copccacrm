@@ -11,7 +11,14 @@ interface AuthState {
   setProfile: (profile: UserProfile | null) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, companyInfo?: {
+    companyName: string;
+    industry?: string;
+    companySize?: string;
+    website?: string;
+    phone?: string;
+    address?: string;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   initialize: () => Promise<void>;
@@ -84,19 +91,61 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (error) throw error;
   },
 
-  signUp: async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
+  signUp: async (email: string, password: string, fullName: string, companyInfo?: {
+    companyName: string;
+    industry?: string;
+    companySize?: string;
+    website?: string;
+    phone?: string;
+    address?: string;
+  }) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
           role: 'admin', // self-signup defaults to admin
+          company_name: companyInfo?.companyName || fullName + "'s Company", // Pass company name to trigger
         },
       },
     });
 
     if (error) throw error;
+
+    // If signup successful and we have a user ID, create company with custom name
+    if (data.user?.id && companyInfo) {
+      // Create company with the user's desired name and all information
+      const { data: newCompany } = await supabase
+        .from('companies')
+        .insert({
+          name: companyInfo.companyName,
+          industry: companyInfo.industry,
+          size: companyInfo.companySize,
+          website: companyInfo.website,
+          phone: companyInfo.phone,
+          address: companyInfo.address,
+          email: email,
+          status: 'active',
+          subscription_plan: 'starter',
+          subscription_status: 'trial',
+          max_users: 10,
+          created_by: data.user.id,
+        })
+        .select()
+        .single();
+
+      if (newCompany) {
+        // Update user with company_id
+        await supabase
+          .from('users')
+          .update({
+            company_id: newCompany.id,
+            is_company_owner: true,
+          })
+          .eq('id', data.user.id);
+      }
+    }
     // Profile will be auto-created by database trigger
   },
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Eye, EyeOff, Building } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +13,12 @@ export const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [companySize, setCompanySize] = useState('');
+  const [website, setWebsite] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,7 +26,14 @@ export const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await signUp(email, password, fullName);
+      await signUp(email, password, fullName, {
+        companyName,
+        industry,
+        companySize,
+        website,
+        phone,
+        address,
+      });
       toast.success('Account created! Please check your email to verify.');
       navigate('/login');
     } catch (error: unknown) {
@@ -51,6 +64,68 @@ export const Register: React.FC = () => {
             onChange={(e) => setFullName(e.target.value)}
             icon={User}
             required
+          />
+
+          <Input
+            type="text"
+            label="Company Name"
+            placeholder="Acme Corporation"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            icon={Building}
+            required
+          />
+
+          <Input
+            type="text"
+            label="Industry"
+            placeholder="Technology, Retail, Healthcare, etc."
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            icon={Building}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Company Size</label>
+            <select
+              value={companySize}
+              onChange={(e) => setCompanySize(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+            >
+              <option value="">Select size</option>
+              <option value="1-10">1-10 employees</option>
+              <option value="11-50">11-50 employees</option>
+              <option value="51-200">51-200 employees</option>
+              <option value="201-500">201-500 employees</option>
+              <option value="500+">500+ employees</option>
+            </select>
+          </div>
+
+          <Input
+            type="url"
+            label="Website"
+            placeholder="https://example.com"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            icon={Mail}
+          />
+
+          <Input
+            type="tel"
+            label="Phone"
+            placeholder="+234 800 000 0000"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            icon={User}
+          />
+
+          <Input
+            type="text"
+            label="Address"
+            placeholder="123 Business Ave, Lagos"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            icon={Building}
           />
 
           <Input

@@ -102,12 +102,23 @@ export const AcceptInvite: React.FC = () => {
       const userId = signup.data.user?.id;
 
       if (userId) {
+        // Get the inviting admin's company_id
+        const { data: inviterData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', invite.created_by)
+          .single();
+
+        // Create user record - automatically inherit admin's company
         await supabase.from('users').upsert({
           id: userId,
           email: invite.email,
           full_name: fullName || invite.email,
           role: invite.role,
           status: 'active',
+          company_id: inviterData?.company_id, // Inherit admin's company
+          invited_by: invite.created_by, // Track who invited them
+          is_company_owner: false, // Invited users are not company owners
         });
 
         await supabase

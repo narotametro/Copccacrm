@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Bell, Globe, Palette, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building } from 'lucide-react';
+import { Bell, Globe, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ export const Settings: React.FC = () => {
   });
   const [loadingCompany, setLoadingCompany] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -32,11 +33,6 @@ export const Settings: React.FC = () => {
     timezone: 'UTC+1',
     currency: 'NGN',
     dateFormat: 'DD/MM/YYYY',
-  });
-
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return (savedTheme as 'light' | 'dark' | 'auto') || 'light';
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -58,15 +54,87 @@ export const Settings: React.FC = () => {
         // Get user's role and company_id
         const { data: userData } = await supabase
           .from('users')
-          .select('role, company_id')
+          .select('role, company_id, full_name, email, is_company_owner, invited_by')
           .eq('id', user.id)
           .single();
 
         if (userData) {
           setIsAdmin(userData.role === 'admin');
+          setIsCompanyOwner(userData.is_company_owner || false);
 
-          // Load company information if user has a company
-          if (userData.company_id) {
+          // Only company owners need to manage company information
+          // Invited users automatically inherit the company from their inviter
+          if (!userData.is_company_owner) {
+            // This is an invited user - load their company info (read-only)
+            if (userData.company_id) {
+              const { data: companyData } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('id', userData.company_id)
+                .single();
+
+              if (companyData) {
+                setCompanyInfo({
+                  name: companyData.name || '',
+                  industry: companyData.industry || '',
+                  size: companyData.size || '',
+                  website: companyData.website || '',
+                  phone: companyData.phone || '',
+                  address: companyData.address || '',
+                });
+              }
+            }
+            return; // Exit early - invited users don't need auto-creation
+          }
+
+          // If user has no company_id, create one automatically
+          if (!userData.company_id) {
+            // Extract company name from email domain or use user's name
+            const emailDomain = userData.email?.split('@')[1]?.split('.')[0] || 'Company';
+            const defaultCompanyName = userData.full_name 
+              ? `${userData.full_name}'s Company` 
+              : `${emailDomain.charAt(0).toUpperCase() + emailDomain.slice(1)}`;
+
+            // Create company automatically
+            const { data: newCompany, error: createError } = await supabase
+              .from('companies')
+              .insert({
+                name: defaultCompanyName,
+                email: userData.email,
+                status: 'active',
+                subscription_plan: 'starter',
+                subscription_status: 'trial',
+                max_users: 10,
+                created_by: user.id,
+              })
+              .select()
+              .single();
+
+            if (!createError && newCompany) {
+              // Update user with company_id
+              await supabase
+                .from('users')
+                .update({
+                  company_id: newCompany.id,
+                  is_company_owner: true,
+                  role: 'admin', // User becomes admin of their company
+                })
+                .eq('id', user.id);
+
+              // Load the newly created company
+              setCompanyInfo({
+                name: newCompany.name || '',
+                industry: newCompany.industry || '',
+                size: newCompany.size || '',
+                website: newCompany.website || '',
+                phone: newCompany.phone || '',
+                address: newCompany.address || '',
+              });
+
+              toast.success('Company profile created! Please update your company information.');
+            }
+          } else {
+            // Load existing company information
             const { data: companyData } = await supabase
               .from('companies')
               .select('*')
@@ -117,8 +185,8 @@ export const Settings: React.FC = () => {
   };
 
   const handleCompanySave = async () => {
-    if (!user || !isAdmin) {
-      toast.error('Only admins can update company information');
+    if (!user || !isAdmin || !isCompanyOwner) {
+      toast.error('Only company owners can update company information');
       return;
     }
 
@@ -158,33 +226,6 @@ export const Settings: React.FC = () => {
       toast.error('Failed to update company information');
     } finally {
       setLoadingCompany(false);
-    }
-  };
-
-  const handleThemeChange = (value: 'light' | 'dark' | 'auto') => {
-    setTheme(value);
-    localStorage.setItem('theme', value);
-    
-    // Apply theme immediately
-    if (value === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('bg-slate-900');
-      document.body.classList.remove('bg-white');
-    } else if (value === 'light') {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.add('bg-white');
-      document.body.classList.remove('bg-slate-900');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-        document.body.classList.add('bg-slate-900');
-        document.body.classList.remove('bg-white');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.body.classList.add('bg-white');
-        document.body.classList.remove('bg-slate-900');
-      }
     }
   };
 
@@ -276,12 +317,21 @@ export const Settings: React.FC = () => {
         <p className="text-slate-600 dark:text-slate-400 mt-1">Manage notifications, preferences, appearance, and security.</p>
       </div>
 
-      {/* Company Information - Only for Admins */}
-      {isAdmin && (
+      {/* Company Information - Only for Company Owners (not invited users) */}
+      {isAdmin && isCompanyOwner && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Building className="text-primary-600 dark:text-primary-400" size={20} />
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Company Information</h2>
+          </div>
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
+              📊 Required for Admin Platform Tracking
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-200">
+              This information is used by the COPCCA admin platform to track your company and users. 
+              Invited team members automatically inherit this company profile.
+            </p>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
             Manage your company profile. This information is shared with all users in your organization.
@@ -466,34 +516,6 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Palette className="text-primary-600" size={20} />
-            <h2 className="text-xl font-bold text-slate-900">Appearance</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {(
-              [
-                { value: 'light', label: 'Light' },
-                { value: 'dark', label: 'Dark' },
-                { value: 'auto', label: 'Auto' },
-              ] as const
-            ).map((option) => (
-              <Button
-                key={option.value}
-                variant={theme === option.value ? 'primary' : 'outline'}
-                className="w-full"
-                onClick={() => handleThemeChange(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-          <p className="text-sm text-slate-600 mt-3">
-            Theme selection is stored locally and does not affect other users.
-          </p>
-        </Card>
-
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Lock className="text-primary-600" size={20} />
