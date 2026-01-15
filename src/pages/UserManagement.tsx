@@ -107,7 +107,6 @@ export const UserManagement: React.FC = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [invites, setInvites] = useState<DbInvite[]>([]);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
-  const [loadingCompany, setLoadingCompany] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -206,7 +205,6 @@ export const UserManagement: React.FC = () => {
     const loadCompanyInfo = async () => {
       if (!isSupabaseConfigured || !user) return;
 
-      setLoadingCompany(true);
       try {
         const { data: currentUserData } = await supabase
           .from('users')
@@ -234,7 +232,6 @@ export const UserManagement: React.FC = () => {
       } catch (error) {
         console.error('Error loading company:', error);
       } finally {
-        setLoadingCompany(false);
       }
     };
 

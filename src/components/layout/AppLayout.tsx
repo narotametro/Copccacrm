@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
-import { PaymentPopup } from '@/components/PaymentPopup';
 import { supabase } from '@/lib/supabase';
 
 const menuItems = [

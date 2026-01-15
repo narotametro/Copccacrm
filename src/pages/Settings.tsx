@@ -20,7 +20,6 @@ export const Settings: React.FC = () => {
   const [loadingCompany, setLoadingCompany] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -63,7 +62,6 @@ export const Settings: React.FC = () => {
         if (userData) {
           setIsAdmin(userData.role === 'admin');
           setIsCompanyOwner(userData.is_company_owner || false);
-          setCompanyId(userData.company_id);
 
           // Only company owners need to manage company information
           // Invited users automatically inherit the company from their inviter
