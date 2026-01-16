@@ -11,15 +11,19 @@ import {
   Settings,
   Handshake,
   CreditCard,
-  BarChart,
   CheckCircle,
   AlertTriangle,
-  Star
+  Star,
+  RefreshCw,
+  Database,
+  Zap
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { toast } from 'sonner';
+import { useIntegratedKPIData, IntegratedKPIData } from '@/hooks/useIntegratedKPIData';
 
 type KPICategory = 'overview' | 'customers' | 'sales' | 'marketing' | 'customer-performance' | 'operations' | 'team' | 'debt-collection';
 
@@ -32,6 +36,7 @@ export const KPITracking: React.FC = () => {
     targetValue: '',
     unit: '',
   });
+  const { metrics: integratedMetrics, loading: integratedLoading, refreshData } = useIntegratedKPIData();
 
   const kpiCategories = [
     { id: 'overview' as KPICategory, name: 'Overview', icon: BarChart3, color: 'bg-blue-500' },
@@ -52,6 +57,9 @@ export const KPITracking: React.FC = () => {
     progress: number;
     trend: string;
     category: KPICategory;
+    startDate?: string;
+    endDate?: string;
+    status: 'not-started' | 'in-progress' | 'completed';
   }>>(() => {
     // Load KPIs from localStorage on initial render
     try {
@@ -164,6 +172,125 @@ export const KPITracking: React.FC = () => {
     return insights.slice(0, 3); // Limit to 3 insights for better UX
   };
 
+  // Type definitions
+  type KPI = {
+    name: string;
+    value: string;
+    target: string;
+    unit: string;
+    progress: number;
+    trend: string;
+    category: KPICategory;
+    startDate?: string;
+    endDate?: string;
+    status: 'not-started' | 'in-progress' | 'completed';
+  };
+
+  type CategoryConfig = {
+    bgColor: string;
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    progressColor: string;
+  };
+
+  // Timeline management functions
+  const startKPI = (index: number) => {
+    const updatedKpis = [...kpis];
+    updatedKpis[index] = {
+      ...updatedKpis[index],
+      status: 'in-progress' as const,
+      startDate: new Date().toISOString(),
+    };
+    setKpis(updatedKpis);
+  };
+
+  const completeKPI = (index: number) => {
+    const updatedKpis = [...kpis];
+    updatedKpis[index] = {
+      ...updatedKpis[index],
+      status: 'completed' as const,
+      endDate: new Date().toISOString(),
+    };
+    setKpis(updatedKpis);
+  };
+
+  // Helper function to render KPI cards with timeline functionality
+  const renderKPICard = (kpi: KPI, index: number, categoryConfig: CategoryConfig) => (
+    <Card key={index} className="p-6">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className={`p-2 ${categoryConfig.bgColor} rounded-lg`}>
+          <categoryConfig.icon className={`w-6 h-6 text-${categoryConfig.progressColor.split('-')[1]}-600`} />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-semibold">{kpi.name}</h4>
+          <p className="text-sm text-gray-600">{categoryConfig.label}</p>
+        </div>
+        {/* Timeline Status Badge */}
+        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+          kpi.status === 'completed' ? 'bg-green-100 text-green-800' :
+          kpi.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {kpi.status === 'completed' ? 'Completed' :
+           kpi.status === 'in-progress' ? 'In Progress' :
+           'Not Started'}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
+          <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+            {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
+            {kpi.trend}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className={`${categoryConfig.progressColor} h-2 rounded-full`} style={{ width: `${kpi.progress}%` }}></div>
+        </div>
+        <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
+        
+        {/* Timeline Information */}
+        {kpi.startDate && (
+          <div className="text-xs text-gray-500 mt-2">
+            Started: {new Date(kpi.startDate).toLocaleDateString()}
+            {kpi.endDate && ` • Completed: ${new Date(kpi.endDate).toLocaleDateString()}`}
+          </div>
+        )}
+        
+        {/* Timeline Action Buttons */}
+        <div className="flex space-x-2 mt-3">
+          {kpi.status !== 'in-progress' && kpi.status !== 'completed' && (
+            <Button
+              onClick={() => startKPI(index)}
+              size="sm"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Start
+            </Button>
+          )}
+          {kpi.status === 'in-progress' && (
+            <Button
+              onClick={() => completeKPI(index)}
+              size="sm"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              Complete
+            </Button>
+          )}
+          {kpi.status === 'completed' && (
+            <Button
+              onClick={() => startKPI(index)}
+              size="sm"
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+            >
+              Restart
+            </Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.currentValue || !formData.targetValue || !formData.unit) {
@@ -178,11 +305,64 @@ export const KPITracking: React.FC = () => {
       progress: Math.min((parseFloat(formData.currentValue) / parseFloat(formData.targetValue)) * 100, 100),
       trend: '+0%', // Default trend
       category: activeTab as KPICategory,
+      status: 'not-started' as const,
     };
 
     setKpis(prev => [...prev, newKpi]);
     setFormData({ name: '', currentValue: '', targetValue: '', unit: '' });
     setShowAddModal(false);
+  };
+
+  const handleSyncIntegratedData = async () => {
+    try {
+      await refreshData();
+      toast.success('Data refreshed from business modules');
+
+      // Convert integrated metrics to KPI format and add them
+      const categoryMap: Record<string, KPICategory> = {
+        customers: 'customers',
+        sales: 'sales',
+        marketing: 'marketing',
+        'customer-performance': 'customer-performance',
+        operations: 'operations',
+        team: 'team',
+        'debt-collection': 'debt-collection'
+      };
+
+      const newKpis: typeof kpis = [];
+
+      Object.entries(integratedMetrics).forEach(([category, metrics]) => {
+        metrics.forEach((metric: IntegratedKPIData) => {
+          const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+          const existingKpi = kpis.find(kpi =>
+            kpi.name === metric.name && kpi.category === categoryMap[category]
+          );
+
+          if (!existingKpi) {
+            newKpis.push({
+              name: metric.name,
+              value: metric.currentValue.toString(),
+              target: metric.targetValue.toString(),
+              unit: metric.unit,
+              progress,
+              trend: '+0%',
+              category: categoryMap[category],
+              status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+            });
+          }
+        });
+      });
+
+      if (newKpis.length > 0) {
+        setKpis(prev => [...prev, ...newKpis]);
+        toast.success(`Added ${newKpis.length} new KPIs from business modules`);
+      } else {
+        toast.info('All available KPIs are already synced');
+      }
+    } catch (error) {
+      toast.error('Failed to sync data from business modules');
+      console.error('Sync error:', error);
+    }
   };
 
   const renderOverview = () => (
@@ -207,6 +387,66 @@ export const KPITracking: React.FC = () => {
         </div>
         <p className="text-sm text-gray-600">
           Overall business performance across all key areas. Score based on KPI achievement and trend analysis.
+        </p>
+      </Card>
+
+      {/* Data Integration Section */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Database className="w-5 h-5 text-blue-600" />
+            <div>
+              <h3 className="text-lg font-semibold">Data Integration</h3>
+              <p className="text-sm text-gray-600">Sync KPIs from business modules</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSyncIntegratedData}
+            disabled={integratedLoading}
+            className="flex items-center space-x-2"
+          >
+            {integratedLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            <span>{integratedLoading ? 'Syncing...' : 'Sync Data'}</span>
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span>Customers: {integratedMetrics.customers.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+            <span>Sales: {integratedMetrics.sales.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+            <span>Marketing: {integratedMetrics.marketing.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+            <span>Customer Perf: {integratedMetrics.customerPerformance.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+            <span>Operations: {integratedMetrics.operations.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+            <span>Team: {integratedMetrics.team.length} metrics</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span>Debt Collection: {integratedMetrics.debtCollection.length} metrics</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-3">
+          Automatically pulls live data from Customers, Sales, Marketing, After Sales, Operations, Team, and Debt Collection modules.
         </p>
       </Card>
 
@@ -281,60 +521,56 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Placeholder for when no KPIs are added */}
-        {kpis.length === 0 && (
-          <Card className="p-6 col-span-full">
-            <div className="text-center py-8">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">No Customer KPIs Added</h3>
-              <p className="text-gray-500 mb-4">Add your first customer KPI to start tracking performance metrics.</p>
-              <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-                <Plus className="w-4 h-4" />
-                <span>Add Customer KPI</span>
-              </Button>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Customer KPIs */}
+      {integratedMetrics.customers.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Customer Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.customers.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'customers' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-green-100',
+                icon: Users,
+                label: 'Customer Metric',
+                progressColor: 'bg-green-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Customers - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'customers').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Customer KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'customers').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-green-100',
+                icon: Users,
+                label: 'Customer KPI',
+                progressColor: 'bg-green-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Customers - Only show when Customer KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'customers').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
@@ -391,58 +627,56 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Sales KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Sales KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your sales performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Sales KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Sales KPIs */}
+      {integratedMetrics.sales.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Sales Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.sales.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'sales' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-purple-100',
+                icon: DollarSign,
+                label: 'Sales Metric',
+                progressColor: 'bg-purple-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Sales - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'sales').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Sales KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'sales').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-purple-100',
+                icon: DollarSign,
+                label: 'Sales KPI',
+                progressColor: 'bg-purple-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Sales - Only show when Sales KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'sales').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
@@ -472,62 +706,139 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Marketing KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Marketing KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your marketing performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Marketing KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Marketing KPIs */}
+      {integratedMetrics.marketing.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Marketing Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.marketing.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'marketing' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-orange-100',
+                icon: Megaphone,
+                label: 'Marketing Metric',
+                progressColor: 'bg-orange-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Marketing - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'marketing').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Marketing KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'marketing').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-orange-100',
+                icon: Megaphone,
+                label: 'Marketing KPI',
+                progressColor: 'bg-orange-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Marketing - Only show when Marketing KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'marketing').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
             <h3 className="text-lg font-semibold">AI Marketing Insights</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+              <Brain className="w-5 h-5 text-gray-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900">AI Analysis Coming Soon</p>
+                <p className="text-sm text-gray-700">Add more KPIs to receive personalized AI-driven insights and recommendations.</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+
+  const renderCustomerPerformanceKPIs = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Customer Performance KPIs</h2>
+        <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2">
+          <Plus className="w-4 h-4" />
+          <span>Add KPI</span>
+        </Button>
+      </div>
+
+      {/* Integrated Customer Performance KPIs */}
+      {integratedMetrics.customerPerformance.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Customer Performance Metrics</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {integratedMetrics.customerPerformance.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'customer-performance' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-pink-100',
+                icon: Brain,
+                label: 'Customer Performance Metric',
+                progressColor: 'bg-pink-500'
+              });
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'customer-performance').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Customer Performance KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'customer-performance').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-pink-100',
+                icon: Brain,
+                label: 'Customer Performance KPI',
+                progressColor: 'bg-pink-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Customer Performance - Only show when Customer Performance KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'customer-performance').length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Brain className="w-5 h-5 text-purple-600" />
+            <h3 className="text-lg font-semibold">AI Customer Performance Insights</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -553,58 +864,56 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Operations KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Operations KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your operational performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Operations KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Operations KPIs */}
+      {integratedMetrics.operations.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Operations Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.operations.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'operations' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-indigo-100',
+                icon: Settings,
+                label: 'Operations Metric',
+                progressColor: 'bg-indigo-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Operations - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'operations').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Operations KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'operations').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-indigo-100',
+                icon: Settings,
+                label: 'Operations KPI',
+                progressColor: 'bg-indigo-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Operations - Only show when Operations KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'operations').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
@@ -634,58 +943,56 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Team KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Team KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your team performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Team KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Team KPIs */}
+      {integratedMetrics.team.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Team Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.team.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'team' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-teal-100',
+                icon: Handshake,
+                label: 'Team Metric',
+                progressColor: 'bg-teal-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Team - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'team').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Team KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'team').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-teal-100',
+                icon: Handshake,
+                label: 'Team KPI',
+                progressColor: 'bg-teal-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Team - Only show when Team KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'team').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
@@ -715,143 +1022,60 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Debt Collection KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Debt Collection KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your debt collection performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Debt Collection KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
+      {/* Integrated Debt Collection KPIs */}
+      {integratedMetrics.debtCollection.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
+          <div className="flex items-center space-x-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <h3 className="text-lg font-semibold">Live Debt Collection Metrics</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
+            {integratedMetrics.debtCollection.map((metric, index) => {
+              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
+              const kpiData = {
+                name: metric.name,
+                value: metric.currentValue.toString(),
+                target: metric.targetValue.toString(),
+                unit: metric.unit,
+                progress,
+                trend: '+0%',
+                category: 'debt-collection' as KPICategory,
+                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
+              };
+              return renderKPICard(kpiData, index, {
+                bgColor: 'bg-red-100',
+                icon: CreditCard,
+                label: 'Debt Collection Metric',
+                progressColor: 'bg-red-500'
+              });
+            })}
           </div>
         </div>
       )}
 
-      {/* AI Insights for Debt Collection - Only show when KPIs exist */}
-      {kpis.length > 0 && (
+      {/* User Added KPIs */}
+      {kpis.filter(kpi => kpi.category === 'debt-collection').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Debt Collection KPIs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {kpis.filter(kpi => kpi.category === 'debt-collection').map((kpi) => 
+              renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
+                bgColor: 'bg-red-100',
+                icon: CreditCard,
+                label: 'Debt Collection KPI',
+                progressColor: 'bg-red-500'
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights for Debt Collection - Only show when Debt Collection KPIs exist */}
+      {kpis.filter(kpi => kpi.category === 'debt-collection').length > 0 && (
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Brain className="w-5 h-5 text-purple-600" />
             <h3 className="text-lg font-semibold">AI Debt Collection Insights</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-              <Brain className="w-5 h-5 text-gray-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-gray-900">AI Analysis Coming Soon</p>
-                <p className="text-sm text-gray-700">Add more KPIs to receive personalized AI-driven insights and recommendations.</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-
-  const renderCustomerPerformanceKPIs = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Customer Performance KPIs</h2>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2">
-          <Plus className="w-4 h-4" />
-          <span>Add KPI</span>
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Empty State for Customer Performance KPIs */}
-        <Card className="p-6 col-span-full">
-          <div className="text-center py-12">
-            <BarChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Customer Performance KPIs Added</h3>
-            <p className="text-gray-600 mb-6">Start tracking your customer performance by adding your first KPI.</p>
-            <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2 mx-auto">
-              <Plus className="w-4 h-4" />
-              <span>Add Customer Performance KPI</span>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* User Added KPIs */}
-      {kpis.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your KPIs</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {kpis.map((kpi, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <BarChart className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{kpi.name}</h4>
-                    <p className="text-sm text-gray-600">Custom KPI</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-2xl font-bold">{kpi.value} {kpi.unit}</span>
-                    <span className={`flex items-center ${kpi.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                      {kpi.trend.startsWith('+') ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                      {kpi.trend}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-500">Target: {kpi.target} {kpi.unit}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* AI Insights for Customer Performance - Only show when KPIs exist */}
-      {kpis.length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Brain className="w-5 h-5 text-purple-600" />
-            <h3 className="text-lg font-semibold">AI Customer Performance Insights</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
