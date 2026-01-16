@@ -30,21 +30,7 @@ export default defineConfig({
         short_name: 'COPCCA',
         theme_color: '#0047ab',
         background_color: '#ffffff',
-        display: 'standalone',
-        icons: [
-          {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
+        display: 'standalone'
       },
       workbox: {
         cleanupOutdatedCaches: true,
