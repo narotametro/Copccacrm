@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// Updated base path for custom domain deployment
 export default defineConfig({
   base: '/',
   build: {
