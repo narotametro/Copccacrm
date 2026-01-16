@@ -2,6 +2,8 @@
 
 A modern, production-ready Customer Relationship Management system built with React, TypeScript, and Supabase.
 
+<!-- Latest deployment: January 16, 2026 -->
+
 ## 🚀 Features
 
 ### Core Capabilities
