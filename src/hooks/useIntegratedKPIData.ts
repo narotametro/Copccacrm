@@ -265,7 +265,7 @@ export const useIntegratedKPIData = () => {
     try {
       // Try Supabase first
       const { data: campaigns, error } = await supabase
-        .from('marketing_campaigns')
+        .from('sales_strategies')
         .select('*');
 
       if (error) throw error;
@@ -455,7 +455,7 @@ export const useIntegratedKPIData = () => {
     try {
       // Try Supabase first for user/team data
       const { data: profiles, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*');
 
       if (error) throw error;
@@ -520,7 +520,7 @@ export const useIntegratedKPIData = () => {
     try {
       // Try Supabase first
       const { data: debts, error } = await supabase
-        .from('debts')
+        .from('debt_collection')
         .select('*');
 
       if (error) throw error;
