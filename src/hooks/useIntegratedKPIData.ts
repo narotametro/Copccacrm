@@ -86,6 +86,16 @@ export const useIntegratedKPIData = () => {
           },
           {
             category: 'customers',
+            name: 'Upsell Potential',
+            currentValue: 50, // Mock data - would be calculated from customer data
+            targetValue: 70, // Target 70% upsell potential
+            unit: 'percentage',
+            description: 'Average upsell opportunity across customer base',
+            source: 'Customer Analytics',
+            lastUpdated: new Date().toISOString()
+          },
+          {
+            category: 'customers',
             name: 'Active Customers',
             currentValue: activeCustomers,
             targetValue: activeCustomers + 10, // Grow by 10 customers
@@ -137,6 +147,26 @@ export const useIntegratedKPIData = () => {
             targetValue: 85,
             unit: 'percentage',
             description: 'Average customer health score',
+            source: 'Local Data',
+            lastUpdated: new Date().toISOString()
+          },
+          {
+            category: 'customers',
+            name: 'Churn Risk',
+            currentValue: 20, // Mock data for localStorage fallback
+            targetValue: 20,
+            unit: 'percentage',
+            description: 'Average churn risk percentage',
+            source: 'Local Data',
+            lastUpdated: new Date().toISOString()
+          },
+          {
+            category: 'customers',
+            name: 'Upsell Potential',
+            currentValue: 50, // Mock data for localStorage fallback
+            targetValue: 70,
+            unit: 'percentage',
+            description: 'Average upsell opportunity across customer base',
             source: 'Local Data',
             lastUpdated: new Date().toISOString()
           },

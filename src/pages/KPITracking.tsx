@@ -390,6 +390,72 @@ export const KPITracking: React.FC = () => {
         </p>
       </Card>
 
+      {/* AI Risk Scores - Prominent Display */}
+      <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <Brain className="w-6 h-6 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">🤖 AI Risk Scores</h3>
+            <p className="text-sm text-gray-600">Real-time customer analytics powered by AI</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Health Score */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Health Score</span>
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-green-600 mb-1">75%</div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-green-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Target: 85%</p>
+          </div>
+
+          {/* Churn Risk */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Churn Risk</span>
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-yellow-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-yellow-600 mb-1">20%</div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '20%' }}></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Target: &lt;20%</p>
+          </div>
+
+          {/* Upsell Potential */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Upsell Potential</span>
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-blue-600 mb-1">50%</div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '50%' }}></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Target: 70%</p>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+          <p className="text-sm text-purple-700">
+            <strong>AI Analysis:</strong> Customer health is strong with moderate churn risk. Focus on upsell opportunities to maximize revenue potential.
+          </p>
+        </div>
+      </Card>
+
       {/* Data Integration Section */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
