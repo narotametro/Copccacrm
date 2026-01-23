@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, Target, Sparkles, ArrowRight, Plus, Download, Settings, X, Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -33,9 +33,15 @@ export const LeadsAttribution: React.FC = () => {
   const [conversionPaths] = useState<Array<{
     path: string;
     count: number;
-    value: number;
   }>>([]);
-  // setConversionPaths reserved for future tracking functionality
+
+  // Load sources on component mount
+  useEffect(() => {
+    const savedSources = localStorage.getItem('copcca-leads-sources');
+    if (savedSources) {
+      setSources(JSON.parse(savedSources));
+    }
+  }, []);
 
   // Modal states
   const [showAddSourceModal, setShowAddSourceModal] = useState(false);
@@ -72,14 +78,18 @@ export const LeadsAttribution: React.FC = () => {
       quality: parseFloat(sourceForm.quality) || 0,
     };
 
-    setSources([...sources, newSource]);
+    const updatedSources = [...sources, newSource];
+    setSources(updatedSources);
+    localStorage.setItem('copcca-leads-sources', JSON.stringify(updatedSources));
     setSourceForm({ source: '', firstTouch: '', lastTouch: '', revenue: '', quality: '' });
     setShowAddSourceModal(false);
     toast.success('Lead source added successfully');
   };
 
   const handleRemoveSource = (index: number) => {
-    setSources(sources.filter((_, i) => i !== index));
+    const updatedSources = sources.filter((_, i) => i !== index);
+    setSources(updatedSources);
+    localStorage.setItem('copcca-leads-sources', JSON.stringify(updatedSources));
     toast.success('Source removed');
   };
 
@@ -244,7 +254,7 @@ export const LeadsAttribution: React.FC = () => {
                   <div className="text-sm text-slate-600">{path.count} conversions</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-slate-900">{formatCurrency(path.value)}</div>
+                  <div className="font-semibold text-slate-900">{path.count}</div>
                   <div className="text-xs text-green-600">High value</div>
                 </div>
               </div>

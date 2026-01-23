@@ -10,13 +10,13 @@ interface WorkplaceApp {
 const apps: WorkplaceApp[] = [
   { 
     name: "COPCCA PROCUREMENT", 
-    logo: "📦", 
+    logo: "Package", 
     url: "https://procurement.copcca.com",
     color: "from-indigo-500 to-indigo-600"
   },
   { 
     name: "COPCCA ACCOUNTING", 
-    logo: "💰", 
+    logo: "Revenue", 
     url: "https://accounting.copcca.com",
     color: "from-emerald-500 to-emerald-600"
   },
@@ -28,19 +28,19 @@ const apps: WorkplaceApp[] = [
   },
   { 
     name: "COPCCA CONTENTS", 
-    logo: "📱", 
+    logo: "Mobile", 
     url: "https://contents.copcca.com",
     color: "from-pink-500 to-pink-600"
   },
   { 
     name: "COPCCA BUILDERS", 
-    logo: "🏗️", 
+    logo: "Construction", 
     url: "https://builders.copcca.com",
     color: "from-orange-500 to-orange-600"
   },
   { 
     name: "COPCCA MANUFACTURING", 
-    logo: "⚙️", 
+    logo: "Settings", 
     url: "https://manufacturing.copcca.com",
     color: "from-red-500 to-red-600"
   }
@@ -61,13 +61,13 @@ interface Benefit {
 
 const features: Feature[] = [
   {
-    icon: "👥",
+    icon: "Users",
     title: "Smart CRM",
     description: "Track leads, customers, and sales all in one place with AI-powered insights.",
     color: "from-blue-500 to-blue-600"
   },
   {
-    icon: "📦",
+    icon: "Package",
     title: "Effortless Procurement",
     description: "Streamline purchase orders, suppliers, and approvals with ease.",
     color: "from-indigo-500 to-indigo-600"
@@ -79,7 +79,7 @@ const features: Feature[] = [
     color: "from-purple-500 to-purple-600"
   },
   {
-    icon: "💰",
+    icon: "Revenue",
     title: "Smart Accounting",
     description: "Track expenses, profits, and stocks accurately, with AI assistance.",
     color: "from-emerald-500 to-emerald-600"
@@ -93,12 +93,12 @@ const benefits: Benefit[] = [
     description: "Manage all aspects of your business without switching apps."
   },
   {
-    icon: "🤖",
+    icon: "AI",
     title: "AI-Powered",
     description: "Get intelligent recommendations and predictive analytics for better decisions."
   },
   {
-    icon: "⚡",
+    icon: "Lightning",
     title: "Easy to Use",
     description: "Intuitive design and responsive UI for smooth navigation."
   },

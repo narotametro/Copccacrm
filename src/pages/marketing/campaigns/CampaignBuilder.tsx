@@ -1,10 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Wand2, Target, Banknote, Calendar, Sparkles, Plus, ClipboardList } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
+import { supabase } from '@/lib/supabase';
+
+interface MarketingCampaignRow {
+  id: string;
+  name: string;
+  strategy?: string;
+  objective?: string;
+  audience?: string;
+  channels?: string[];
+  budget?: number;
+  start_date?: string;
+  end_date?: string;
+  notes?: string;
+  created_at?: string;
+}
 
 export const CampaignBuilder: React.FC = () => {
   const { formatCurrency } = useCurrency();
@@ -24,6 +39,112 @@ export const CampaignBuilder: React.FC = () => {
     }>
   >([]);
 
+  const supabaseReady = Boolean(
+    import.meta.env.VITE_SUPABASE_URL &&
+    import.meta.env.VITE_SUPABASE_ANON_KEY &&
+    !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
+  );
+
+  // Load campaigns from localStorage and Supabase
+  const loadCampaigns = useCallback(async () => {
+    try {
+      // Load from localStorage first
+      const saved = localStorage.getItem('copcca-campaigns');
+      if (saved) {
+        const localCampaigns = JSON.parse(saved);
+        setCampaigns(localCampaigns);
+      }
+
+      // Load from Supabase if available
+      if (supabaseReady) {
+        const { data, error } = await supabase
+          .from('marketing_campaigns')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Supabase load error:', error);
+        } else if (data && data.length > 0) {
+          const supabaseCampaigns = data.map((campaign: MarketingCampaignRow) => ({
+            id: campaign.id,
+            name: campaign.name,
+            strategy: campaign.strategy || 'General',
+            objective: campaign.objective || 'Lead Generation',
+            audience: campaign.audience || 'General audience',
+            channels: campaign.channels || [],
+            budget: campaign.budget || 0,
+            startDate: campaign.start_date || '',
+            endDate: campaign.end_date || '',
+            notes: campaign.notes || 'No notes',
+          }));
+          setCampaigns(supabaseCampaigns);
+          // Update localStorage with Supabase data
+          localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load campaigns:', error);
+    }
+  }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
+
+  // Save campaign to localStorage and Supabase
+  const saveCampaign = async (campaign: {
+    id: string;
+    name: string;
+    strategy: string;
+    objective: string;
+    audience: string;
+    channels: string[];
+    budget: number;
+    startDate: string;
+    endDate: string;
+    notes: string;
+  }) => {
+    try {
+      // Save to localStorage
+      const updatedCampaigns = [campaign, ...campaigns];
+      setCampaigns(updatedCampaigns);
+      localStorage.setItem('copcca-campaigns', JSON.stringify(updatedCampaigns));
+
+      // Save to Supabase if available
+      if (supabaseReady) {
+        const { error } = await supabase
+          .from('marketing_campaigns')
+          .insert({
+            id: campaign.id,
+            name: campaign.name,
+            strategy: campaign.strategy,
+            objective: campaign.objective,
+            audience: campaign.audience,
+            channels: campaign.channels,
+            budget: campaign.budget,
+            start_date: campaign.startDate,
+            end_date: campaign.endDate,
+            notes: campaign.notes,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (error) {
+          console.error('Supabase save error:', error);
+          toast.error('Saved locally, but failed to sync to cloud');
+        } else {
+          toast.success('Campaign saved to cloud');
+        }
+      } else {
+        toast.success('Campaign saved locally');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save campaign');
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     strategy: 'SME Acquisition',
@@ -37,12 +158,62 @@ export const CampaignBuilder: React.FC = () => {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['Email', 'SMS']);
 
   const toggleChannel = (channel: string) => {
-    setSelectedChannels((prev) =>
-      prev.includes(channel) ? prev.filter((c) => c !== channel) : [...prev, channel]
+    setSelectedChannels(prev =>
+      prev.includes(channel)
+        ? prev.filter(c => c !== channel)
+        : [...prev, channel]
     );
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const getRecommendedChannels = (campaigns: Array<{
+    id: string;
+    name: string;
+    strategy: string;
+    objective: string;
+    audience: string;
+    channels: string[];
+    budget: number;
+    startDate: string;
+    endDate: string;
+    notes: string;
+  }>) => {
+    const channelCounts: Record<string, number> = {};
+    campaigns.forEach(campaign => {
+      campaign.channels.forEach((channel: string) => {
+        channelCounts[channel] = (channelCounts[channel] || 0) + 1;
+      });
+    });
+
+    const sortedChannels = Object.entries(channelCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([channel]) => channel);
+
+    return sortedChannels.length > 0 ? sortedChannels.join(', ') : 'Email, SMS, Social Media';
+  };
+
+  const getBudgetRange = (campaigns: Array<{
+    id: string;
+    name: string;
+    strategy: string;
+    objective: string;
+    audience: string;
+    channels: string[];
+    budget: number;
+    startDate: string;
+    endDate: string;
+    notes: string;
+  }>) => {
+    const budgets = campaigns.map(c => c.budget).filter(b => b > 0);
+    if (budgets.length === 0) return formatCurrency(500000) + ' - ' + formatCurrency(2000000);
+
+    const min = Math.min(...budgets);
+    const max = Math.max(...budgets);
+
+    return formatCurrency(min) + ' - ' + formatCurrency(max);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       toast.error('Campaign name is required');
@@ -62,10 +233,7 @@ export const CampaignBuilder: React.FC = () => {
       notes: formData.notes.trim() || 'No notes yet',
     };
 
-    setCampaigns((prev) => [newCampaign, ...prev]);
-    toast.success('Campaign created', {
-      description: 'Demo only: saved locally for this session.',
-    });
+    await saveCampaign(newCampaign);
     setFormData({
       name: '',
       strategy: 'SME Acquisition',
@@ -88,8 +256,10 @@ export const CampaignBuilder: React.FC = () => {
           <div>
             <h3 className="font-semibold mb-1">AI Campaign Assistant</h3>
             <p className="text-sm opacity-90">
-              Based on your "SME Acquisition" strategy, recommended channels: WhatsApp, SMS, Email. 
-              Estimated budget: {formatCurrency(1200000)}. Expected leads: 280-320.
+              {campaigns.length > 0
+                ? `You have ${campaigns.length} active campaigns. Based on your recent campaigns, recommended channels: ${getRecommendedChannels(campaigns)}. Estimated budget range: ${getBudgetRange(campaigns)}.`
+                : 'Create your first campaign to get AI-powered recommendations based on your marketing data and customer insights.'
+              }
             </p>
           </div>
         </div>
@@ -234,7 +404,7 @@ export const CampaignBuilder: React.FC = () => {
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <ClipboardList className="text-primary-600" size={18} />
-          <h3 className="text-lg font-semibold text-slate-900">Recent Campaigns (demo)</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Recent Campaigns</h3>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           {campaigns.map((c) => (

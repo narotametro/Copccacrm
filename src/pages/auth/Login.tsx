@@ -8,28 +8,23 @@ import { useAuthStore } from '@/store/authStore';
 
 export default function Login() {
   const user = useAuthStore((state) => state.user);
-  const loading = useAuthStore((state) => state.loading);
   const signIn = useAuthStore((state) => state.signIn);
   const [email, setEmail] = useState(() => localStorage.getItem('rememberedEmail') || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('rememberedEmail'));
-  const [signingIn, setSigningIn] = useState(false);
   const navigate = useNavigate();
   const navigatedRef = useRef(false);
 
   useEffect(() => {
-    if (user && !loading && !navigatedRef.current) {
+    if (user && !navigatedRef.current) {
       navigatedRef.current = true;
       navigate('/app/dashboard', { replace: true });
     }
-  }, [user, loading, navigate]);
-
-  if (loading) return <div className="text-center text-slate-500 mt-4">Loading...</div>;
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSigningIn(true);
     try {
       await signIn(email, password);
       
@@ -45,8 +40,6 @@ export default function Login() {
     } catch (error) {
       const err = error as { message?: string };
       toast.error(err.message || 'Failed to sign in');
-    } finally {
-      setSigningIn(false);
     }
   };
 
@@ -123,8 +116,8 @@ export default function Login() {
             >
               Cancel
             </Button>
-            <Button type="submit" className="w-full" disabled={signingIn}>
-              {signingIn ? 'Signing in...' : 'Sign In'}
+            <Button type="submit" className="w-full">
+              {'Sign In'}
             </Button>
           </div>
         </form>

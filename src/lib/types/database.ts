@@ -19,8 +19,15 @@ export interface Database {
           phone: string | null
           email: string | null
           address: string | null
+          annual_revenue: number | null
           status: 'active' | 'inactive' | 'prospect'
           health_score: number | null
+          jtbd: string | null
+          sentiment: 'positive' | 'neutral' | 'negative' | null
+          subscription_plan: 'starter' | 'professional' | 'enterprise' | null
+          subscription_status: 'trial' | 'active' | 'expired' | 'suspended' | null
+          max_users: number | null
+          show_payment_popup: boolean | null
           created_at: string
           updated_at: string
           created_by: string
@@ -34,8 +41,15 @@ export interface Database {
           phone?: string | null
           email?: string | null
           address?: string | null
+          annual_revenue?: number | null
           status?: 'active' | 'inactive' | 'prospect'
           health_score?: number | null
+          jtbd?: string | null
+          sentiment?: 'positive' | 'neutral' | 'negative' | null
+          subscription_plan?: 'starter' | 'professional' | 'enterprise' | null
+          subscription_status?: 'trial' | 'active' | 'expired' | 'suspended' | null
+          max_users?: number | null
+          show_payment_popup?: boolean | null
           created_at?: string
           updated_at?: string
           created_by: string
@@ -49,8 +63,15 @@ export interface Database {
           phone?: string | null
           email?: string | null
           address?: string | null
+          annual_revenue?: number | null
           status?: 'active' | 'inactive' | 'prospect'
           health_score?: number | null
+          jtbd?: string | null
+          sentiment?: 'positive' | 'neutral' | 'negative' | null
+          subscription_plan?: 'starter' | 'professional' | 'enterprise' | null
+          subscription_status?: 'trial' | 'active' | 'expired' | 'suspended' | null
+          max_users?: number | null
+          show_payment_popup?: boolean | null
           created_at?: string
           updated_at?: string
           created_by?: string
@@ -371,6 +392,11 @@ export interface Database {
           market_share: number | null
           pricing_strategy: string | null
           target_customers: string | null
+          price: number | null
+          product_quality: number | null
+          customer_satisfaction: number | null
+          market_position: string | null
+          key_features: string[] | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -384,6 +410,11 @@ export interface Database {
           market_share?: number | null
           pricing_strategy?: string | null
           target_customers?: string | null
+          price?: number | null
+          product_quality?: number | null
+          customer_satisfaction?: number | null
+          market_position?: string | null
+          key_features?: string[] | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -397,54 +428,12 @@ export interface Database {
           market_share?: number | null
           pricing_strategy?: string | null
           target_customers?: string | null
+          price?: number | null
+          product_quality?: number | null
+          customer_satisfaction?: number | null
+          market_position?: string | null
+          key_features?: string[] | null
           notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      sales_strategies: {
-        Row: {
-          id: string
-          name: string
-          type: 'campaign' | 'promotion' | 'outreach' | 'event'
-          status: 'planned' | 'active' | 'completed' | 'cancelled'
-          budget: number | null
-          target_audience: string | null
-          start_date: string
-          end_date: string | null
-          roi: number | null
-          notes: string | null
-          created_by: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          type: 'campaign' | 'promotion' | 'outreach' | 'event'
-          status?: 'planned' | 'active' | 'completed' | 'cancelled'
-          budget?: number | null
-          target_audience?: string | null
-          start_date: string
-          end_date?: string | null
-          roi?: number | null
-          notes?: string | null
-          created_by: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          type?: 'campaign' | 'promotion' | 'outreach' | 'event'
-          status?: 'planned' | 'active' | 'completed' | 'cancelled'
-          budget?: number | null
-          target_audience?: string | null
-          start_date?: string
-          end_date?: string | null
-          roi?: number | null
-          notes?: string | null
-          created_by?: string
           created_at?: string
           updated_at?: string
         }
@@ -575,6 +564,277 @@ export interface Database {
           used?: boolean
           used_at?: string | null
           created_at?: string
+        }
+      }
+      invoices: {
+        Row: {
+          id: string
+          invoice_number: string
+          company_id: string
+          deal_id: string | null
+          status: 'draft' | 'sent' | 'paid' | 'overdue' | 'partial' | 'cancelled'
+          total_amount: number
+          paid_amount: number
+          balance: number
+          due_date: string
+          issue_date: string
+          payment_terms: string
+          notes: string | null
+          created_by: string
+          assigned_to: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_number: string
+          company_id: string
+          deal_id?: string | null
+          status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'partial' | 'cancelled'
+          total_amount?: number
+          paid_amount?: number
+          due_date: string
+          issue_date?: string
+          payment_terms?: string
+          notes?: string | null
+          created_by: string
+          assigned_to?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_number?: string
+          company_id?: string
+          deal_id?: string | null
+          status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'partial' | 'cancelled'
+          total_amount?: number
+          paid_amount?: number
+          due_date?: string
+          issue_date?: string
+          payment_terms?: string
+          notes?: string | null
+          created_by?: string
+          assigned_to?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      invoice_items: {
+        Row: {
+          id: string
+          invoice_id: string
+          product_id: string | null
+          description: string
+          quantity: number
+          unit_price: number
+          discount: number
+          tax_rate: number
+          line_total: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          description: string
+          quantity?: number
+          unit_price: number
+          discount?: number
+          tax_rate?: number
+          line_total?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          description?: string
+          quantity?: number
+          unit_price?: number
+          discount?: number
+          tax_rate?: number
+          line_total?: number
+          created_at?: string
+        }
+      }
+      invoice_payments: {
+        Row: {
+          id: string
+          invoice_id: string
+          amount: number
+          payment_date: string
+          payment_method: 'cash' | 'bank_transfer' | 'mobile_money' | 'check' | 'credit_card'
+          reference_number: string | null
+          notes: string | null
+          recorded_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          amount: number
+          payment_date?: string
+          payment_method: 'cash' | 'bank_transfer' | 'mobile_money' | 'check' | 'credit_card'
+          reference_number?: string | null
+          notes?: string | null
+          recorded_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          amount?: number
+          payment_date?: string
+          payment_method?: 'cash' | 'bank_transfer' | 'mobile_money' | 'check' | 'credit_card'
+          reference_number?: string | null
+          notes?: string | null
+          recorded_by?: string
+          created_at?: string
+        }
+      }
+      invoice_reminders: {
+        Row: {
+          id: string
+          invoice_id: string
+          reminder_type: 'email' | 'sms' | 'whatsapp' | 'call'
+          scheduled_date: string
+          sent_date: string | null
+          status: 'pending' | 'sent' | 'failed'
+          message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          reminder_type: 'email' | 'sms' | 'whatsapp' | 'call'
+          scheduled_date: string
+          sent_date?: string | null
+          status?: 'pending' | 'sent' | 'failed'
+          message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          reminder_type?: 'email' | 'sms' | 'whatsapp' | 'call'
+          scheduled_date?: string
+          sent_date?: string | null
+          status?: 'pending' | 'sent' | 'failed'
+          message?: string | null
+          created_at?: string
+        }
+      }
+      sales_strategies: {
+        Row: {
+          id: string
+          company_id: string
+          name: string
+          description: string | null
+          status: 'active' | 'inactive' | 'completed'
+          strategy_type: 'campaign' | 'promotion' | 'partnership' | 'other' | null
+          leads_generated: number
+          conversions: number
+          budget: number
+          roi: number
+          start_date: string | null
+          end_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          name: string
+          description?: string | null
+          status?: 'active' | 'inactive' | 'completed'
+          strategy_type?: 'campaign' | 'promotion' | 'partnership' | 'other' | null
+          leads_generated?: number
+          conversions?: number
+          budget?: number
+          roi?: number
+          start_date?: string | null
+          end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          name?: string
+          description?: string | null
+          status?: 'active' | 'inactive' | 'completed'
+          strategy_type?: 'campaign' | 'promotion' | 'partnership' | 'other' | null
+          leads_generated?: number
+          conversions?: number
+          budget?: number
+          roi?: number
+          start_date?: string | null
+          end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      marketing_campaigns: {
+        Row: {
+          id: string
+          name: string
+          type: 'email' | 'social' | 'paid' | 'content' | 'event' | 'partnership'
+          status: 'draft' | 'planned' | 'active' | 'paused' | 'completed' | 'cancelled'
+          budget: number | null
+          spent: number
+          leads_generated: number
+          conversions: number
+          roi: number | null
+          target_audience: string | null
+          start_date: string | null
+          end_date: string | null
+          channels: string[]
+          content: string | null
+          goals: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type?: 'email' | 'social' | 'paid' | 'content' | 'event' | 'partnership'
+          status?: 'draft' | 'planned' | 'active' | 'paused' | 'completed' | 'cancelled'
+          budget?: number | null
+          spent?: number
+          leads_generated?: number
+          conversions?: number
+          roi?: number | null
+          target_audience?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          channels?: string[]
+          content?: string | null
+          goals?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: 'email' | 'social' | 'paid' | 'content' | 'event' | 'partnership'
+          status?: 'draft' | 'planned' | 'active' | 'paused' | 'completed' | 'cancelled'
+          budget?: number | null
+          spent?: number
+          leads_generated?: number
+          conversions?: number
+          roi?: number | null
+          target_audience?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          channels?: string[]
+          content?: string | null
+          goals?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }

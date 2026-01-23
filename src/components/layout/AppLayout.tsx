@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
+import type { Database } from '@/lib/types/database';
 import {
   LayoutDashboard,
   Users,
@@ -27,20 +28,23 @@ import {
   Filter,
   ClipboardCheck,
   Activity,
+  Workflow,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
   { icon: Users, label: 'Customers', path: '/app/customers' },
   { icon: TrendingUp, label: 'Sales', path: '/app/sales' },
+  { icon: Workflow, label: 'Pipeline', path: '/app/pipeline' },
   { icon: ClipboardCheck, label: 'After Sales & Tasks', path: '/app/after-sales' },
   { icon: BarChart3, label: 'Marketing', path: '/app/marketing' },
   { icon: Package, label: 'Products', path: '/app/products' },
   { icon: Target, label: 'Competitors', path: '/app/competitors' },
   { icon: Coins, label: 'Debt Collection', path: '/app/debt-collection' },
+  { icon: FileText, label: 'Invoices', path: '/app/invoices' },
   { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
   { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
   { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },
@@ -103,7 +107,7 @@ export const AppLayout: React.FC = () => {
   // Load company settings from database
   React.useEffect(() => {
     const loadCompanyPopupSettings = async () => {
-      if (!user) return;
+      if (!user || !isSupabaseConfigured) return;
 
       console.log('Loading company for user:', user.id, 'metadata:', user.user_metadata);
 
@@ -111,9 +115,11 @@ export const AppLayout: React.FC = () => {
         // Get user's company_id
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('company_id')
+          .select('company_id,is_company_owner')
           .eq('id', user.id)
           .maybeSingle();
+
+        console.log('User query response:', { data: userData, error: userError });
 
         if (userError) {
           console.error('Error fetching user data:', userError);
@@ -157,7 +163,7 @@ export const AppLayout: React.FC = () => {
           if (companyUsers) {
             setTeamMembers([
               { id: 'all', name: 'All Users', role: '' },
-              ...companyUsers.map(u => ({
+              ...companyUsers.map((u: Database['public']['Tables']['users']['Row']) => ({
                 id: u.id,
                 name: u.full_name,
                 role: u.role,
@@ -289,6 +295,7 @@ export const AppLayout: React.FC = () => {
                   autoFocus
                 />
               )}
+
             </div>
             <div className="flex items-center gap-2">
               {/* User Filter Dropdown - Admin and Manager Only */}

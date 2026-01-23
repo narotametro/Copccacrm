@@ -16,6 +16,7 @@ import {
   Filter,
   CheckCircle,
   XCircle,
+  Clock,
   Crown,
   AlertCircle,
   TrendingUp,
@@ -47,7 +48,7 @@ interface UserType {
   role: 'admin' | 'manager' | 'user';
   department: string;
   phone: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'pending';
   permissions: {
     customers: boolean;
     sales: boolean;
@@ -104,9 +105,8 @@ export const UserManagement: React.FC = () => {
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [invitationLink, setInvitationLink] = useState('');
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [invites, setInvites] = useState<DbInvite[]>([]);
-  const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [companyInfo, setCompanyInfo] = useState<(Database['public']['Tables']['companies']['Row'] & { user_count: number }) | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -122,7 +122,6 @@ export const UserManagement: React.FC = () => {
         return;
       }
 
-      setLoadingUsers(true);
       try {
         // First, get current user's company info
         const { data: currentUserData } = await supabase
@@ -160,7 +159,7 @@ export const UserManagement: React.FC = () => {
           return;
         }
 
-        const userIds = dbUsers.map((u) => u.id);
+        const userIds = dbUsers.map((u: DbUser) => u.id);
         const { data: dbPermissions } = await supabase
           .from('user_permissions')
           .select('*')
@@ -193,12 +192,28 @@ export const UserManagement: React.FC = () => {
 
         if (!inviteError && dbInvites) {
           setInvites(dbInvites);
+          
+          // Add pending invitations to the users list
+          const pendingUsers: UserType[] = dbInvites.map((invite: DbInvite) => ({
+            id: invite.id,
+            full_name: invite.email.split('@')[0] || 'Pending User', // Use email prefix as name placeholder
+            email: invite.email,
+            role: invite.role as UserType['role'],
+            department: 'Pending',
+            phone: '—',
+            status: 'pending' as UserType['status'],
+            permissions: defaultPermissionsForRole(invite.role as UserType['role']),
+            created_at: invite.created_at?.split('T')[0] || '—',
+            last_login: 'Pending',
+          }));
+          
+          setUsers([...mappedUsers, ...pendingUsers]);
+        } else {
+          setUsers(mappedUsers);
         }
       } catch (error) {
         console.warn('User load failed, using demo users', error);
         setUsers(demoUsers);
-      } finally {
-        setLoadingUsers(false);
       }
     };
 
@@ -232,6 +247,7 @@ export const UserManagement: React.FC = () => {
       } catch (error) {
         console.error('Error loading company:', error);
       } finally {
+        // Cleanup if needed
       }
     };
 
@@ -264,19 +280,11 @@ export const UserManagement: React.FC = () => {
           last_login: 'Never',
         };
 
-        await toast.promise(
-          new Promise((resolve) => setTimeout(resolve, 1000)),
-          {
-            loading: 'Adding user...',
-            success: `${formatName(formData.full_name)} added successfully!`,
-            error: 'Failed to add user',
-          }
-        );
-
+        toast.success(`${formatName(formData.full_name)} added successfully!`);
         setUsers([...users, newUser]);
         setShowAddModal(false);
 
-        const baseUrl = window.location.origin;
+        const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
         const token = btoa(`${newUser.email}:${Date.now()}`);
         const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(newUser.email)}`;
         setInvitationLink(link);
@@ -318,7 +326,7 @@ export const UserManagement: React.FC = () => {
       toast.dismiss();
       toast.success('Invitation link generated');
 
-      const link = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
+      const link = `${import.meta.env.VITE_APP_URL || window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
       setInvitationLink(link);
       setSelectedUser({
         id: invite.id,
@@ -327,7 +335,7 @@ export const UserManagement: React.FC = () => {
         role: invite.role as UserType['role'],
         department: formData.department,
         phone: formData.phone,
-        status: 'inactive',
+        status: 'pending' as UserType['status'],
         permissions: defaultPermissionsForRole(invite.role as UserType['role']),
         created_at: new Date().toISOString().split('T')[0],
         last_login: 'Never',
@@ -355,7 +363,7 @@ export const UserManagement: React.FC = () => {
 
   const handleSendInvitation = async (email: string, role: UserType['role'] = 'user') => {
     if (!isSupabaseConfigured || !user) {
-      const baseUrl = window.location.origin;
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
       const token = btoa(`${email}:${Date.now()}`);
       const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(email)}`;
       setInvitationLink(link);
@@ -394,7 +402,7 @@ export const UserManagement: React.FC = () => {
       toast.success('Invitation ready');
 
       setInvites([invite, ...invites.filter((i) => i.email !== invite.email || i.token !== invite.token)]);
-      const link = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
+      const link = `${import.meta.env.VITE_APP_URL || window.location.origin}/invite?token=${token}&email=${encodeURIComponent(invite.email)}`;
       setInvitationLink(link);
       setShowInvitationModal(true);
     } catch (error) {
@@ -405,7 +413,7 @@ export const UserManagement: React.FC = () => {
 
   const handleSendViaWhatsApp = () => {
     if (!selectedUser) return;
-    const message = `Hi ${formatName(selectedUser.full_name)}! 👋\n\nYou've been invited to join COPCCA CRM as a ${formatRole(selectedUser.role)}.\n\n🔗 *Click here to complete your registration:*\n${invitationLink}\n\n📋 *Your Details:*\n• Email: ${formatEmail(selectedUser.email)}\n• Department: ${selectedUser.department}\n• Role: ${formatRole(selectedUser.role)}\n\nThis link will expire in 7 days.\n\nWelcome to the team! 🎉`;
+    const message = `Hi ${formatName(selectedUser.full_name)}!\n\nYou've been invited to join COPCCA CRM as a ${formatRole(selectedUser.role)}.\n\nClick here to complete your registration:\n${invitationLink}\n\nYour Details:\n• Email: ${formatEmail(selectedUser.email)}\n• Department: ${selectedUser.department}\n• Role: ${formatRole(selectedUser.role)}\n\nThis link will expire in 7 days.\n\nWelcome to the team!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     toast.success('Opening WhatsApp...');
@@ -414,7 +422,7 @@ export const UserManagement: React.FC = () => {
   const handleSendViaEmail = () => {
     if (!selectedUser) return;
     const subject = `Welcome to COPCCA CRM - Complete Your Registration`;
-    const body = `Hi ${formatName(selectedUser.full_name)},\n\nYou've been invited to join COPCCA CRM!\n\n🎯 Your Role: ${formatRole(selectedUser.role)}\n🏢 Department: ${selectedUser.department}\n📧 Email: ${formatEmail(selectedUser.email)}\n\n🔗 Click the link below to complete your registration:\n${invitationLink}\n\nThis link will expire in 7 days.\n\nIf you have any questions, please contact your administrator.\n\nBest regards,\nCOPCCA CRM Team`;
+    const body = `Hi ${formatName(selectedUser.full_name)},\n\nYou've been invited to join COPCCA CRM!\n\nYour Role: ${formatRole(selectedUser.role)}\nDepartment: ${selectedUser.department}\nEmail: ${formatEmail(selectedUser.email)}\n\nClick the link below to complete your registration:\n${invitationLink}\n\nThis link will expire in 7 days.\n\nIf you have any questions, please contact your administrator.\n\nBest regards,\nCOPCCA CRM Team`;
     const mailtoUrl = `mailto:${selectedUser.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
     toast.success('Opening email client...');
@@ -422,18 +430,12 @@ export const UserManagement: React.FC = () => {
 
   const handleToggleStatus = async (userId: string) => {
     const target = users.find((u) => u.id === userId);
-    if (!target) return;
-
+    if (!target || target.status === 'pending') return; // Don't allow toggling pending users
     const nextStatus: UserType['status'] = target.status === 'active' ? 'inactive' : 'active';
 
     if (!isSupabaseConfigured || !user) {
       try {
-        await toast.promise(new Promise((resolve) => setTimeout(resolve, 500)), {
-          loading: 'Updating user status...',
-          success: 'User status updated successfully',
-          error: 'Failed to update status',
-        });
-
+        toast.success('User status updated successfully');
         setUsers(users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u)));
       } catch (error) {
         console.error('Failed to toggle status:', error);
@@ -470,22 +472,12 @@ export const UserManagement: React.FC = () => {
           ...selectedUser,
           permissions: { ...selectedUser.permissions, [permission]: !selectedUser.permissions[permission] },
         };
-
         if (!isSupabaseConfigured || !user) {
-          await toast.promise(
-            new Promise((resolve) => setTimeout(resolve, 300)),
-            {
-              loading: 'Updating permissions...',
-              success: 'Permissions updated successfully',
-              error: 'Failed to update permissions',
-            }
-          );
-
+          toast.success('Permissions updated successfully');
           setUsers(users.map((u) => (u.id === selectedUser.id ? updatedUser : u)));
           setSelectedUser(updatedUser);
           return;
         }
-
         const upsertPromise = supabase
           .from('user_permissions')
           .upsert({
@@ -535,7 +527,6 @@ export const UserManagement: React.FC = () => {
             Admin Panel - User Management
           </h1>
           <p className="text-slate-600 mt-1">Manage team members, roles, and permissions</p>
-          {loadingUsers && <p className="text-xs text-slate-500">Loading users from Supabase...</p>}
           {invites.length > 0 && (
             <p className="text-xs text-emerald-600">Pending invitations: {invites.length}</p>
           )}
@@ -569,7 +560,7 @@ export const UserManagement: React.FC = () => {
         </Card>
       </div>
 
-      {/* Company Information Section */}
+      {/* Business Information Section */}
       {companyInfo && (
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
           <div className="flex items-start justify-between mb-4">
@@ -578,8 +569,8 @@ export const UserManagement: React.FC = () => {
                 <Briefcase className="text-white" size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Company Information</h3>
-                <p className="text-sm text-slate-600">Manage your company profile and subscription</p>
+                <h3 className="text-lg font-bold text-slate-900">Business Information</h3>
+                <p className="text-sm text-slate-600">Manage your business profile and subscription</p>
               </div>
             </div>
           </div>
@@ -653,7 +644,7 @@ export const UserManagement: React.FC = () => {
 
           <div className="mt-4 pt-4 border-t border-blue-200">
             <p className="text-xs text-slate-600">
-              <strong>Note:</strong> To update company information, go to Settings → Company Information
+              <strong>Note:</strong> To update business information, go to Settings → Business Information
             </p>
           </div>
         </Card>
@@ -727,8 +718,14 @@ export const UserManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${user.status === 'active' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>
-                      {user.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                      user.status === 'active' 
+                        ? 'bg-green-100 text-green-700 border border-green-300' 
+                        : user.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                        : 'bg-red-100 text-red-700 border border-red-300'
+                    }`}>
+                      {user.status === 'active' ? <CheckCircle size={12} /> : user.status === 'pending' ? <Clock size={12} /> : <XCircle size={12} />}
                       {user.status.toUpperCase()}
                     </span>
                   </td>
@@ -741,7 +738,7 @@ export const UserManagement: React.FC = () => {
                       <button onClick={() => { setSelectedUser(user); setShowPermissionsModal(true); }} className="p-1.5 hover:bg-primary-100 rounded-lg transition-colors text-primary-600" title="Manage Permissions">
                         <Shield size={16} />
                       </button>
-                      <button onClick={() => handleToggleStatus(user.id)} className={`p-1.5 rounded-lg transition-colors ${user.status === 'active' ? 'hover:bg-orange-100 text-orange-600' : 'hover:bg-green-100 text-green-600'}`} title={user.status === 'active' ? 'Deactivate' : 'Activate'}>
+                      <button onClick={() => handleToggleStatus(user.id)} disabled={user.status === 'pending'} className={`p-1.5 rounded-lg transition-colors ${user.status === 'pending' ? 'opacity-50 cursor-not-allowed' : user.status === 'active' ? 'hover:bg-orange-100 text-orange-600' : 'hover:bg-green-100 text-green-600'}`} title={user.status === 'pending' ? 'Pending users cannot be toggled' : user.status === 'active' ? 'Deactivate' : 'Activate'}>
                         {user.status === 'active' ? <Lock size={16} /> : <Unlock size={16} />}
                       </button>
                       <button className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600" title="Edit User">
@@ -784,7 +781,7 @@ export const UserManagement: React.FC = () => {
           </div>
           {formData.role === 'admin' && (
             <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-              <p className="text-sm font-semibold text-purple-900 mb-1">⚠️ Admin Role Selected</p>
+              <p className="text-sm font-semibold text-purple-900 mb-1">Admin Role Selected</p>
               <p className="text-xs text-purple-700">Admins have full access to all modules, can manage users, and view all company data.</p>
             </div>
           )}
@@ -852,7 +849,7 @@ export const UserManagement: React.FC = () => {
       <Modal
         isOpen={showInvitationModal}
         onClose={() => setShowInvitationModal(false)}
-        title="📧 Invitation Link Generated"
+        title="Invitation Link Generated"
         size="lg"
       >
         <div className="space-y-6">
@@ -861,9 +858,9 @@ export const UserManagement: React.FC = () => {
             <div className="flex items-start gap-3">
               <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={24} />
               <div>
-                <h3 className="font-bold text-green-900 mb-1">Member Added Successfully!</h3>
+                <h3 className="font-bold text-green-900 mb-1">Invitation Created Successfully!</h3>
                 <p className="text-sm text-green-800">
-                  {selectedUser?.full_name} has been added to the system. Share the invitation link below to complete the onboarding.
+                  {selectedUser?.full_name} has been added to the pending list. Share the invitation link below for them to complete registration, or provide them with login credentials directly.
                 </p>
               </div>
             </div>
@@ -909,7 +906,7 @@ export const UserManagement: React.FC = () => {
                 Choose how you want to send this invitation to <strong>{selectedUser?.full_name}</strong>:
               </p>
               <p className="text-xs text-primary-600">
-                ⏱️ This link will expire in 7 days
+                This link will expire in 7 days
               </p>
             </div>
           </div>
@@ -969,7 +966,7 @@ export const UserManagement: React.FC = () => {
               <div className="w-full border-t border-slate-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500">Or copy link manually</span>
+              <span className="px-2 bg-white text-slate-500">Or copy invitation link manually</span>
             </div>
           </div>
 
@@ -983,12 +980,12 @@ export const UserManagement: React.FC = () => {
                   className="flex-1 px-3 py-2 border-0 bg-white rounded text-xs font-mono text-slate-700"
                 />
                 <Button size="sm" icon={Copy} onClick={handleCopyInvitationLink}>
-                  Copy
+                  Copy Link
                 </Button>
               </div>
-              <a 
-                href={invitationLink} 
-                target="_blank" 
+              <a
+                href={invitationLink}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-center rounded text-sm font-medium transition-colors"
               >
@@ -999,12 +996,12 @@ export const UserManagement: React.FC = () => {
 
           {/* Instructions */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">📋 Next Steps for New Member:</h4>
+            <h4 className="font-semibold text-blue-900 mb-2">Next Steps:</h4>
             <ol className="space-y-1 text-sm text-blue-800 list-decimal list-inside">
-              <li>Click the invitation link</li>
-              <li>Create a secure password</li>
-              <li>Complete profile setup</li>
-              <li>Access assigned modules based on permissions</li>
+              <li>The user appears in the team list with "Pending" status</li>
+              <li>Share the invitation link for them to set up their account</li>
+              <li>Or provide them with the invitation link directly for registration</li>
+              <li>Once they complete registration, their status will change to "Active"</li>
             </ol>
           </div>
 

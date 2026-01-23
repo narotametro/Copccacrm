@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS system_settings (
 INSERT INTO system_settings (key, value, description) VALUES
   ('openai_api_key', NULL, 'OpenAI API key for AI Assistant'),
   ('openai_model', 'gpt-4o-mini', 'OpenAI model to use'),
-  ('ai_assistant_enabled', 'true', 'Enable/disable AI Assistant globally')
+  ('ai_assistant_enabled', 'true', 'Enable/disable AI Assistant globally'),
+  ('jtbd_enabled', 'true', 'Enable/disable Jobs To Be Done (JTBD) feature'),
+  ('sentiment_enabled', 'true', 'Enable/disable Sentiment analysis feature')
 ON CONFLICT (key) DO NOTHING;
 
 -- Create RLS policies for system_settings

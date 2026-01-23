@@ -276,32 +276,32 @@ export const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white/50 backdrop-blur-sm">
+      <footer className="border-t border-white/20 bg-black backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             {/* Left - Logo */}
             <div className="flex items-center gap-2">
-              <Brain className="text-primary-600" size={28} />
-              <span className="text-xl font-bold text-slate-900">COPCCA CRM</span>
+              <Brain className="text-white" size={28} />
+              <span className="text-xl font-bold text-white">COPCCA CRM</span>
             </div>
             
             {/* Middle - Copyright */}
-            <div className="text-center text-sm text-slate-600">
+            <div className="text-center text-sm text-white">
               <p>
                 &copy; 2026 COPCCA CRM. All rights reserved. | {' '}
-                <a href="#" className="text-primary-600 hover:text-primary-700">Privacy Policy</a>
+                <a href="#" className="text-white hover:text-primary-600">Privacy Policy</a>
               </p>
             </div>
             
             {/* Right - Social Media */}
             <div className="flex items-center gap-4">
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-primary-600 transition-colors">
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white hover:text-primary-600 transition-colors">
                 <Linkedin size={24} />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-primary-600 transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-white hover:text-primary-600 transition-colors">
                 <Instagram size={24} />
               </a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-primary-600 transition-colors">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-white hover:text-primary-600 transition-colors">
                 <Facebook size={24} />
               </a>
             </div>

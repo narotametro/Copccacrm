@@ -17,7 +17,6 @@ export const Settings: React.FC = () => {
     address: '',
   });
   const [showCompanyNameInNavbar, setShowCompanyNameInNavbar] = useState(false);
-  const [loadingCompany, setLoadingCompany] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCompanyOwner, setIsCompanyOwner] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -133,7 +132,7 @@ export const Settings: React.FC = () => {
                 address: newCompany.address || '',
               });
 
-              toast.success('Company profile created! Please update your company information.');
+              toast.success('Business profile created! Please update your business information.');
             }
           } else {
             // Load existing company information
@@ -174,26 +173,17 @@ export const Settings: React.FC = () => {
       toast.error('Password must be at least 8 characters');
       return;
     }
-
-    await toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1200)),
-      {
-        loading: 'Updating password...',
-        success: 'Password updated successfully',
-        error: 'Failed to update password',
-      }
-    );
-
+    // Simulate password update (replace with real API call)
+    toast.success('Password updated successfully');
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   const handleCompanySave = async () => {
     if (!user || !isAdmin || !isCompanyOwner) {
-      toast.error('Only company owners can update company information');
+      toast.error('Only business owners can update business information');
       return;
     }
 
-    setLoadingCompany(true);
     try {
       // Get user's company_id
       const { data: userData } = await supabase
@@ -224,12 +214,10 @@ export const Settings: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success('Company information updated successfully');
+      toast.success('Business information updated successfully');
     } catch (error) {
       console.error('Failed to update company:', error);
-      toast.error('Failed to update company information');
-    } finally {
-      setLoadingCompany(false);
+      toast.error('Failed to update business information');
     }
   };
 
@@ -238,28 +226,15 @@ export const Settings: React.FC = () => {
   };
 
   const handleDownloadData = () => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-      {
-        loading: 'Preparing export...',
-        success: 'Export ready. Download started.',
-        error: 'Failed to export data',
-      }
-    );
+    // Simulate export (replace with real logic)
+    toast.success('Export ready. Download started.');
   };
 
   const handleDeleteData = () => {
     const confirmed = confirm('This will delete cached settings data on this device. Continue?');
     if (!confirmed) return;
-
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-      {
-        loading: 'Clearing data...',
-        success: 'Local settings data removed',
-        error: 'Failed to clear data',
-      }
-    );
+    // Simulate clear (replace with real logic)
+    toast.success('Local settings data removed');
   };
 
   const toggleNotification = (key: keyof typeof notifications) => {
@@ -321,21 +296,21 @@ export const Settings: React.FC = () => {
         <p className="text-slate-600 dark:text-slate-400 mt-1">Manage notifications, preferences, appearance, and security.</p>
       </div>
 
-      {/* Company Information - Visible to all users, editable only for company owners */}
+      {/* Business Information - Visible to all users, editable only for company owners */}
       {user && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Building className="text-primary-600 dark:text-primary-400" size={20} />
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Company Information</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Business Information</h2>
           </div>
           <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
-              📊 Company Profile
+              Business Profile
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-200">
               {isCompanyOwner 
-                ? "Manage your company profile. This information is shared with all users in your organization."
-                : "View your company profile. Only company owners can edit this information."
+                ? "Manage your business profile. This information is shared with all users in your organization."
+                : "View your business profile. Only company owners can edit this information."
               }
             </p>
           </div>
@@ -443,9 +418,9 @@ export const Settings: React.FC = () => {
               <Button 
                 icon={Save} 
                 onClick={handleCompanySave}
-                disabled={loadingCompany || !companyInfo.name}
+                disabled={!companyInfo.name}
               >
-                {loadingCompany ? 'Saving...' : 'Save Company Information'}
+                {'Save Business Information'}
               </Button>
             </div>
           )}

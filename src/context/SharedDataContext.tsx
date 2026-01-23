@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Shared data interfaces
 export interface Customer {
@@ -51,15 +52,32 @@ export interface Product {
 
 export interface Invoice {
   id: string;
-  customer_id: string;
-  customer_name: string;
-  deal_id?: string;
-  amount: number;
+  invoice_number: string;
+  company_id: string;
+  deal_id?: string | null;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'partial' | 'cancelled';
+  total_amount: number;
+  paid_amount: number;
+  balance: number;
   due_date: string;
-  status: 'paid' | 'overdue' | 'pending';
-  days_overdue?: number;
-  products: { product_id: string; product_name: string; quantity: number; price: number }[];
-  created_date: string;
+  issue_date: string;
+  payment_terms: string;
+  notes?: string | null;
+  created_by: string;
+  assigned_to?: string | null;
+  created_at: string;
+  updated_at: string;
+  companies?: {
+    name: string;
+  };
+  invoice_items?: {
+    id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    discount: number;
+    line_total: number;
+  }[];
 }
 
 export interface SupportTicket {
@@ -134,37 +152,82 @@ interface SharedDataContextType {
   getLowStockProducts: () => Product[];
   getCustomerLifetimeValue: (customerId: string) => number;
   getCompetitorDealsByDeal: (dealId: string) => CompetitorDeal | undefined;
+  getCustomerFinancialMetrics: (customerId: string) => {
+    total_revenue: number;
+    purchases: number;
+    avg_order_value: number;
+    tier: string;
+  };
 }
 
 const SharedDataContext = createContext<SharedDataContextType | undefined>(undefined);
 
-// Demo data
-const demoCustomers: Customer[] = [];
-
-const demoDeals: Deal[] = [];
-
-const demoProducts: Product[] = [];
-
-const demoInvoices: Invoice[] = [];
-
-const demoTickets: SupportTicket[] = [];
-
-const demoLeads: Lead[] = [];
-
-const demoCompetitorDeals: CompetitorDeal[] = [];
 
 export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [customers, setCustomers] = useState<Customer[]>(demoCustomers);
-  const [deals, setDeals] = useState<Deal[]>(demoDeals);
-  const [products, setProducts] = useState<Product[]>(demoProducts);
-  const [invoices, setInvoices] = useState<Invoice[]>(demoInvoices);
-  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(demoTickets);
-  const [leads, setLeads] = useState<Lead[]>(demoLeads);
-  const [competitorDeals, setCompetitorDeals] = useState<CompetitorDeal[]>(demoCompetitorDeals);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [competitorDeals, setCompetitorDeals] = useState<CompetitorDeal[]>([]);
+
+  // Load real invoice data from Supabase
+  useEffect(() => {
+    const loadInvoices = async () => {
+      if (!isSupabaseConfigured) {
+        console.warn('Supabase not configured, skipping invoice data load');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            companies (
+              name
+            ),
+            invoice_items (
+              id,
+              description,
+              quantity,
+              unit_price,
+              discount,
+              line_total
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading invoices:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          setInvoices(data);
+        }
+      } catch (error) {
+        console.error('Error loading invoices:', error);
+      }
+    };
+
+    loadInvoices();
+  }, []);
 
   const getCustomerById = (id: string) => customers.find(c => c.id === id);
   const getDealsByCustomer = (customerId: string) => deals.filter(d => d.customer_id === customerId);
-  const getInvoicesByCustomer = (customerId: string) => invoices.filter(i => i.customer_id === customerId);
+  const getInvoicesByCustomer = (identifier: string) => {
+    // First try to match by company_id
+    let matchingInvoices = invoices.filter(i => i.company_id === identifier);
+
+    // If no matches, try to match by company name
+    if (matchingInvoices.length === 0) {
+      matchingInvoices = invoices.filter(i => i.companies?.name === identifier);
+    }
+
+    return matchingInvoices;
+  };
   const getTicketsByCustomer = (customerId: string) => supportTickets.filter(t => t.customer_id === customerId);
   const getProductById = (id: string) => products.find(p => p.id === id);
   const getLeadById = (id: string) => leads.find(l => l.id === id);
@@ -175,6 +238,27 @@ export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children
   const getCustomerLifetimeValue = (customerId: string) => {
     const customerDeals = getDealsByCustomer(customerId);
     return customerDeals.reduce((sum, deal) => sum + (deal.stage === 'closed-won' ? deal.value : 0), 0);
+  };
+
+  const getCustomerFinancialMetrics = (customerId: string) => {
+    const customerInvoices = getInvoicesByCustomer(customerId);
+    const paidInvoices = customerInvoices.filter(invoice => invoice.status === 'paid');
+    
+    const totalRevenue = paidInvoices.reduce((sum, invoice) => sum + invoice.total_amount, 0);
+    const purchases = paidInvoices.length;
+    const avgOrderValue = purchases > 0 ? totalRevenue / purchases : 0;
+    
+    let tier = 'bronze';
+    if (totalRevenue >= 10000) tier = 'platinum';
+    else if (totalRevenue >= 5000) tier = 'gold';
+    else if (totalRevenue >= 1000) tier = 'silver';
+    
+    return {
+      total_revenue: totalRevenue,
+      purchases,
+      avg_order_value: avgOrderValue,
+      tier,
+    };
   };
 
   const convertLeadToCustomer = (leadId: string): Customer | null => {
@@ -261,6 +345,7 @@ export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children
     getLowStockProducts,
     getCustomerLifetimeValue,
     getCompetitorDealsByDeal,
+    getCustomerFinancialMetrics,
   };
 
   return <SharedDataContext.Provider value={value}>{children}</SharedDataContext.Provider>;

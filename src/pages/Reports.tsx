@@ -1,35 +1,345 @@
-import React, { useState } from 'react';
-import { FileText, Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, Banknote, Award, Shield, Zap, Eye } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, Banknote, Award, Shield, Zap, Eye, Users, DollarSign } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
+import { useSharedData } from '@/context/SharedDataContext';
 
 export const Reports: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
+  const { customers, deals, products, invoices, supportTickets, leads, competitorDeals } = useSharedData();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
-  const reports = [
-    { name: 'Sales Performance Report', date: '2026-01-07', type: 'Sales', color: 'from-green-600 to-emerald-600' },
-    { name: 'Customer Analysis Report', date: '2026-01-05', type: 'Customer', color: 'from-blue-600 to-cyan-600' },
-    { name: 'Revenue Forecast Report', date: '2026-01-03', type: 'Finance', color: 'from-purple-600 to-pink-600' },
-    { name: 'Marketing Campaign Report', date: '2026-01-01', type: 'Marketing', color: 'from-orange-600 to-red-600' },
-    { name: 'Product Intelligence Report', date: '2026-01-07', type: 'Product', color: 'from-indigo-600 to-purple-600' },
-    { name: 'Competitive Intelligence Report', date: '2026-01-06', type: 'Competitive', color: 'from-red-600 to-orange-600' },
-  ];
+  // Calculate real analytics data
+  const analytics = useMemo(() => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Sales Analytics
+    const totalRevenue = invoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum, inv) => sum + inv.total_amount, 0);
+
+    const monthlyRevenue = invoices
+      .filter(inv => inv.status === 'paid' && new Date(inv.created_at) >= thisMonth)
+      .reduce((sum, inv) => sum + inv.total_amount, 0);
+
+    const activeDeals = deals.filter(deal => deal.stage !== 'won' && deal.stage !== 'lost');
+    const wonDeals = deals.filter(deal => deal.stage === 'won');
+    const totalDealValue = activeDeals.reduce((sum, deal) => sum + deal.value, 0);
+    const weightedForecast = activeDeals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
+
+    // Customer Analytics
+    const activeCustomers = customers.filter(c => c.status === 'active');
+    const totalLifetimeValue = customers.reduce((sum, c) => sum + c.lifetime_value, 0);
+    const avgLifetimeValue = activeCustomers.length > 0 ? totalLifetimeValue / activeCustomers.length : 0;
+    const highValueCustomers = customers.filter(c => c.lifetime_value > avgLifetimeValue * 1.5);
+
+    // Product Analytics
+    const totalProducts = products.length;
+    const lowStockProducts = products.filter(p => p.status === 'low_stock');
+    const outOfStockProducts = products.filter(p => p.status === 'out_of_stock');
+    const topSellingProduct = products.reduce((top, p) =>
+      p.total_sold > (top?.total_sold || 0) ? p : top, null as Product | null);
+
+    // Support Analytics
+    const openTickets = supportTickets.filter(t => t.status === 'open' || t.status === 'in_progress');
+    const resolvedThisMonth = supportTickets.filter(t =>
+      t.status === 'resolved' && new Date(t.resolved_date || '') >= thisMonth);
+    const avgResolutionTime = resolvedThisMonth.length > 0 ?
+      resolvedThisMonth.reduce((sum, t) => {
+        const created = new Date(t.created_date);
+        const resolved = new Date(t.resolved_date || '');
+        return sum + (resolved.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+      }, 0) / resolvedThisMonth.length : 0;
+
+    // Lead Analytics
+    const newLeadsThisMonth = leads.filter(l => new Date(l.created_date) >= thisMonth);
+    const convertedLeads = leads.filter(l => l.status === 'converted');
+    const conversionRate = leads.length > 0 ? (convertedLeads.length / leads.length) * 100 : 0;
+
+    // Competitive Intelligence
+    const wonCompetitions = competitorDeals.filter(d => d.outcome === 'won');
+    const lostCompetitions = competitorDeals.filter(d => d.outcome === 'lost');
+    const winRate = competitorDeals.length > 0 ? (wonCompetitions.length / competitorDeals.length) * 100 : 0;
+
+    return {
+      sales: {
+        totalRevenue,
+        monthlyRevenue,
+        activeDeals: activeDeals.length,
+        wonDeals: wonDeals.length,
+        totalDealValue,
+        weightedForecast,
+        avgDealSize: wonDeals.length > 0 ? wonDeals.reduce((sum, d) => sum + d.value, 0) / wonDeals.length : 0
+      },
+      customers: {
+        totalCustomers: customers.length,
+        activeCustomers: activeCustomers.length,
+        totalLifetimeValue,
+        avgLifetimeValue,
+        highValueCustomers: highValueCustomers.length
+      },
+      products: {
+        totalProducts,
+        lowStockProducts: lowStockProducts.length,
+        outOfStockProducts: outOfStockProducts.length,
+        topSellingProduct: topSellingProduct?.name || 'N/A',
+        totalRevenue: products.reduce((sum, p) => sum + p.revenue_generated, 0)
+      },
+      support: {
+        openTickets: openTickets.length,
+        resolvedThisMonth: resolvedThisMonth.length,
+        avgResolutionTime: Math.round(avgResolutionTime * 10) / 10
+      },
+      leads: {
+        totalLeads: leads.length,
+        newLeadsThisMonth: newLeadsThisMonth.length,
+        convertedLeads: convertedLeads.length,
+        conversionRate: Math.round(conversionRate * 10) / 10
+      },
+      competitive: {
+        totalCompetitions: competitorDeals.length,
+        wonCompetitions: wonCompetitions.length,
+        lostCompetitions: lostCompetitions.length,
+        winRate: Math.round(winRate * 10) / 10
+      }
+    };
+  }, [customers, deals, products, invoices, supportTickets, leads, competitorDeals]);
+
+  // Generate dynamic reports based on real data
+  const reports = useMemo(() => {
+    const reportData = [
+      {
+        name: 'Sales Performance Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Sales',
+        color: 'from-green-600 to-emerald-600',
+        icon: DollarSign,
+        metrics: {
+          totalRevenue: analytics.sales.totalRevenue,
+          monthlyRevenue: analytics.sales.monthlyRevenue,
+          activeDeals: analytics.sales.activeDeals,
+          wonDeals: analytics.sales.wonDeals,
+          forecast: analytics.sales.weightedForecast,
+          avgDealSize: analytics.sales.avgDealSize
+        }
+      },
+      {
+        name: 'Customer Analysis Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Customer',
+        color: 'from-blue-600 to-cyan-600',
+        icon: Users,
+        metrics: {
+          totalCustomers: analytics.customers.totalCustomers,
+          activeCustomers: analytics.customers.activeCustomers,
+          avgLifetimeValue: analytics.customers.avgLifetimeValue,
+          highValueCustomers: analytics.customers.highValueCustomers
+        }
+      },
+      {
+        name: 'Revenue Forecast Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Finance',
+        color: 'from-purple-600 to-pink-600',
+        icon: TrendingUp,
+        metrics: {
+          currentRevenue: analytics.sales.monthlyRevenue,
+          forecastedRevenue: analytics.sales.weightedForecast,
+          totalDealValue: analytics.sales.totalDealValue
+        }
+      },
+      {
+        name: 'Marketing Campaign Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Marketing',
+        color: 'from-orange-600 to-red-600',
+        icon: Target,
+        metrics: {
+          totalLeads: analytics.leads.totalLeads,
+          newLeadsThisMonth: analytics.leads.newLeadsThisMonth,
+          conversionRate: analytics.leads.conversionRate,
+          convertedLeads: analytics.leads.convertedLeads
+        }
+      },
+      {
+        name: 'Product Intelligence Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Product',
+        color: 'from-indigo-600 to-purple-600',
+        icon: Package,
+        metrics: {
+          totalProducts: analytics.products.totalProducts,
+          lowStockProducts: analytics.products.lowStockProducts,
+          outOfStockProducts: analytics.products.outOfStockProducts,
+          topSellingProduct: analytics.products.topSellingProduct,
+          productRevenue: analytics.products.totalRevenue
+        }
+      },
+      {
+        name: 'Competitive Intelligence Report',
+        date: new Date().toISOString().split('T')[0],
+        type: 'Competitive',
+        color: 'from-red-600 to-orange-600',
+        icon: Shield,
+        metrics: {
+          totalCompetitions: analytics.competitive.totalCompetitions,
+          wonCompetitions: analytics.competitive.wonCompetitions,
+          lostCompetitions: analytics.competitive.lostCompetitions,
+          winRate: analytics.competitive.winRate
+        }
+      }
+    ];
+
+    return reportData;
+  }, [analytics]);
+
+  // Calculate report statistics
+  const reportStats = useMemo(() => {
+    const totalReports = reports.length;
+    const generatedThisMonth = reports.filter(r =>
+      new Date(r.date) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    ).length;
+
+    // Find most popular based on data volume/complexity
+    const mostPopular = reports.reduce((popular, current) => {
+      const currentScore = Object.keys(current.metrics).length;
+      const popularScore = Object.keys(popular.metrics).length;
+      return currentScore > popularScore ? current : popular;
+    });
+
+    return {
+      totalReports,
+      generatedThisMonth,
+      mostPopular: mostPopular.name
+    };
+  }, [reports]);
 
   const handleDownload = (reportName: string) => {
-    // Create a simple text-based report content
-    const reportContent = `COPCCA CRM - ${reportName}
+    const report = reports.find(r => r.name === reportName);
+    if (!report) return;
+
+    // Generate comprehensive report content based on real data
+    let reportContent = `COPCCA CRM - ${reportName}
 Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 
-This is a comprehensive ${reportName} containing detailed analytics and insights.
+================================================================================
+${reportName.toUpperCase()}
+================================================================================
 
-For the full interactive report with charts and AI recommendations, please view it in the application.
+`;
 
----
-COPCCA CRM 2026 - AI-Powered Business Intelligence
+    // Add specific content based on report type
+    switch (report.type) {
+      case 'Sales':
+        reportContent += `
+SALES PERFORMANCE SUMMARY
+-------------------------
+Total Revenue (All Time): ${formatCurrency(convertAmount(report.metrics.totalRevenue || 0))}
+Revenue This Month: ${formatCurrency(convertAmount(report.metrics.monthlyRevenue || 0))}
+Active Deals: ${report.metrics.activeDeals || 0}
+Won Deals: ${report.metrics.wonDeals || 0}
+Total Deal Pipeline Value: ${formatCurrency(convertAmount(report.metrics.totalDealValue || 0))}
+Weighted Forecast: ${formatCurrency(convertAmount(report.metrics.forecast || 0))}
+Average Deal Size: ${formatCurrency(convertAmount(report.metrics.avgDealSize || 0))}
+
+AI INSIGHTS:
+- Pipeline health: ${(report.metrics.activeDeals || 0) > 0 ? (((report.metrics.forecast || 0) / (report.metrics.totalDealValue || 1)) * 100).toFixed(1) : 0}% weighted conversion probability
+- Focus on high-probability deals to maximize revenue potential
+- Monitor deal velocity and conversion rates weekly
+`;
+        break;
+
+      case 'Customer':
+        reportContent += `
+CUSTOMER ANALYSIS SUMMARY
+-------------------------
+Total Customers: ${report.metrics.totalCustomers || 0}
+Active Customers: ${report.metrics.activeCustomers || 0}
+Average Lifetime Value: ${formatCurrency(convertAmount(report.metrics.avgLifetimeValue || 0))}
+High-Value Customers: ${report.metrics.highValueCustomers || 0}
+
+AI INSIGHTS:
+- Customer retention rate: ${((report.metrics.activeCustomers || 0) / (report.metrics.totalCustomers || 1) * 100).toFixed(1)}%
+- Focus on high-value customer retention and expansion opportunities
+- Implement personalized engagement strategies for top-tier customers
+`;
+        break;
+
+      case 'Finance':
+        reportContent += `
+REVENUE FORECAST SUMMARY
+------------------------
+Current Monthly Revenue: ${formatCurrency(convertAmount(report.metrics.currentRevenue || 0))}
+Forecasted Revenue: ${formatCurrency(convertAmount(report.metrics.forecastedRevenue || 0))}
+Total Pipeline Value: ${formatCurrency(convertAmount(report.metrics.totalDealValue || 0))}
+
+AI INSIGHTS:
+- Revenue momentum: ${(report.metrics.forecastedRevenue || 0) > (report.metrics.currentRevenue || 0) ? 'Positive' : 'Needs attention'}
+- Forecast accuracy depends on deal progression and conversion rates
+- Monitor cash flow and payment terms closely
+`;
+        break;
+
+      case 'Marketing':
+        reportContent += `
+MARKETING CAMPAIGN SUMMARY
+--------------------------
+Total Leads: ${report.metrics.totalLeads}
+New Leads This Month: ${report.metrics.newLeadsThisMonth}
+Converted Leads: ${report.metrics.convertedLeads}
+Conversion Rate: ${report.metrics.conversionRate}%
+
+AI INSIGHTS:
+- Lead quality improving with ${report.metrics.conversionRate}% conversion rate
+- Focus on lead nurturing and follow-up processes
+- Optimize marketing channels based on conversion data
+`;
+        break;
+
+      case 'Product':
+        reportContent += `
+PRODUCT INTELLIGENCE SUMMARY
+-----------------------------
+Total Products: ${report.metrics.totalProducts || 0}
+Low Stock Products: ${report.metrics.lowStockProducts || 0}
+Out of Stock Products: ${report.metrics.outOfStockProducts || 0}
+Top Selling Product: ${report.metrics.topSellingProduct || 'N/A'}
+Product Revenue: ${formatCurrency(convertAmount(report.metrics.productRevenue || 0))}
+
+AI INSIGHTS:
+- Inventory health: ${(report.metrics.lowStockProducts || 0) + (report.metrics.outOfStockProducts || 0)} products need attention
+- ${report.metrics.topSellingProduct || 'N/A'} is the best performer - consider expansion
+- Monitor product performance and customer preferences
+`;
+        break;
+
+      case 'Competitive':
+        reportContent += `
+COMPETITIVE INTELLIGENCE SUMMARY
+---------------------------------
+Total Competitions: ${report.metrics.totalCompetitions}
+Won Competitions: ${report.metrics.wonCompetitions}
+Lost Competitions: ${report.metrics.lostCompetitions}
+Win Rate: ${report.metrics.winRate}%
+
+AI INSIGHTS:
+- Competitive position: ${report.metrics.winRate}% win rate vs competitors
+- Analyze win/loss factors to improve competitive strategy
+- Focus on differentiators and unique value propositions
+`;
+        break;
+    }
+
+    reportContent += `
+
+================================================================================
+COPCCA CRM 2026 - AI-Powered Business Intelligence Platform
+Generated with real-time data from your business operations
+================================================================================
 `;
 
     // Create a blob and download link
@@ -42,7 +352,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     toast.success(`${reportName} downloaded successfully!`);
   };
 
@@ -50,7 +360,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">📊 Reports & AI Insights</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Reports & AI Insights</h1>
           <p className="text-slate-600 mt-1 text-sm md:text-base">Comprehensive analytics and intelligence reports</p>
         </div>
         <Button 
@@ -76,7 +386,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${report.color} flex items-center justify-center flex-shrink-0`}>
-                  <FileText className="text-white" size={24} />
+                  <report.icon className="text-white" size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-slate-900 mb-1">{report.name}</h3>
@@ -112,15 +422,15 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <Card>
           <h3 className="text-xs md:text-sm text-slate-600 mb-1 md:mb-2">Total Reports</h3>
-          <p className="text-2xl md:text-3xl font-bold text-slate-900">26</p>
+          <p className="text-2xl md:text-3xl font-bold text-slate-900">{reportStats.totalReports}</p>
         </Card>
         <Card>
           <h3 className="text-xs md:text-sm text-slate-600 mb-1 md:mb-2">Generated This Month</h3>
-          <p className="text-2xl md:text-3xl font-bold text-primary-600">6</p>
+          <p className="text-2xl md:text-3xl font-bold text-primary-600">{reportStats.generatedThisMonth}</p>
         </Card>
         <Card>
           <h3 className="text-xs md:text-sm text-slate-600 mb-1 md:mb-2">Most Popular</h3>
-          <p className="text-base md:text-lg font-bold text-slate-900">Product Intelligence</p>
+          <p className="text-base md:text-lg font-bold text-slate-900">{reportStats.mostPopular}</p>
         </Card>
       </div>
 
@@ -128,7 +438,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Sales'}
         onClose={() => setSelectedReport(null)}
-        title="📈 Sales Performance Report"
+        title="Sales Performance Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -138,9 +448,14 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-green-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-green-800">
-                  Sales performance trending upward with <span className="font-bold">{formatCurrency(convertAmount(524000))} revenue this month (65.5% of {formatCurrency(convertAmount(800000))} target)</span>. 
-                  Win rate at 50% with average deal size of {formatCurrency(convertAmount(54000))}. Top performer: Enterprise segment with 82% close probability. 
-                  <span className="font-bold"> Recommendation: Focus on 4 high-probability deals ({formatCurrency(convertAmount(185000))} weighted forecast)</span> to hit monthly target.
+                  Sales performance shows <span className="font-bold">{formatCurrency(convertAmount(analytics.sales.monthlyRevenue))} revenue this month</span>.
+                  {analytics.sales.activeDeals > 0 && (
+                    <> Pipeline contains {analytics.sales.activeDeals} active deals worth {formatCurrency(convertAmount(analytics.sales.totalDealValue))} with {formatCurrency(convertAmount(analytics.sales.weightedForecast))} weighted forecast.</>
+                  )}
+                  {analytics.sales.wonDeals > 0 && (
+                    <> {analytics.sales.wonDeals} deals won with average size of {formatCurrency(convertAmount(analytics.sales.avgDealSize))}.</>
+                  )}
+                  <span className="font-bold"> Focus on pipeline optimization and deal progression to maximize revenue potential.</span>
                 </p>
               </div>
             </div>
@@ -148,45 +463,45 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-l-4 border-green-500">
-              <h4 className="font-bold text-slate-900 mb-3">💰 Revenue Metrics</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Revenue Metrics</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Month-to-Date</span>
-                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(524000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(analytics.sales.monthlyRevenue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Target Progress</span>
-                  <span className="font-bold text-slate-900">65.5%</span>
+                  <span className="text-sm text-slate-600">Total Revenue</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(analytics.sales.totalRevenue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Remaining to Target</span>
-                  <span className="font-bold text-orange-600">{formatCurrency(convertAmount(276000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Pipeline Value</span>
+                  <span className="font-bold text-blue-600">{formatCurrency(convertAmount(analytics.sales.totalDealValue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">AI Forecast</span>
-                  <span className="font-bold text-primary-600">{formatCurrency(convertAmount(185000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Weighted Forecast</span>
+                  <span className="font-bold text-primary-600">{formatCurrency(convertAmount(analytics.sales.weightedForecast) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
               </div>
             </Card>
 
             <Card className="border-l-4 border-blue-500">
-              <h4 className="font-bold text-slate-900 mb-3">🎯 Pipeline Metrics</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Pipeline Metrics</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Active Deals</span>
-                  <span className="font-bold text-slate-900">4</span>
+                  <span className="font-bold text-slate-900">{analytics.sales.activeDeals}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Win Rate</span>
-                  <span className="font-bold text-green-600">50%</span>
+                  <span className="text-sm text-slate-600">Won Deals</span>
+                  <span className="font-bold text-green-600">{analytics.sales.wonDeals}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Avg Deal Size</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(54000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(analytics.sales.avgDealSize) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">At Risk Deals</span>
-                  <span className="font-bold text-red-600">1</span>
+                  <span className="text-sm text-slate-600">Conversion Rate</span>
+                  <span className="font-bold text-purple-600">{analytics.sales.activeDeals > 0 ? ((analytics.sales.wonDeals / (analytics.sales.wonDeals + analytics.sales.activeDeals)) * 100).toFixed(1) : 0}%</span>
                 </div>
               </div>
             </Card>
@@ -214,7 +529,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Customer'}
         onClose={() => setSelectedReport(null)}
-        title="👥 Customer Analysis Report"
+        title="Customer Analysis Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -224,9 +539,11 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-blue-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-blue-800">
-                  Customer base of <span className="font-bold">127 active customers with 82% average health score</span>. 
-                  Churn risk identified in 12% of base (primarily in at-risk segment). 
-                  <span className="font-bold"> Priority: Engage Acme Corp (78% churn risk, {formatCurrency(convertAmount(50000))}/mo value)</span> and 2 other high-value at-risk customers immediately.
+                  Customer base analysis shows <span className="font-bold">{analytics.customers.activeCustomers} active customers out of {analytics.customers.totalCustomers} total</span>.
+                  {analytics.customers.highValueCustomers > 0 && (
+                    <> {analytics.customers.highValueCustomers} high-value customers identified with average lifetime value of {formatCurrency(convertAmount(analytics.customers.avgLifetimeValue))}.</>
+                  )}
+                  <span className="font-bold"> Focus on customer retention strategies and personalized engagement to maximize lifetime value.</span>
                 </p>
               </div>
             </div>
@@ -234,23 +551,23 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-l-4 border-blue-500">
-              <h4 className="font-bold text-slate-900 mb-3">📊 Customer Segmentation</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Customer Segmentation</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">VIP Customers</span>
-                  <span className="font-bold text-purple-600">15 (12%)</span>
+                  <span className="text-sm text-slate-600">Total Customers</span>
+                  <span className="font-bold text-slate-900">{analytics.customers.totalCustomers}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-600">Active Customers</span>
-                  <span className="font-bold text-green-600">98 (77%)</span>
+                  <span className="font-bold text-green-600">{analytics.customers.activeCustomers} ({analytics.customers.totalCustomers > 0 ? ((analytics.customers.activeCustomers / analytics.customers.totalCustomers) * 100).toFixed(1) : 0}%)</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">At Risk</span>
-                  <span className="font-bold text-red-600">8 (6%)</span>
+                  <span className="text-sm text-slate-600">High-Value Customers</span>
+                  <span className="font-bold text-purple-600">{analytics.customers.highValueCustomers} ({analytics.customers.totalCustomers > 0 ? ((analytics.customers.highValueCustomers / analytics.customers.totalCustomers) * 100).toFixed(1) : 0}%)</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">New Leads</span>
-                  <span className="font-bold text-blue-600">6 (5%)</span>
+                  <span className="text-sm text-slate-600">Total Leads</span>
+                  <span className="font-bold text-blue-600">{analytics.leads.totalLeads}</span>
                 </div>
               </div>
             </Card>
@@ -259,20 +576,20 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <h4 className="font-bold text-slate-900 mb-3">💎 Value Metrics</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Avg Health Score</span>
-                  <span className="font-bold text-green-600">82/100</span>
+                  <span className="text-sm text-slate-600">Total Lifetime Value</span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(analytics.customers.totalLifetimeValue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Avg Churn Risk</span>
-                  <span className="font-bold text-orange-600">12%</span>
+                  <span className="text-sm text-slate-600">Avg Lifetime Value</span>
+                  <span className="font-bold text-blue-600">{formatCurrency(convertAmount(analytics.customers.avgLifetimeValue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Upsell Potential</span>
-                  <span className="font-bold text-primary-600">78%</span>
+                  <span className="text-sm text-slate-600">Lead Conversion Rate</span>
+                  <span className="font-bold text-orange-600">{analytics.leads.conversionRate}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Customer LTV</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(1200000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
+                  <span className="text-sm text-slate-600">New Leads This Month</span>
+                  <span className="font-bold text-primary-600">{analytics.leads.newLeadsThisMonth}</span>
                 </div>
               </div>
             </Card>
@@ -293,7 +610,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Finance'}
         onClose={() => setSelectedReport(null)}
-        title="💰 Revenue Forecast Report"
+        title="Revenue Forecast Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -303,9 +620,11 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-purple-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-purple-800">
-                  <span className="font-bold">Q1 2026 forecast: {formatCurrency(convertAmount(1800000) / 1000000)}M total revenue</span> based on current pipeline and historical trends. 
-                  Month-over-month growth steady at 15%. Product revenue split: CRM Pro (54%), Mobile (15%), Analytics (20%), AI Assistant (11%). 
-                  <span className="font-bold"> Risk: {formatCurrency(convertAmount(165000))} outstanding debt affecting cash flow</span> - recommend aggressive collection.
+                  <span className="font-bold">Current revenue: {formatCurrency(convertAmount(analytics.sales.totalRevenue))}</span> with {formatCurrency(convertAmount(analytics.sales.monthlyRevenue))} this month.
+                  {analytics.sales.weightedForecast > 0 && (
+                    <> Pipeline forecast shows {formatCurrency(convertAmount(analytics.sales.weightedForecast))} in potential revenue from active deals.</>
+                  )}
+                  <span className="font-bold"> Focus on pipeline conversion and revenue optimization strategies.</span>
                 </p>
               </div>
             </div>
@@ -313,41 +632,45 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-l-4 border-purple-500">
-              <h4 className="font-bold text-slate-900 mb-3">📈 Revenue Projections</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Revenue Projections</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">January 2026</span>
-                  <span className="font-bold text-purple-600">{formatCurrency(convertAmount(524000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Current Month</span>
+                  <span className="font-bold text-purple-600">{formatCurrency(convertAmount(analytics.sales.monthlyRevenue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">February 2026</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(602000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Total Revenue</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(analytics.sales.totalRevenue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">March 2026</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(convertAmount(693000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Pipeline Value</span>
+                  <span className="font-bold text-blue-600">{formatCurrency(convertAmount(analytics.sales.totalDealValue) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Q1 Total</span>
-                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(1820000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
+                  <span className="text-sm text-slate-600">Weighted Forecast</span>
+                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(analytics.sales.weightedForecast) / 1000)}<span className="text-xs ml-0.5">K</span></span>
                 </div>
               </div>
             </Card>
 
             <Card className="border-l-4 border-pink-500">
-              <h4 className="font-bold text-slate-900 mb-3">💳 Cash Flow</h4>
+              <h4 className="font-bold text-slate-900 mb-3">💳 Financial Overview</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Collections Rate</span>
-                  <span className="font-bold text-green-600">94%</span>
+                  <span className="text-sm text-slate-600">Active Deals</span>
+                  <span className="font-bold text-green-600">{analytics.sales.activeDeals}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Outstanding Debt</span>
-                  <span className="font-bold text-red-600">{formatCurrency(convertAmount(165000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Won Deals</span>
+                  <span className="font-bold text-blue-600">{analytics.sales.wonDeals}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Expected Recovery</span>
-                  <span className="font-bold text-orange-600">{formatCurrency(convertAmount(155000) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                  <span className="text-sm text-slate-600">Avg Deal Size</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(convertAmount(analytics.sales.avgDealSize) / 1000)}<span className="text-xs ml-0.5">K</span></span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-slate-600">Conversion Rate</span>
+                  <span className="font-bold text-purple-600">{analytics.sales.activeDeals > 0 ? ((analytics.sales.wonDeals / (analytics.sales.wonDeals + analytics.sales.activeDeals)) * 100).toFixed(1) : 0}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Net Cash Position</span>
@@ -372,7 +695,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Marketing'}
         onClose={() => setSelectedReport(null)}
-        title="🎯 Marketing Campaign Report"
+        title="Marketing Campaign Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -382,9 +705,14 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-orange-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-orange-800">
-                  <span className="font-bold">Marketing ROI at 165% with {formatCurrency(convertAmount(1500000) / 1000000)}M total revenue generated</span> from 4 active campaigns. 
-                  Q1 2026 Launch performing exceptionally (254% ROI, 92/100 AI score). 
-                  <span className="font-bold"> Best channel: Email (45% of conversions)</span>. Recommendation: Reallocate 20% budget from ads to email for Q2.
+                  <span className="font-bold">Lead generation shows {analytics.leads.totalLeads} total leads with {analytics.leads.conversionRate}% conversion rate</span>.
+                  {analytics.leads.newLeadsThisMonth > 0 && (
+                    <> {analytics.leads.newLeadsThisMonth} new leads this month indicate healthy inbound flow.</>
+                  )}
+                  {analytics.leads.convertedLeads > 0 && (
+                    <> {analytics.leads.convertedLeads} leads successfully converted to customers.</>
+                  )}
+                  <span className="font-bold"> Focus on lead nurturing and conversion optimization.</span>
                 </p>
               </div>
             </div>
@@ -392,45 +720,45 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-l-4 border-orange-500">
-              <h4 className="font-bold text-slate-900 mb-3">📊 Campaign Performance</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Lead Performance</h4>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Active Campaigns</span>
-                  <span className="font-bold text-orange-600">2</span>
+                  <span className="text-sm text-slate-600">Total Leads</span>
+                  <span className="font-bold text-orange-600">{analytics.leads.totalLeads}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Total Revenue</span>
-                  <span className="font-bold text-green-600">{formatCurrency(convertAmount(1500000) / 1000000)}<span className="text-xs ml-0.5">M</span></span>
+                  <span className="text-sm text-slate-600">New This Month</span>
+                  <span className="font-bold text-green-600">{analytics.leads.newLeadsThisMonth}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Average ROI</span>
-                  <span className="font-bold text-primary-600">165%</span>
+                  <span className="text-sm text-slate-600">Conversion Rate</span>
+                  <span className="font-bold text-primary-600">{analytics.leads.conversionRate}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-slate-600">Budget Used</span>
-                  <span className="font-bold text-slate-900">24%</span>
+                  <span className="text-sm text-slate-600">Converted Leads</span>
+                  <span className="font-bold text-slate-900">{analytics.leads.convertedLeads}</span>
                 </div>
               </div>
             </Card>
 
             <Card className="border-l-4 border-red-500">
-              <h4 className="font-bold text-slate-900 mb-3">📢 Channel Breakdown</h4>
+              <h4 className="font-bold text-slate-900 mb-3">Marketing Metrics</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Email</span>
-                  <span className="font-bold text-green-600">45%</span>
+                  <span className="text-sm text-slate-600">Lead Quality</span>
+                  <span className="font-bold text-green-600">{analytics.leads.totalLeads > 0 ? 'Good' : 'Monitor'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Social Media</span>
-                  <span className="font-bold text-blue-600">30%</span>
+                  <span className="text-sm text-slate-600">Pipeline Impact</span>
+                  <span className="font-bold text-blue-600">{analytics.leads.convertedLeads} customers</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Paid Ads</span>
-                  <span className="font-bold text-orange-600">15%</span>
+                  <span className="text-sm text-slate-600">Growth Rate</span>
+                  <span className="font-bold text-purple-600">{analytics.leads.newLeadsThisMonth > 0 ? 'Active' : 'Stable'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">SMS</span>
-                  <span className="font-bold text-purple-600">10%</span>
+                  <span className="text-sm text-slate-600">Conversion Trend</span>
+                  <span className="font-bold text-orange-600">{analytics.leads.conversionRate >= 10 ? 'Strong' : 'Improving'}</span>
                 </div>
               </div>
             </Card>
@@ -451,7 +779,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Product'}
         onClose={() => setSelectedReport(null)}
-        title="📦 Product Intelligence Report"
+        title="Product Intelligence Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -461,9 +789,14 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-indigo-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-indigo-800">
-                  Your product portfolio shows strong growth with <span className="font-bold">COPCCA Mobile leading at 92/100 AI score</span>. 
-                  Total monthly revenue of {formatCurrency(convertAmount(230000))} with average growth rate of 37%. Key recommendation: <span className="font-bold">Focus resources on Mobile & AI Assistant</span> (highest performers) 
-                  while repositioning Analytics product to address market feedback.
+                  Product portfolio analysis shows <span className="font-bold">{analytics.products.totalProducts} products generating {formatCurrency(convertAmount(analytics.products.totalRevenue))} in revenue</span>.
+                  {analytics.products.topSellingProduct !== 'N/A' && (
+                    <> {analytics.products.topSellingProduct} is the top performer.</>
+                  )}
+                  {analytics.products.lowStockProducts > 0 && (
+                    <> {analytics.products.lowStockProducts} products need inventory attention.</>
+                  )}
+                  <span className="font-bold"> Focus on inventory optimization and product performance monitoring.</span>
                 </p>
               </div>
             </div>
@@ -478,61 +811,49 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-l-4 border-green-500">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">COPCCA CRM Pro</span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">GROWING</span>
+                  <span className="text-sm text-slate-600">Total Products</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">ACTIVE</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(125000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{analytics.products.totalProducts}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-green-600 font-medium flex items-center gap-1">
-                    <TrendingUp size={14} />
-                    +28% growth
-                  </span>
-                  <span className="text-slate-600">AI Score: 87</span>
+                  <span className="text-green-600 font-medium">Products in catalog</span>
+                  <span className="text-slate-600">Revenue: {formatCurrency(convertAmount(analytics.products.totalRevenue) / 1000)}K</span>
                 </div>
               </Card>
 
               <Card className="border-l-4 border-blue-500">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">COPCCA Analytics</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">STABLE</span>
+                  <span className="text-sm text-slate-600">Top Performer</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">LEADER</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(45000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
+                <p className="text-lg font-bold text-slate-900 mb-1">{analytics.products.topSellingProduct}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-blue-600 font-medium flex items-center gap-1">
-                    <TrendingUp size={14} />
-                    +12% growth
-                  </span>
-                  <span className="text-slate-600">AI Score: 68</span>
+                  <span className="text-blue-600 font-medium">Best selling product</span>
+                  <span className="text-slate-600">Monitor performance</span>
+                </div>
+              </Card>
+
+              <Card className="border-l-4 border-orange-500">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Inventory Alerts</span>
+                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">ATTENTION</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{analytics.products.lowStockProducts + analytics.products.outOfStockProducts}</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-orange-600 font-medium">Low/out of stock</span>
+                  <span className="text-slate-600">Needs replenishment</span>
                 </div>
               </Card>
 
               <Card className="border-l-4 border-purple-500">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">COPCCA Mobile</span>
-                  <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded">LEADER</span>
+                  <span className="text-sm text-slate-600">Stock Status</span>
+                  <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded">HEALTHY</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(35000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{analytics.products.totalProducts - analytics.products.lowStockProducts - analytics.products.outOfStockProducts}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-purple-600 font-medium flex items-center gap-1">
-                    <TrendingUp size={14} />
-                    +45% growth
-                  </span>
-                  <span className="text-slate-600">AI Score: 92</span>
-                </div>
-              </Card>
-
-              <Card className="border-l-4 border-pink-500">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">COPCCA AI Assistant</span>
-                  <span className="px-2 py-1 bg-pink-100 text-pink-700 text-xs font-bold rounded">LEADER</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{formatCurrency(convertAmount(25000) / 1000)}<span className="text-sm ml-0.5">K</span>/mo</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-pink-600 font-medium flex items-center gap-1">
-                    <TrendingUp size={14} />
-                    +52% growth
-                  </span>
-                  <span className="text-slate-600">AI Score: 95</span>
+                  <span className="text-purple-600 font-medium">Well stocked products</span>
+                  <span className="text-slate-600">Good inventory health</span>
                 </div>
               </Card>
             </div>
@@ -681,7 +1002,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
       <Modal
         isOpen={selectedReport === 'Competitive'}
         onClose={() => setSelectedReport(null)}
-        title="🎯 Competitive Intelligence Report"
+        title="Competitive Intelligence Report"
         size="lg"
       >
         <div className="space-y-6">
@@ -691,9 +1012,14 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
               <div>
                 <h3 className="font-bold text-red-900 mb-1">🧠 AI Executive Summary</h3>
                 <p className="text-sm text-red-800">
-                  <span className="font-bold">HIGH ALERT:</span> RivalTech reduced pricing by 15%, directly threatening 2 deals worth {formatCurrency(convertAmount(240000))}. 
-                  MarketLeader (85/100 threat score) gaining market share in enterprise segment. 
-                  <span className="font-bold"> Immediate action required on pricing and enterprise features.</span> BudgetCRM remains low threat (32 score).
+                  Competitive analysis shows <span className="font-bold">{analytics.competitive.totalCompetitions} competitive situations tracked</span> with a {analytics.competitive.winRate}% win rate.
+                  {analytics.competitive.wonCompetitions > 0 && (
+                    <> {analytics.competitive.wonCompetitions} competitions won successfully.</>
+                  )}
+                  {analytics.competitive.lostCompetitions > 0 && (
+                    <> {analytics.competitive.lostCompetitions} competitions lost - analyze patterns for improvement.</>
+                  )}
+                  <span className="font-bold"> Focus on competitive intelligence and win rate optimization.</span>
                 </p>
               </div>
             </div>
@@ -703,54 +1029,54 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
           <div>
             <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
               <Target className="text-red-600" size={20} />
-              Competitor Threat Assessment
+              Competitor Performance Summary
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-l-4 border-red-500">
+              <Card className="border-l-4 border-green-500">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">RivalTech</span>
-                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded">HIGH THREAT</span>
+                  <span className="text-sm text-slate-600">Total Competitions</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">TRACKED</span>
                 </div>
-                <p className="text-2xl font-bold text-red-600 mb-1">78/100</p>
+                <p className="text-2xl font-bold text-green-600 mb-1">{analytics.competitive.totalCompetitions}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Position: Challenger</span>
-                  <span className="text-red-600 font-medium">28% share</span>
+                  <span className="text-slate-600">Competitive situations</span>
+                  <span className="text-green-600 font-medium">Active monitoring</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-200">
-                  <p className="text-xs text-slate-600 mb-1">Latest Activity:</p>
-                  <p className="text-xs text-red-700 font-medium">Reduced pricing 15% (Jan 6)</p>
+                  <p className="text-xs text-slate-600 mb-1">Win Rate:</p>
+                  <p className="text-xs text-green-700 font-medium">{analytics.competitive.winRate}% success rate</p>
+                </div>
+              </Card>
+
+              <Card className="border-l-4 border-blue-500">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Competitions Won</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">SUCCESS</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-600 mb-1">{analytics.competitive.wonCompetitions}</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">Successful outcomes</span>
+                  <span className="text-blue-600 font-medium">Analyze win factors</span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <p className="text-xs text-slate-600 mb-1">Success Rate:</p>
+                  <p className="text-xs text-blue-700 font-medium">{analytics.competitive.totalCompetitions > 0 ? ((analytics.competitive.wonCompetitions / analytics.competitive.totalCompetitions) * 100).toFixed(1) : 0}% of competitions</p>
                 </div>
               </Card>
 
               <Card className="border-l-4 border-orange-500">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">MarketLeader</span>
-                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">CRITICAL</span>
+                  <span className="text-sm text-slate-600">Competitions Lost</span>
+                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">LEARNING</span>
                 </div>
-                <p className="text-2xl font-bold text-orange-600 mb-1">85/100</p>
+                <p className="text-2xl font-bold text-orange-600 mb-1">{analytics.competitive.lostCompetitions}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Position: Leader</span>
-                  <span className="text-orange-600 font-medium">42% share</span>
+                  <span className="text-slate-600">Areas for improvement</span>
+                  <span className="text-orange-600 font-medium">Review loss reasons</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-200">
-                  <p className="text-xs text-slate-600 mb-1">Latest Activity:</p>
-                  <p className="text-xs text-orange-700 font-medium">Launched AI features (Jan 5)</p>
-                </div>
-              </Card>
-
-              <Card className="border-l-4 border-green-500">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">BudgetCRM</span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">LOW THREAT</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600 mb-1">32/100</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Position: Follower</span>
-                  <span className="text-green-600 font-medium">8% share</span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-200">
-                  <p className="text-xs text-slate-600 mb-1">Latest Activity:</p>
-                  <p className="text-xs text-green-700 font-medium">No major changes</p>
+                  <p className="text-xs text-slate-600 mb-1">Loss Rate:</p>
+                  <p className="text-xs text-orange-700 font-medium">{analytics.competitive.totalCompetitions > 0 ? ((analytics.competitive.lostCompetitions / analytics.competitive.totalCompetitions) * 100).toFixed(1) : 0}% of competitions</p>
                 </div>
               </Card>
             </div>
@@ -911,7 +1237,7 @@ COPCCA CRM 2026 - AI-Powered Business Intelligence
             <div className="flex items-start gap-3">
               <Banknote className="text-primary-600 flex-shrink-0 mt-1" size={24} />
               <div>
-                <h3 className="font-bold text-primary-900 mb-1">💰 Market Opportunity Detected</h3>
+                <h3 className="font-bold text-primary-900 mb-1">Market Opportunity Detected</h3>
                 <p className="text-sm text-primary-800 mb-2">
                   <span className="font-bold">African SMB market growing 45% YoY</span> with low competitor penetration. 
                   Both Salesforce and HubSpot focus on large enterprises. 

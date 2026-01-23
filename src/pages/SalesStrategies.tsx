@@ -288,7 +288,7 @@ export const SalesStrategies: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <Brain className="text-primary-600 flex-shrink-0 mt-0.5" size={16} />
                   <div>
-                    <p className="text-xs font-bold text-primary-900 mb-1">💡 Top AI Insight:</p>
+                    <p className="text-xs font-bold text-primary-900 mb-1">Top AI Insight:</p>
                     <p className="text-sm text-primary-800">{campaign.ai_recommendations[0]}</p>
                   </div>
                 </div>
@@ -368,8 +368,8 @@ export const SalesStrategies: React.FC = () => {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {tab === 'overview' && '📊 Overview'}
-                    {tab === 'performance' && '📈 Performance'}
+                    {tab === 'overview' && 'Overview'}
+                    {tab === 'performance' && 'Performance'}
                     {tab === 'ai-insights' && '🧠 AI Insights'}
                     {activeTab === tab && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
@@ -386,7 +386,7 @@ export const SalesStrategies: React.FC = () => {
                 <div className="space-y-6">
                   {/* Campaign Message */}
                   <Card className="border-l-4 border-primary-500">
-                    <h3 className="font-bold text-slate-900 mb-3">📝 Campaign Message</h3>
+                    <h3 className="font-bold text-slate-900 mb-3">Campaign Message</h3>
                     <div className="space-y-2">
                       <div>
                         <p className="text-xs text-slate-600 mb-1">Subject/Headline:</p>
@@ -454,7 +454,7 @@ export const SalesStrategies: React.FC = () => {
                   {/* Budget & Timeline */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="border-l-4 border-green-500">
-                      <h3 className="font-bold text-slate-900 mb-4">💰 Budget & Spend</h3>
+                      <h3 className="font-bold text-slate-900 mb-4">Budget & Spend</h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Total Budget</span>
@@ -478,7 +478,7 @@ export const SalesStrategies: React.FC = () => {
                     </Card>
 
                     <Card className="border-l-4 border-blue-500">
-                      <h3 className="font-bold text-slate-900 mb-4">📅 Timeline</h3>
+                      <h3 className="font-bold text-slate-900 mb-4">Timeline</h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Start Date</span>
@@ -515,7 +515,7 @@ export const SalesStrategies: React.FC = () => {
                           <p className="text-sm text-blue-800">{selectedCampaign.ab_testing.variant_a}</p>
                           {selectedCampaign.ab_testing.winner === 'A' && (
                             <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
-                              🏆 Winner
+                              Winner
                             </span>
                           )}
                         </div>
@@ -524,7 +524,7 @@ export const SalesStrategies: React.FC = () => {
                           <p className="text-sm text-purple-800">{selectedCampaign.ab_testing.variant_b}</p>
                           {selectedCampaign.ab_testing.winner === 'B' && (
                             <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
-                              🏆 Winner
+                              Winner
                             </span>
                           )}
                         </div>
@@ -603,9 +603,9 @@ export const SalesStrategies: React.FC = () => {
                           selectedCampaign.roi > 100 ? 'text-blue-600' :
                           'text-orange-600'
                         }`}>
-                          {selectedCampaign.roi > 150 ? '🔥 Excellent' :
-                           selectedCampaign.roi > 100 ? '👍 Good' :
-                           '⚠️ Needs Improvement'}
+                          {selectedCampaign.roi > 150 ? 'Excellent' :
+                           selectedCampaign.roi > 100 ? 'Good' :
+                           'Needs Improvement'}
                         </p>
                         <p className="text-sm text-slate-600">
                           For every {currency.symbol}1 spent, you earned {currency.symbol}{(selectedCampaign.roi / 100).toFixed(2)}
@@ -616,7 +616,7 @@ export const SalesStrategies: React.FC = () => {
 
                   {/* Channel Performance */}
                   <Card className="border-l-4 border-primary-500">
-                    <h3 className="font-bold text-slate-900 mb-4">📊 Channel Performance</h3>
+                    <h3 className="font-bold text-slate-900 mb-4">Channel Performance</h3>
                     <div className="space-y-3">
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -715,12 +715,12 @@ export const SalesStrategies: React.FC = () => {
                   {/* Best Performance Insights */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="border-l-4 border-green-500">
-                      <h3 className="font-bold text-green-700 mb-3">🏆 Best Performing Channel</h3>
+                      <h3 className="font-bold text-green-700 mb-3">Best Performing Channel</h3>
                       <p className="text-2xl font-bold text-slate-900 mb-2">{selectedCampaign.best_channel}</p>
                       <p className="text-sm text-slate-600">Highest conversion rate and ROI</p>
                     </Card>
                     <Card className="border-l-4 border-blue-500">
-                      <h3 className="font-bold text-blue-700 mb-3">⏰ Best Time to Send</h3>
+                      <h3 className="font-bold text-blue-700 mb-3">Best Time to Send</h3>
                       <p className="text-2xl font-bold text-slate-900 mb-2">{selectedCampaign.best_time}</p>
                       <p className="text-sm text-slate-600">Optimal engagement window</p>
                     </Card>
@@ -728,7 +728,7 @@ export const SalesStrategies: React.FC = () => {
 
                   {/* AI Score Breakdown */}
                   <Card>
-                    <h3 className="font-bold text-slate-900 mb-4">⭐ AI Campaign Score: {selectedCampaign.ai_score}/100</h3>
+                    <h3 className="font-bold text-slate-900 mb-4">AI Campaign Score: {selectedCampaign.ai_score}/100</h3>
                     <div className="space-y-3">
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -890,7 +890,7 @@ export const SalesStrategies: React.FC = () => {
                 onChange={(e) => setMessageBody(e.target.value)}
                 required
               />
-              <p className="text-xs text-slate-500 mt-1">💡 Tip: Use clear, action-oriented language for best results</p>
+              <p className="text-xs text-slate-500 mt-1">Tip: Use clear, action-oriented language for best results</p>
             </div>
 
             <Card>
@@ -966,7 +966,7 @@ export const SalesStrategies: React.FC = () => {
             </div>
 
             <Card>
-              <h3 className="font-bold text-slate-900 mb-3">⚡ Quick Schedule</h3>
+              <h3 className="font-bold text-slate-900 mb-3">Quick Schedule</h3>
               <div className="grid grid-cols-2 gap-3">
                 <Button type="button" variant="secondary" size="sm" onClick={() => {
                   const tomorrow = new Date();
@@ -1006,7 +1006,7 @@ export const SalesStrategies: React.FC = () => {
               <div className="flex items-start gap-2">
                 <Sparkles className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
                 <div>
-                  <p className="text-sm font-bold text-green-900 mb-1">🎯 AI Recommendation</p>
+                  <p className="text-sm font-bold text-green-900 mb-1">AI Recommendation</p>
                   <p className="text-sm text-green-800">
                     Best time to apply optimization: {selectedCampaign.best_time} for maximum engagement
                   </p>

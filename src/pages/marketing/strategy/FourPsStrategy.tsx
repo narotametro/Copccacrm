@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Banknote,
@@ -15,6 +15,78 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
+import { supabase } from '@/lib/supabase';
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  customer_satisfaction: number;
+  market_share: number;
+  competitor_analysis: string[];
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  contactPerson: string | null;
+  status: string;
+  customer_type: 'lead' | 'active' | 'vip' | 'at-risk';
+  health_score: number | null;
+  churn_risk: number;
+  upsell_potential: number;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  total_revenue: number;
+  purchases: number;
+  avg_order_value: number;
+  last_purchase: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  sentiment: 'positive' | 'neutral' | 'negative';
+  feedback_count: number;
+  jtbd: string;
+  pain_points: string[];
+  feedback_history: {
+    id: string;
+    date: string;
+    type: 'positive' | 'negative' | 'neutral';
+    comment: string;
+    category: string;
+  }[];
+  priority_actions: string[];
+}
+
+interface Competitor {
+  id: string;
+  name: string;
+  brand: string;
+  website: string;
+  industry: string;
+  competitor_type: string;
+  price: number;
+  market_share: number;
+  threat_level: 'low' | 'medium' | 'high' | 'critical';
+  market_position: 'leader' | 'challenger' | 'follower' | 'niche';
+  product_quality: number;
+  pricing_strategy: 'premium' | 'competitive' | 'budget' | 'value';
+  innovation_level: number;
+  customer_satisfaction: number;
+  usp?: string;
+  package_design?: string;
+  key_features?: string[];
+  target_audience: string;
+  pain_points: string;
+  strengths: string;
+  weaknesses: string;
+  distribution_channels: string[];
+  marketing_channels: string[];
+  ai_threat_score: number;
+  ai_recommendations: string[];
+  last_activity: string;
+}
 
 export const FourPsStrategy: React.FC = () => {
   const { formatCurrency } = useCurrency();
@@ -61,6 +133,77 @@ export const FourPsStrategy: React.FC = () => {
   const [priceForm, setPriceForm] = useState({ model: '', basePrice: '', discount: '', compName: '', compPrice: '', compPosition: 'Similar' });
   const [placeForm, setPlaceForm] = useState({ channelName: '', channelPerformance: '50', location: '' });
   const [promotionForm, setPromotionForm] = useState({ message: '', tone: '', channel: '', theme: '' });
+
+  // Real data state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const supabaseReady = Boolean(
+    import.meta.env.VITE_SUPABASE_URL &&
+    import.meta.env.VITE_SUPABASE_ANON_KEY &&
+    !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
+  );
+
+  // Load data on component mount
+  useEffect(() => {
+    loadFourPsData();
+    loadProducts();
+    loadCustomers();
+    loadCompetitors();
+  }, []);
+
+  // Load 4Ps data from localStorage
+  const loadFourPsData = () => {
+    try {
+      const saved = localStorage.getItem('copcca-4ps-strategy');
+      if (saved) {
+        const data = JSON.parse(saved);
+        setFourPs(data);
+        toast.success('4Ps strategy loaded from saved data');
+      }
+    } catch (error) {
+      console.error('Failed to load 4Ps data:', error);
+    }
+  };
+
+  // Load products from localStorage
+  const loadProducts = () => {
+    try {
+      const saved = localStorage.getItem('copcca-products');
+      const productData = saved ? JSON.parse(saved) : [];
+      setProducts(productData);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    }
+  };
+
+  // Load customers from localStorage
+  const loadCustomers = () => {
+    try {
+      const saved = localStorage.getItem('copcca-customers');
+      const customerData = saved ? JSON.parse(saved) : [];
+      setCustomers(customerData);
+      // Select first customer as default
+      if (customerData.length > 0) {
+        setSelectedCustomer(customerData[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load customers:', error);
+    }
+  };
+
+  // Load competitors from localStorage
+  const loadCompetitors = () => {
+    try {
+      const saved = localStorage.getItem('copcca-competitors');
+      const competitorData = saved ? JSON.parse(saved) : [];
+      setCompetitors(competitorData);
+    } catch (error) {
+      console.error('Failed to load competitors:', error);
+    }
+  };
 
   // Product handlers
   const addProductItem = () => {
@@ -148,21 +291,230 @@ export const FourPsStrategy: React.FC = () => {
     toast.success('Theme added');
   };
 
-  const handleSave = () => {
-    toast.success('4Ps strategy saved');
+  const handleSave = async () => {
+    try {
+      // Save to localStorage
+      localStorage.setItem('copcca-4ps-strategy', JSON.stringify(fourPs));
+
+      // Save to Supabase if available
+      if (supabaseReady) {
+        const { error } = await supabase
+          .from('marketing_strategies')
+          .upsert({
+            strategy_type: '4ps',
+            content: fourPs,
+            customer_id: selectedCustomer?.id || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (error) {
+          console.error('Supabase save error:', error);
+          toast.error('Saved locally, but failed to sync to cloud');
+        } else {
+          toast.success('4Ps strategy saved to cloud');
+        }
+      } else {
+        toast.success('4Ps strategy saved locally');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save 4Ps strategy');
+    }
+  };
+
+  // AI optimization using real data
+  const handleOptimizeWithAI = () => {
+    if (!selectedCustomer) {
+      toast.error('Please select a customer for AI analysis');
+      return;
+    }
+
+    // Generate optimized 4Ps based on customer data
+    const optimizedStrategy = generateOptimized4Ps(selectedCustomer, products, competitors);
+
+    setFourPs(optimizedStrategy);
+    toast.success('AI optimization completed!', {
+      description: '4Ps strategy optimized based on customer data and market analysis.',
+    });
+  };
+
+  // Generate optimized 4Ps strategy based on real data
+  const generateOptimized4Ps = (customer: Customer, products: Product[], competitors: Competitor[]) => {
+    const customerType = customer.customer_type;
+    const tier = customer.tier;
+    const painPoints = customer.pain_points;
+
+    // Product optimization
+    const relevantProducts = products.filter(p =>
+      p.category.toLowerCase().includes('crm') ||
+      p.category.toLowerCase().includes('software') ||
+      p.category.toLowerCase().includes('business')
+    );
+
+    const productItems = relevantProducts.length > 0
+      ? relevantProducts.map(p => p.name)
+      : ['CRM Software', 'Analytics Dashboard', 'Customer Support Suite'];
+
+    const benefits = [
+      'Streamlined customer management',
+      'Real-time analytics and reporting',
+      'Automated workflow optimization',
+      '24/7 customer support access',
+      'Scalable enterprise solutions'
+    ];
+
+    const differentiators = [
+      'Local market expertise and support',
+      'AI-powered insights and recommendations',
+      'Enterprise-grade security and compliance',
+      'Personalized customer success management',
+      'Competitive pricing with premium features'
+    ];
+
+    // Price optimization based on customer tier
+    const basePrice = tier === 'platinum' ? 999 : tier === 'gold' ? 499 : tier === 'silver' ? 299 : 99;
+    const pricingModel = `${tier.charAt(0).toUpperCase() + tier.slice(1)} Tier - ${formatCurrency(basePrice)}/month`;
+
+    const discounts = [
+      'First month 50% off',
+      'Annual billing discount (15%)',
+      'Multi-user discount (10% for 5+ users)',
+      'Loyalty discount for existing customers'
+    ];
+
+    // Competitor pricing comparison
+    const competitorComparison = competitors.slice(0, 3).map(comp => ({
+      name: comp.name,
+      price: comp.price * (tier === 'platinum' ? 1.2 : tier === 'gold' ? 1.0 : tier === 'silver' ? 0.8 : 0.6),
+      position: comp.market_position
+    }));
+
+    // Place optimization
+    const channels = [
+      { name: 'Direct Sales Team', performance: 85, active: true },
+      { name: 'Online Platform', performance: 75, active: true },
+      { name: 'Partner Network', performance: 65, active: customerType === 'vip' },
+      { name: 'Reseller Program', performance: 55, active: customerType === 'active' }
+    ];
+
+    const coverage = [
+      'Nigeria (Primary Market)',
+      'West Africa (Expansion)',
+      'Online Global Access',
+      'Local Office Presence'
+    ];
+
+    // Promotion optimization
+    const messages = [
+      `Transform your ${customerType} business with our ${tier} CRM solution`,
+      'Join 500+ businesses already using our platform',
+      `Solve ${painPoints.slice(0, 2).join(' and ')} with our comprehensive CRM suite`,
+      'Experience the difference with local expertise and global technology'
+    ];
+
+    const tone = customer.sentiment === 'positive' ? 'Confident and supportive' :
+                 customer.sentiment === 'negative' ? 'Empathetic and solution-focused' :
+                 'Professional and informative';
+
+    const promotionChannels = [
+      'Email Marketing',
+      'LinkedIn Campaigns',
+      'Industry Webinars',
+      'Customer Success Stories',
+      'Partner Referrals'
+    ];
+
+    const themes = [
+      'Digital Transformation',
+      'Customer-Centric Growth',
+      'Local Market Leadership',
+      'Technology-Driven Solutions',
+      'Business Efficiency'
+    ];
+
+    return {
+      product: {
+        items: productItems,
+        benefits,
+        quality: 'Enterprise-grade with 99.9% uptime SLA',
+        differentiators,
+      },
+      price: {
+        model: pricingModel,
+        basePrice,
+        discounts,
+        sensitivity: customer.churn_risk > 70 ? 'High - focus on value demonstration' : 'Medium - emphasize ROI',
+        competitorComparison,
+      },
+      place: {
+        channels,
+        coverage,
+      },
+      promotion: {
+        messages,
+        tone,
+        channels: promotionChannels,
+        themes,
+      },
+    };
   };
 
   return (
     <div className="space-y-6">
+      {/* Customer Selection */}
+      <Card>
+        <h3 className="font-semibold text-slate-900 mb-4">Select Customer for Analysis</h3>
+        <div className="space-y-3">
+          <select
+            value={selectedCustomer?.id || ''}
+            onChange={(e) => {
+              const customer = customers.find(c => c.id === e.target.value);
+              setSelectedCustomer(customer || null);
+            }}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select a customer...</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name} - {customer.customer_type} ({customer.tier})
+              </option>
+            ))}
+          </select>
+          {selectedCustomer && (
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <div className="font-medium text-sm text-slate-700 mb-2">Customer Profile:</div>
+              <div className="text-sm text-slate-600 space-y-1">
+                <div><strong>JTBD:</strong> {selectedCustomer.jtbd || 'Not specified'}</div>
+                <div><strong>Pain Points:</strong> {selectedCustomer.pain_points.join(', ') || 'None specified'}</div>
+                <div><strong>Sentiment:</strong> {selectedCustomer.sentiment}</div>
+                <div><strong>Health Score:</strong> {selectedCustomer.health_score}%</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* AI Insight */}
       <Card className="bg-gradient-to-r from-orange-500 to-red-600 text-white border-none">
         <div className="flex items-start gap-3">
           <AlertTriangle size={24} className="flex-shrink-0" />
           <div>
-            <h3 className="font-semibold mb-1">AI Strategy Alert</h3>
+            <h3 className="font-semibold mb-1">AI Strategy Analysis</h3>
             <p className="text-sm opacity-90">
-              Your pricing matches competitors, but promotion emphasizes premium value — potential 
-              misalignment detected. Consider highlighting premium service (Place) to justify pricing.
+              {selectedCustomer ? (
+                <>
+                  {selectedCustomer.sentiment === 'negative' && selectedCustomer.churn_risk > 70
+                    ? `High-risk customer detected. Focus on ${selectedCustomer.pain_points[0] || 'customer retention'} with premium support and competitive pricing.`
+                    : selectedCustomer.customer_type === 'vip'
+                    ? `VIP customer opportunity. Emphasize enterprise features, dedicated support, and premium positioning to maximize lifetime value.`
+                    : `Growing ${selectedCustomer.customer_type} customer. Balance value-driven messaging with quality differentiation.`
+                  }
+                  {competitors.length > 0 && ` Market analysis shows ${competitors.filter(c => c.threat_level === 'high').length} high-threat competitors.`}
+                </>
+              ) : (
+                'Select a customer to get AI-powered strategy analysis based on their profile and market data.'
+              )}
             </p>
           </div>
         </div>
@@ -210,6 +562,38 @@ export const FourPsStrategy: React.FC = () => {
                 <div className="flex items-end"><Button icon={Plus} onClick={addProductItem} className="w-full">Add Product</Button></div>
               </div>
             </div>
+
+            {/* Real Products from System */}
+            {products.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium text-slate-700 mb-2">Available Products from System:</h4>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => {
+                        if (!fourPs.product.items.includes(product.name)) {
+                          setFourPs(prev => ({
+                            ...prev,
+                            product: {
+                              ...prev.product,
+                              items: [...prev.product.items, product.name]
+                            }
+                          }));
+                          toast.success(`Added ${product.name} to strategy`);
+                        }
+                      }}
+                      className="p-2 bg-slate-50 rounded border text-left hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="font-medium text-sm text-slate-900">{product.name}</div>
+                      <div className="text-xs text-slate-600">{product.category} • {formatCurrency(product.price)}</div>
+                      <div className="text-xs text-green-600">Satisfaction: {product.customer_satisfaction}/10</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {fourPs.product.items.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-4">No products added. Use form above to add your first product.</p>
             ) : (
@@ -332,6 +716,52 @@ export const FourPsStrategy: React.FC = () => {
                 <div className="flex items-end"><Button icon={Plus} onClick={addCompetitor} className="w-full">Add Competitor</Button></div>
               </div>
             </div>
+
+            {/* Real Competitors from System */}
+            {competitors.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium text-slate-700 mb-2">Available Competitors from System:</h4>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {competitors.slice(0, 4).map((competitor) => (
+                    <button
+                      key={competitor.id}
+                      onClick={() => {
+                        const existingComp = fourPs.price.competitorComparison.find(c => c.name === competitor.name);
+                        if (!existingComp) {
+                          setFourPs(prev => ({
+                            ...prev,
+                            price: {
+                              ...prev.price,
+                              competitorComparison: [...prev.price.competitorComparison, {
+                                name: competitor.name,
+                                price: competitor.price,
+                                position: competitor.pricing_strategy === 'premium' ? 'Higher' :
+                                         competitor.pricing_strategy === 'competitive' ? 'Similar' : 'Lower'
+                              }]
+                            }
+                          }));
+                          toast.success(`Added ${competitor.name} pricing data`);
+                        }
+                      }}
+                      className="p-2 bg-slate-50 rounded border text-left hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="font-medium text-sm text-slate-900">{competitor.name}</div>
+                      <div className="text-xs text-slate-600">{formatCurrency(competitor.price)} • {competitor.pricing_strategy}</div>
+                      <div className={`text-xs ${
+                        competitor.threat_level === 'high' || competitor.threat_level === 'critical'
+                          ? 'text-red-600'
+                          : competitor.threat_level === 'medium'
+                          ? 'text-yellow-600'
+                          : 'text-green-600'
+                      }`}>
+                        Threat: {competitor.threat_level}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {fourPs.price.competitorComparison.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-4">No competitor data. Use form above to add competitors.</p>
             ) : (
@@ -499,11 +929,7 @@ export const FourPsStrategy: React.FC = () => {
         </Button>
         <Button
           variant="outline"
-          onClick={() =>
-            toast.success('AI optimization generated', {
-              description: 'Demo: updated recommendations for pricing + promotion alignment.',
-            })
-          }
+          onClick={handleOptimizeWithAI}
         >
           <Sparkles size={16} className="mr-2" />
           Optimize with AI

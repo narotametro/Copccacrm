@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Plus, Save, RefreshCw, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,16 +7,32 @@ import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 
+interface Campaign {
+  id: string;
+  name: string;
+  status: string;
+  budget: number;
+  spent: number;
+  roi: number;
+  channel: string;
+  start_date: string;
+  end_date: string;
+}
+
+interface BudgetItem {
+  strategy: string;
+  budget: number;
+  spent: number;
+  roi: number;
+  status: 'on-track' | 'over-budget' | 'under-budget' | 'review';
+  campaignCount: number;
+}
+
 export const BudgetAllocation: React.FC = () => {
   const { formatCurrency } = useCurrency();
 
-  const [budgets, setBudgets] = useState([
-    { strategy: 'Enterprise Growth', budget: 2500000, spent: 2100000, roi: 3.2, status: 'on-track' as const },
-    { strategy: 'SME Acquisition', budget: 1800000, spent: 1950000, roi: 2.1, status: 'over-budget' as const },
-    { strategy: 'Channel Partner Program', budget: 1200000, spent: 890000, roi: 4.5, status: 'under-budget' as const },
-    { strategy: 'Digital Presence', budget: 950000, spent: 980000, roi: 1.8, status: 'review' as const },
-    { strategy: 'Brand Awareness', budget: 750000, spent: 620000, roi: 2.7, status: 'on-track' as const },
-  ]);
+  const [budgets, setBudgets] = useState<BudgetItem[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -33,6 +49,89 @@ export const BudgetAllocation: React.FC = () => {
     amount: 150000,
     expectedIncrease: 450000,
   });
+
+  // Load campaigns and budgets on mount
+  useEffect(() => {
+    loadCampaigns();
+    loadBudgets();
+  }, []);
+
+  // Load campaigns from localStorage
+  const loadCampaigns = () => {
+    try {
+      const saved = localStorage.getItem('copcca-campaigns');
+      const campaignData = saved ? JSON.parse(saved) : [];
+      setCampaigns(campaignData);
+    } catch (error) {
+      console.error('Failed to load campaigns:', error);
+    }
+  };
+
+  // Load budgets from localStorage
+  const loadBudgets = () => {
+    try {
+      const saved = localStorage.getItem('copcca-budget-allocations');
+      if (saved) {
+        const budgetData = JSON.parse(saved);
+        setBudgets(budgetData);
+      } else {
+        // Generate initial budgets from campaigns if no saved budgets
+        generateBudgetsFromCampaigns();
+      }
+    } catch (error) {
+      console.error('Failed to load budgets:', error);
+      generateBudgetsFromCampaigns();
+    }
+  };
+
+  // Generate budget allocations from campaign data
+  const generateBudgetsFromCampaigns = () => {
+    if (campaigns.length === 0) return;
+
+    // Group campaigns by channel/type for budget allocation
+    const channelGroups = campaigns.reduce((acc, campaign) => {
+      const channel = campaign.channel || 'General Marketing';
+      if (!acc[channel]) {
+        acc[channel] = {
+          totalBudget: 0,
+          totalSpent: 0,
+          campaigns: [],
+        };
+      }
+      acc[channel].totalBudget += campaign.budget || 0;
+      acc[channel].totalSpent += campaign.spent || 0;
+      acc[channel].campaigns.push(campaign);
+      return acc;
+    }, {} as Record<string, { totalBudget: number; totalSpent: number; campaigns: Campaign[] }>);
+
+    // Create budget allocations
+    const generatedBudgets = Object.entries(channelGroups).map(([channel, data]) => {
+      const roi = data.totalBudget > 0 ? (data.totalSpent / data.totalBudget) * 2 : 0; // Estimated ROI
+      let status: 'on-track' | 'over-budget' | 'under-budget' | 'review' = 'on-track';
+
+      if (data.totalSpent > data.totalBudget) status = 'over-budget';
+      else if (data.totalSpent < data.totalBudget * 0.7) status = 'under-budget';
+      else if (roi < 1.5) status = 'review';
+
+      return {
+        strategy: channel,
+        budget: data.totalBudget,
+        spent: data.totalSpent,
+        roi: parseFloat(roi.toFixed(1)),
+        status,
+        campaignCount: data.campaigns.length,
+      };
+    });
+
+    setBudgets(generatedBudgets);
+  };
+
+  // Regenerate budgets when campaigns change
+  useEffect(() => {
+    if (campaigns.length > 0 && budgets.length === 0) {
+      generateBudgetsFromCampaigns();
+    }
+  }, [campaigns]);
 
   const handleAddBudget = () => {
     if (!budgetForm.strategy || !budgetForm.budget) {
@@ -55,21 +154,26 @@ export const BudgetAllocation: React.FC = () => {
       spent,
       roi,
       status,
+      campaignCount: 0,
     };
 
-    setBudgets([...budgets, newBudget]);
+    const updatedBudgets = [...budgets, newBudget];
+    setBudgets(updatedBudgets);
+    localStorage.setItem('copcca-budget-allocations', JSON.stringify(updatedBudgets));
     setBudgetForm({ strategy: '', budget: '', spent: '', roi: '' });
     setShowAddModal(false);
     toast.success('Budget line added successfully');
   };
 
   const handleRemoveBudget = (index: number) => {
-    setBudgets(budgets.filter((_, i) => i !== index));
+    const updatedBudgets = budgets.filter((_, i) => i !== index);
+    setBudgets(updatedBudgets);
+    localStorage.setItem('copcca-budget-allocations', JSON.stringify(updatedBudgets));
     toast.success('Budget line removed');
   };
 
   const handleSaveChanges = () => {
-    // In production, this would save to Supabase
+    localStorage.setItem('copcca-budget-allocations', JSON.stringify(budgets));
     toast.success('Budget changes saved successfully');
   };
 
@@ -89,6 +193,7 @@ export const BudgetAllocation: React.FC = () => {
         budget: newBudgets[toIndex].budget + aiOptimization.amount,
       };
       setBudgets(newBudgets);
+      localStorage.setItem('copcca-budget-allocations', JSON.stringify(newBudgets));
       setShowAIModal(false);
       toast.success('AI optimization applied successfully', {
         description: `Shifted ${formatCurrency(aiOptimization.amount)} to optimize ROI`,
@@ -157,6 +262,11 @@ export const BudgetAllocation: React.FC = () => {
                     <div className="font-medium text-slate-900">{item.strategy}</div>
                     <div className="text-sm text-slate-600">
                       {formatCurrency(item.spent)} / {formatCurrency(item.budget)} spent
+                      {item.campaignCount && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded">
+                          {item.campaignCount} campaigns
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

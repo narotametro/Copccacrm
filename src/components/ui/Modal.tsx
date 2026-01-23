@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  headerActions?: React.ReactNode;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,6 +16,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   size = 'md',
+  headerActions,
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -53,13 +55,16 @@ export const Modal: React.FC<ModalProps> = ({
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-3">
+            {headerActions}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
         <div 
           ref={contentRef}

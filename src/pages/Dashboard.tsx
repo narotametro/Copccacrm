@@ -1,6 +1,5 @@
 
-// ...existing code...
-import { TrendingUp, Users, Banknote, Target, BarChart3, Activity, Sparkles, Globe, Trash2 } from 'lucide-react';
+import { TrendingUp, Users, Banknote, Target, BarChart3, Activity, Sparkles, Globe } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,12 @@ import { useAuthStore } from '@/store/authStore';
 import { useCurrency, currencies } from '@/context/CurrencyContext';
 import { formatName } from '@/lib/textFormat';
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import { Database } from '@/lib/types/database';
+
+type InvoiceRow = Pick<Database['public']['Tables']['invoices']['Row'], 'total_amount' | 'status'>;
+type DealRow = Pick<Database['public']['Tables']['deals']['Row'], 'title' | 'created_at' | 'stage'>;
+type CompanyRow = Pick<Database['public']['Tables']['companies']['Row'], 'name' | 'created_at'>;
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -17,35 +21,129 @@ const Dashboard = () => {
   const displayName = formatName(profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User');
   const { currency, setCurrency, formatCurrency } = useCurrency();
   
-  // Demo data state
-  const [hasDemoData, setHasDemoData] = useState<boolean>(false);
+  // Real data state
+  const [totalRevenue, setTotalRevenue] = useState<number>(0);
+  const [activeCustomers, setActiveCustomers] = useState<number>(0);
+  const [dealsWon, setDealsWon] = useState<number>(0);
+  const [growthRate, setGrowthRate] = useState<number>(0);
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    type: string;
+    title: string;
+    description: string;
+    time: string;
+    color: string;
+  }>>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  // Removed useIntegratedKPIData hook as we're fetching data directly
   
   useEffect(() => {
-    // Check if demo data flag exists in localStorage
-    const demoDataDeleted = localStorage.getItem(`demo_data_deleted_${user?.id}`);
-    if (demoDataDeleted === 'true') {
-      setHasDemoData(false);
-    }
-  }, [user?.id]);
-
-  const handleDeleteDemoData = () => {
-    if (confirm('Are you sure you want to delete all COPCCA Demo User data? This action cannot be undone and will remove all sample data across the entire system.')) {
-      toast.promise(
-        new Promise(resolve => setTimeout(resolve, 1500)),
-        {
-          loading: 'Deleting demo data across all modules...',
-          success: () => {
-            // Mark demo data as deleted in localStorage
-            localStorage.setItem(`demo_data_deleted_${user?.id}`, 'true');
-            setHasDemoData(false);
-            return 'All demo data deleted successfully! Your system is now clean.';
-          },
-          error: 'Failed to delete demo data'
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch total revenue from invoices
+        const { data: invoices, error: invoicesError } = await supabase
+          .from('invoices')
+          .select('total_amount, status')
+          .eq('status', 'paid');
+        
+        if (!invoicesError && invoices) {
+          const revenue = invoices.reduce((sum: number, invoice: InvoiceRow) => sum + (invoice.total_amount || 0), 0);
+          setTotalRevenue(revenue);
         }
-      );
-    }
-  };
-  
+        
+        // Fetch active customers from companies
+        const { data: companies, error: companiesError } = await supabase
+          .from('companies')
+          .select('id, status')
+          .eq('status', 'active');
+        
+        if (!companiesError && companies) {
+          setActiveCustomers(companies.length);
+        }
+        
+        // Fetch deals won
+        const { data: deals, error: dealsError } = await supabase
+          .from('deals')
+          .select('id, stage')
+          .eq('stage', 'won');
+        
+        if (!dealsError && deals) {
+          setDealsWon(deals.length);
+        }
+        
+        // Calculate growth rate (simplified - compare current vs previous month)
+        // For now, use a static value or calculate from available data
+        setGrowthRate(12.5);
+        
+        // Fetch recent activities
+        const activities: Array<{
+          type: string;
+          title: string;
+          description: string;
+          time: string;
+          color: string;
+        }> = [];
+        
+        // Recent deals
+        const { data: recentDeals, error: recentDealsError } = await supabase
+          .from('deals')
+          .select('title, created_at, stage')
+          .order('created_at', { ascending: false })
+          .limit(3);
+        
+        if (!recentDealsError && recentDeals) {
+          recentDeals.forEach((deal: DealRow) => {
+            activities.push({
+              type: deal.stage === 'won' ? 'deal_won' : 'deal_created',
+              title: deal.stage === 'won' ? 'New deal closed' : 'New deal created',
+              description: deal.title,
+              time: new Date(deal.created_at).toLocaleString(),
+              color: deal.stage === 'won' ? 'green' : 'blue'
+            });
+          });
+        }
+        
+        // Recent companies
+        const { data: recentCompanies, error: recentCompaniesError } = await supabase
+          .from('companies')
+          .select('name, created_at')
+          .order('created_at', { ascending: false })
+          .limit(2);
+        
+        if (!recentCompaniesError && recentCompanies) {
+          recentCompanies.forEach((company: CompanyRow) => {
+            activities.push({
+              type: 'company_added',
+              title: 'Customer added',
+              description: company.name,
+              time: new Date(company.created_at).toLocaleString(),
+              color: 'blue'
+            });
+          });
+        }
+        
+        // Sort activities by time (most recent first) and take top 3
+        activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        setRecentActivities(activities.slice(0, 3));
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Set empty/default values when data fetch fails
+        setTotalRevenue(0);
+        setActiveCustomers(0);
+        setDealsWon(0);
+        setGrowthRate(0);
+        setRecentActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+
   const today = new Date();
   const formattedDate = today.toLocaleDateString('en-US', { 
     weekday: 'long', 
@@ -100,62 +198,31 @@ const Dashboard = () => {
             className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
             onClick={() => navigate('/app/customers')}
           >
-            📊 Customers
+            Customers
           </Button>
           <Button 
             variant="secondary" 
             className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
             onClick={() => navigate('/app/pipeline')}
           >
-            💰 Pipeline
+            Pipeline
           </Button>
           <Button 
             variant="secondary" 
             className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
             onClick={() => navigate('/app/reports')}
           >
-            📈 Reports
+            Reports
           </Button>
           <Button 
             variant="secondary"
             className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
             onClick={() => navigate('/app/kpi-tracking')}
           >
-            🎯 KPI
+            KPI
           </Button>
         </div>
       </div>
-
-      {/* Demo Data Delete Button */}
-      {hasDemoData && (
-        <Card className="p-4 bg-amber-50 border-2 border-amber-200">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Sparkles className="text-amber-600" size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">Demo Data Active</h3>
-                <p className="text-sm text-slate-600 mb-1">
-                  You're currently viewing sample COPCCA Demo User data across the entire system.
-                </p>
-                <ul className="text-sm text-slate-600 list-disc list-inside space-y-0.5">
-                  <li>Go through the COPCCA Demo User to understand the system</li>
-                  <li>Delete the COPCCA Demo User data when ready to get started</li>
-                </ul>
-              </div>
-            </div>
-            <Button
-              variant="secondary"
-              icon={Trash2}
-              onClick={handleDeleteDemoData}
-              className="bg-red-500 hover:bg-red-600 text-white border-red-600 whitespace-nowrap"
-            >
-              Delete Demo Data
-            </Button>
-          </div>
-        </Card>
-      )}
 
       <div>
         <h1 className="text-3xl font-bold text-slate-900">🏠 Dashboard</h1>
@@ -171,7 +238,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(2400000)}</p>
+              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : formatCurrency(totalRevenue)}</p>
             </div>
           </div>
         </Card>
@@ -183,7 +250,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Active Customers</p>
-              <p className="text-2xl font-bold text-slate-900">1,247</p>
+              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : activeCustomers.toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -195,7 +262,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Deals Won</p>
-              <p className="text-2xl font-bold text-slate-900">89</p>
+              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : dealsWon}</p>
             </div>
           </div>
         </Card>
@@ -207,7 +274,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Growth Rate</p>
-              <p className="text-2xl font-bold text-slate-900">+12.5%</p>
+              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : `+${growthRate}%`}</p>
             </div>
           </div>
         </Card>
@@ -231,27 +298,22 @@ const Dashboard = () => {
             <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>
           </div>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">New deal closed</p>
-                <p className="text-xs text-slate-600">2 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">Customer added</p>
-                <p className="text-xs text-slate-600">4 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">Task completed</p>
-                <p className="text-xs text-slate-600">6 hours ago</p>
-              </div>
-            </div>
+            {loading ? (
+              <div className="text-center text-slate-500 py-4">Loading activities...</div>
+            ) : recentActivities.length > 0 ? (
+              recentActivities.map((activity, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <div className={`w-2 h-2 bg-${activity.color}-500 rounded-full`}></div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{activity.title}</p>
+                    <p className="text-xs text-slate-600">{activity.description}</p>
+                    <p className="text-xs text-slate-500">{activity.time}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-slate-500 py-4">No recent activities</div>
+            )}
           </div>
         </Card>
       </div>

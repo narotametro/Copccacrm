@@ -45,7 +45,7 @@ export const Profile: React.FC = () => {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">👤 My Profile</h1>
+        <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
         <p className="text-slate-600 mt-1">Manage your personal information</p>
       </div>
 
@@ -152,7 +152,7 @@ export const Profile: React.FC = () => {
 
       {/* Activity Log */}
       <Card>
-        <h3 className="text-xl font-bold text-slate-900 mb-4">📊 Recent Activity</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-4">Recent Activity</h3>
         <div className="space-y-2">
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
             <div>

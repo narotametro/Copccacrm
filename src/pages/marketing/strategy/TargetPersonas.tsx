@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Banknote, Plus, Edit, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -6,20 +6,72 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 
+interface Persona {
+  id: string;
+  name: string;
+  segment: string;
+  location: string;
+  income: string;
+  pain: string[];
+  jtbd: string;
+  channels: string[];
+  performance: { leads: number; conversion: number; revenue: number };
+}
+
 export const TargetPersonas: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [newPersonaName, setNewPersonaName] = useState('');
   const [newPersonaSegment, setNewPersonaSegment] = useState('Small-Medium Business');
-  const personas: Array<{
-    name: string;
-    segment: string;
-    location: string;
-    income: string;
-    pain: string[];
-    jtbd: string;
-    channels: string[];
-    performance: { leads: number; conversion: number; revenue: number };
-  }> = [];
+
+  // Load personas on component mount
+  useEffect(() => {
+    loadPersonas();
+  }, []);
+
+  const loadPersonas = () => {
+    try {
+      const saved = localStorage.getItem('copcca-target-personas');
+      const personaData = saved ? JSON.parse(saved) : [];
+      setPersonas(personaData);
+    } catch (error) {
+      console.error('Failed to load personas:', error);
+    }
+  };
+
+  const handleAddPersona = () => {
+    if (!newPersonaName.trim()) {
+      toast.error('Please enter a persona name');
+      return;
+    }
+
+    const newPersona: Persona = {
+      id: Date.now().toString(),
+      name: newPersonaName,
+      segment: newPersonaSegment,
+      location: 'Nigeria',
+      income: '₦500K - ₦2M',
+      pain: ['Manual processes', 'Customer tracking', 'Sales forecasting'],
+      jtbd: 'Manage customer relationships and grow sales efficiently',
+      channels: ['Email', 'Social Media', 'Website'],
+      performance: { leads: 0, conversion: 0, revenue: 0 },
+    };
+
+    const updatedPersonas = [...personas, newPersona];
+    setPersonas(updatedPersonas);
+    localStorage.setItem('copcca-target-personas', JSON.stringify(updatedPersonas));
+    setNewPersonaName('');
+    setNewPersonaSegment('Small-Medium Business');
+    setShowAddModal(false);
+    toast.success('Persona added successfully');
+  };
+
+  const handleRemovePersona = (id: string) => {
+    const updatedPersonas = personas.filter(p => p.id !== id);
+    setPersonas(updatedPersonas);
+    localStorage.setItem('copcca-target-personas', JSON.stringify(updatedPersonas));
+    toast.success('Persona removed');
+  };
 
   return (
     <div className="space-y-6">
@@ -62,16 +114,7 @@ export const TargetPersonas: React.FC = () => {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                toast.success('Persona added', {
-                  description: `${newPersonaName || 'New persona'} • ${newPersonaSegment}`,
-                });
-                setShowAddModal(false);
-                setNewPersonaName('');
-                setNewPersonaSegment('Small-Medium Business');
-              }}
-            >
+            <Button onClick={handleAddPersona}>
               Save
             </Button>
           </div>
@@ -79,8 +122,8 @@ export const TargetPersonas: React.FC = () => {
       </Modal>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {personas.map((persona, idx) => (
-          <Card key={idx} className="hover:shadow-lg transition-all">
+        {personas.map((persona) => (
+          <Card key={persona.id} className="hover:shadow-lg transition-all">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h4 className="text-lg font-semibold text-slate-900">{persona.name}</h4>
@@ -160,7 +203,7 @@ export const TargetPersonas: React.FC = () => {
                   variant="outline"
                   size="sm"
                   icon={Trash2}
-                  onClick={() => toast.success('Persona removed', { description: persona.name })}
+                  onClick={() => handleRemovePersona(persona.id)}
                 >
                   Delete
                 </Button>

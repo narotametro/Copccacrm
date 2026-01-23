@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import type { Database } from '@/lib/types/database';
 import {
   Plus,
   CheckCircle,
@@ -24,9 +26,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import type { Database } from '@/lib/types/database';
 import { useAuthStore } from '@/store/authStore';
 
 interface Task {
@@ -71,13 +73,26 @@ interface Task {
     comment: string;
   }>;
 }
-  type AfterSalesTaskRow = Database['public']['Tables']['after_sales_tasks']['Row'];
-  type AfterSalesFeedbackRow = Database['public']['Tables']['after_sales_feedback']['Row'];
 
-const demoTasks: Task[] = [];
+interface LocationState {
+  prefillTask?: {
+    title?: string;
+    description?: string;
+    priority?: string;
+    due_date?: string;
+    assigned_to?: string;
+    estimated_hours?: string;
+    linked_type?: string;
+    linked_name?: string;
+  };
+}
+
+type AfterSalesTaskRow = Database['public']['Tables']['after_sales_tasks']['Row'];
+  type AfterSalesFeedbackRow = Database['public']['Tables']['after_sales_feedback']['Row'];
 
 export const AfterSales: React.FC = () => {
   const user = useAuthStore((state) => state.user);
+  const location = useLocation();
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
     import.meta.env.VITE_SUPABASE_ANON_KEY &&
@@ -85,6 +100,13 @@ export const AfterSales: React.FC = () => {
   );
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<Array<{id: string, full_name: string | null, email: string}>>([]);
+  const [linkedOptions, setLinkedOptions] = useState({
+    customers: Array<{id: string, name: string}>(),
+    deals: Array<{id: string, name: string}>(),
+    competitors: Array<{id: string, name: string}>(),
+    products: Array<{id: string, name: string}>(),
+  });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterPriority, setFilterPriority] = useState<string>('all');
@@ -114,10 +136,10 @@ export const AfterSales: React.FC = () => {
   const [, setSyncing] = useState(false);
 
   const columns = [
-    { id: 'todo', title: '📋 To Do', color: 'slate' },
-    { id: 'in-progress', title: '⚡ In Progress', color: 'blue' },
+    { id: 'todo', title: 'To Do', color: 'slate' },
+    { id: 'in-progress', title: 'In Progress', color: 'blue' },
     { id: 'review', title: '👀 Review', color: 'purple' },
-    { id: 'done', title: '✅ Done', color: 'green' },
+    { id: 'done', title: 'Done', color: 'green' },
   ];
 
   const getTasksByStatus = (status: string) => {
@@ -216,30 +238,75 @@ export const AfterSales: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchData = async () => {
       if (!supabaseReady || !user) {
-        setTasks(demoTasks);
+        setTasks([]);
         return;
       }
 
+      // Fetch tasks
       const { data, error } = await supabase
         .from('after_sales_tasks')
         .select('*, after_sales_feedback(*)')
-        .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Failed to load tasks, falling back to demo data:', error.message);
-        setTasks(demoTasks);
+        console.warn('Failed to load tasks:', error.message);
+        setTasks([]);
         return;
       }
 
       const mapped = (data || []).map(mapRowToTask);
-      setTasks(mapped.length ? mapped : demoTasks);
+      setTasks(mapped);
+
+      // Fetch users for assignment dropdown
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .order('full_name');
+
+      if (!usersError && usersData) {
+        setUsers(usersData);
+      }
+
+      // Fetch linked options for task linking
+      const [customersRes, dealsRes, competitorsRes] = await Promise.all([
+        supabase.from('companies').select('id, name').order('name'),
+        supabase.from('deals').select('id, title').order('title'),
+        supabase.from('competitors').select('id, name').order('name'),
+      ]);
+
+      setLinkedOptions({
+        customers: customersRes.data?.map((c: Database['public']['Tables']['companies']['Row']) => ({ id: c.id, name: c.name })) || [],
+        deals: dealsRes.data?.map((d: Database['public']['Tables']['deals']['Row']) => ({ id: d.id, name: d.title })) || [],
+        competitors: competitorsRes.data?.map((c: Database['public']['Tables']['competitors']['Row']) => ({ id: c.id, name: c.name })) || [],
+        products: [], // No products table exists
+      });
     };
 
-    fetchTasks();
+    fetchData();
   }, [supabaseReady, user]);
+
+  // Handle prefilled task data from navigation
+  useEffect(() => {
+    const state = location.state as LocationState;
+    if (state?.prefillTask) {
+      setAddForm({
+        title: state.prefillTask.title || '',
+        description: state.prefillTask.description || '',
+        priority: state.prefillTask.priority || 'medium',
+        due_date: state.prefillTask.due_date || '',
+        assigned_to: state.prefillTask.assigned_to || '',
+        estimated_hours: state.prefillTask.estimated_hours || '',
+        tags: '',
+        linked_type: state.prefillTask.linked_type || '',
+        linked_name: state.prefillTask.linked_name || '',
+      });
+      setShowAddModal(true);
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const upsertTask = async (task: Task): Promise<Task> => {
     if (!supabaseReady || !user) return task;
@@ -299,14 +366,26 @@ export const AfterSales: React.FC = () => {
   const completedTasks = tasks.filter(t => t.status === 'done').length;
   const overdueTasks = tasks.filter(t => t.is_overdue).length;
   const urgentTasks = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
-  const avgCompletionTime = 5.3; // Demo value
+
+  // Calculate real average completion time from completed tasks
+  const avgCompletionTime = completedTasks > 0
+    ? tasks
+        .filter(t => t.status === 'done' && t.completed_at && t.created_at)
+        .reduce((acc, task) => {
+          const created = new Date(task.created_at);
+          const completed = new Date(task.completed_at!);
+          const diffTime = Math.abs(completed.getTime() - created.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return acc + diffDays;
+        }, 0) / completedTasks
+    : 0;
 
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">✅ After Sales & Tasks Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">After Sales & Tasks Management</h1>
           <p className="text-slate-600 mt-1 text-sm md:text-base">Comprehensive after-sales service & task tracking</p>
         </div>
         <Button icon={Plus} onClick={() => setShowAddModal(true)} className="text-sm md:text-base">Add Task</Button>
@@ -398,7 +477,7 @@ export const AfterSales: React.FC = () => {
                         </h4>
                         <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
                           {getPriorityIcon(task.priority)}
-                          {task.priority === 'urgent' && '🔥'}
+                          {task.priority === 'urgent' && 'URGENT'}
                         </span>
                       </div>
 
@@ -433,6 +512,65 @@ export const AfterSales: React.FC = () => {
                           <p className="text-xs text-primary-700">AI Priority: {task.ai_priority_score}/100</p>
                         </div>
                       )}
+
+                      {/* Quick Actions */}
+                      <div className="flex gap-1 mb-2">
+                        {task.status === 'todo' && (
+                          <Button 
+                            size="sm" 
+                            icon={Zap} 
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 h-6"
+                            onClick={async (e) => {
+                              e.stopPropagation(); // Prevent opening modal
+                              try {
+                                await toast.promise(
+                                  new Promise(resolve => setTimeout(resolve, 500)),
+                                  {
+                                    loading: 'Starting task...',
+                                    success: 'Task started!',
+                                    error: 'Failed to start task',
+                                  }
+                                );
+                                const updated = { ...task, status: 'in-progress' as const };
+                                const saved = await upsertTask({ ...updated, status: updated.status });
+                                setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+                              } catch (error) {
+                                console.error('Failed to start task:', error);
+                              }
+                            }}
+                          >
+                            Start
+                          </Button>
+                        )}
+                        
+                        {task.status === 'in-progress' && (
+                          <Button 
+                            size="sm" 
+                            icon={Eye} 
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-6"
+                            onClick={async (e) => {
+                              e.stopPropagation(); // Prevent opening modal
+                              try {
+                                await toast.promise(
+                                  new Promise(resolve => setTimeout(resolve, 500)),
+                                  {
+                                    loading: 'Moving to review...',
+                                    success: 'Task moved to Review!',
+                                    error: 'Failed to move task to review',
+                                  }
+                                );
+                                const updated = { ...task, status: 'review' as const };
+                                const saved = await upsertTask({ ...updated, status: updated.status });
+                                setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+                              } catch (error) {
+                                console.error('Failed to move task to review:', error);
+                              }
+                            }}
+                          >
+                            Review
+                          </Button>
+                        )}
+                      </div>
 
                       {/* Footer */}
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
@@ -485,7 +623,7 @@ export const AfterSales: React.FC = () => {
                   <AlertTriangle className="text-red-600 flex-shrink-0 mt-1" size={28} />
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-red-900 text-lg">⚠️ OVERDUE TASK</h3>
+                      <h3 className="font-bold text-red-900 text-lg">OVERDUE TASK</h3>
                       <span className="px-3 py-1 bg-red-600 text-white rounded-full text-sm font-bold">
                         {selectedTask.days_overdue} days overdue
                       </span>
@@ -519,7 +657,7 @@ export const AfterSales: React.FC = () => {
             {/* Task Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
-                <h3 className="font-bold text-slate-900 mb-3">📋 Task Details</h3>
+                <h3 className="font-bold text-slate-900 mb-3">Task Details</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Status:</span>
@@ -548,7 +686,7 @@ export const AfterSales: React.FC = () => {
               </Card>
 
               <Card>
-                <h3 className="font-bold text-slate-900 mb-3">📅 Timeline</h3>
+                <h3 className="font-bold text-slate-900 mb-3">Timeline</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Created:</span>
@@ -613,7 +751,7 @@ export const AfterSales: React.FC = () => {
             {/* Tags */}
             {selectedTask.tags.length > 0 && (
               <Card>
-                <h3 className="font-bold text-slate-900 mb-3">🏷️ Tags</h3>
+                <h3 className="font-bold text-slate-900 mb-3">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedTask.tags.map((tag, idx) => (
                     <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
@@ -628,7 +766,7 @@ export const AfterSales: React.FC = () => {
             <Card className="border-l-4 border-purple-500">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  💬 Task Feedback
+                  Task Feedback
                 </h3>
                 <Button 
                   size="sm" 
@@ -688,6 +826,63 @@ export const AfterSales: React.FC = () => {
               >
                 Edit Task
               </Button>
+              
+              {/* Start Task Button - for todo tasks */}
+              {selectedTask.status === 'todo' && (
+                <Button 
+                  icon={Zap} 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={async () => {
+                    try {
+                      await toast.promise(
+                        new Promise(resolve => setTimeout(resolve, 1000)),
+                        {
+                          loading: 'Starting task...',
+                          success: 'Task started! Moved to In Progress.',
+                          error: 'Failed to start task',
+                        }
+                      );
+                      const updated = { ...selectedTask, status: 'in-progress' as const };
+                      const saved = await upsertTask({ ...updated, status: updated.status });
+                      setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
+                      setSelectedTask(saved);
+                    } catch (error) {
+                      console.error('Failed to start task:', error);
+                    }
+                  }}
+                >
+                  Start Task
+                </Button>
+              )}
+              
+              {/* Review Button - for in-progress tasks */}
+              {selectedTask.status === 'in-progress' && (
+                <Button 
+                  icon={Eye} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={async () => {
+                    try {
+                      await toast.promise(
+                        new Promise(resolve => setTimeout(resolve, 1000)),
+                        {
+                          loading: 'Moving to review...',
+                          success: 'Task moved to Review!',
+                          error: 'Failed to move task to review',
+                        }
+                      );
+                      const updated = { ...selectedTask, status: 'review' as const };
+                      const saved = await upsertTask({ ...updated, status: updated.status });
+                      setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? saved : t)));
+                      setSelectedTask(saved);
+                    } catch (error) {
+                      console.error('Failed to move task to review:', error);
+                    }
+                  }}
+                >
+                  Move to Review
+                </Button>
+              )}
+              
               {selectedTask.status !== 'done' && (
                 <Button 
                   icon={CheckCircle} 
@@ -758,6 +953,11 @@ export const AfterSales: React.FC = () => {
           }
 
           const nowIso = new Date().toISOString();
+          const getLinkedName = (type: string, id: string) => {
+            const options = linkedOptions[type as keyof typeof linkedOptions];
+            return options?.find(opt => opt.id === id)?.name || id;
+          };
+
           const newTask: Task = {
             id: crypto.randomUUID(),
             title: addForm.title.trim(),
@@ -768,8 +968,8 @@ export const AfterSales: React.FC = () => {
             assigned_by: 'You',
             linked_to: {
               type: (addForm.linked_type || null) as Task['linked_to']['type'],
-              id: null,
-              name: addForm.linked_name.trim() || null,
+              id: addForm.linked_type && addForm.linked_name ? addForm.linked_name : null,
+              name: addForm.linked_type && addForm.linked_name ? getLinkedName(addForm.linked_type, addForm.linked_name) : null,
             },
             created_at: nowIso,
             due_date: addForm.due_date || nowIso,
@@ -844,13 +1044,18 @@ export const AfterSales: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Input 
-                label="Assign To" 
-                placeholder="John Smith" 
-                required 
+              <Select
+                label="Assign To"
                 value={addForm.assigned_to}
-                onChange={(e) => setAddForm({ ...addForm, assigned_to: e.target.value })}
-              />
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAddForm({ ...addForm, assigned_to: e.target.value })}
+              >
+                <option value="">Unassigned</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.full_name || user.email}
+                  </option>
+                ))}
+              </Select>
               <Input 
                 label="Estimated Hours" 
                 type="number" 
@@ -865,7 +1070,7 @@ export const AfterSales: React.FC = () => {
               <select 
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 value={addForm.linked_type}
-                onChange={(e) => setAddForm({ ...addForm, linked_type: e.target.value })}
+                onChange={(e) => setAddForm({ ...addForm, linked_type: e.target.value, linked_name: '' })}
               >
                 <option value="">None</option>
                 <option value="customer">Customer</option>
@@ -877,11 +1082,26 @@ export const AfterSales: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Linked Name</label>
-              <Input 
-                placeholder="Acme Corp"
-                value={addForm.linked_name}
-                onChange={(e) => setAddForm({ ...addForm, linked_name: e.target.value })}
-              />
+              {addForm.linked_type ? (
+                <Select
+                  value={addForm.linked_name}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAddForm({ ...addForm, linked_name: e.target.value })}
+                >
+                  <option value="">Select {addForm.linked_type}...</option>
+                  {linkedOptions[addForm.linked_type as keyof typeof linkedOptions]?.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  placeholder="Select a link type first"
+                  value={addForm.linked_name}
+                  onChange={(e) => setAddForm({ ...addForm, linked_name: e.target.value })}
+                  disabled
+                />
+              )}
             </div>
 
             <div>
@@ -1050,12 +1270,18 @@ export const AfterSales: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
+            <Select
               label="Assigned To"
               value={editForm.assigned_to}
-              onChange={(e) => setEditForm({ ...editForm, assigned_to: e.target.value })}
-              required
-            />
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm({ ...editForm, assigned_to: e.target.value })}
+            >
+              <option value="">Unassigned</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.full_name || user.email}
+                </option>
+              ))}
+            </Select>
             <Input
               label="Due Date"
               type="date"

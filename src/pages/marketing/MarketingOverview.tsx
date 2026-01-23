@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/types/database';
 import { useAuthStore } from '@/store/authStore';
+import { useCurrency } from '@/context/CurrencyContext';
 
 const downloadText = (filename: string, content: string) => {
   const blob = new Blob([content], { type: 'text/plain' });
@@ -33,9 +34,6 @@ const downloadText = (filename: string, content: string) => {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 };
-import { useCurrency } from '@/context/CurrencyContext';
-
-type MarketingKpiRow = Database['public']['Tables']['marketing_kpis']['Row'];
 
 interface KpiData {
   label: string;
@@ -53,6 +51,68 @@ interface ChannelData {
   revenue: number;
 }
 
+interface MarketingCampaignRow {
+  id: string;
+  name: string;
+  strategy?: string;
+  objective?: string;
+  audience?: string;
+  channels?: string[];
+  budget?: number;
+  start_date?: string;
+  end_date?: string;
+  notes?: string;
+  created_at?: string;
+  leads_generated?: number;
+  conversions?: number;
+}
+
+interface MarketingStrategyRow {
+  id: string;
+  content: StrategyData;
+  strategy_type: string;
+  created_at?: string;
+}
+
+interface CampaignData {
+  id: string;
+  name: string;
+  strategy: string;
+  objective: string;
+  audience: string;
+  channels: string[];
+  budget: number;
+  startDate: string;
+  endDate: string;
+  notes: string;
+}
+
+interface StrategyData {
+  product: {
+    items: string[];
+    benefits: string[];
+    quality: string;
+    differentiators: string[];
+  };
+  price: {
+    model: string;
+    basePrice: number;
+    discounts: string[];
+    sensitivity: string;
+    competitorComparison: Array<{ name: string; price: number; position: string }>;
+  };
+  place: {
+    channels: Array<{ name: string; performance: number; active: boolean }>;
+    coverage: string[];
+  };
+  promotion: {
+    messages: string[];
+    tone: string;
+    channels: string[];
+    themes: string[];
+  };
+}
+
 export const MarketingOverview: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const user = useAuthStore((state) => state.user);
@@ -62,9 +122,28 @@ export const MarketingOverview: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  const initialKpis = useMemo<KpiData[]>(() => ([]), [formatCurrency]);
+  const initialKpis = useMemo<KpiData[]>(() => ([]), []);
 
   const initialChannels = useMemo<ChannelData[]>(() => ([]), []);
+
+  const mapRowToKpi = (row: Database['public']['Tables']['marketing_kpis']['Row']): KpiData => {
+    const getIcon = (label: string): LucideIcon => {
+      const lowerLabel = label.toLowerCase();
+      if (lowerLabel.includes('revenue') || lowerLabel.includes('sales')) return Banknote;
+      if (lowerLabel.includes('leads') || lowerLabel.includes('conversion')) return Target;
+      if (lowerLabel.includes('growth') || lowerLabel.includes('trend')) return TrendingUp;
+      return Sparkles;
+    };
+
+    return {
+      label: row.label,
+      value: row.value,
+      change: row.change,
+      trend: row.trend,
+      icon: getIcon(row.label),
+      color: row.color,
+    };
+  };
 
   const [kpis, setKpis] = useState(initialKpis);
   const [channelPerformance, setChannelPerformance] = useState(initialChannels);
@@ -74,6 +153,10 @@ export const MarketingOverview: React.FC = () => {
   const [filterForm, setFilterForm] = useState({ channel: '', minConversion: '' });
   const maxLeads = channelPerformance.length ? Math.max(...channelPerformance.map((c) => c.leads)) : 1;
   const [loading, setLoading] = useState(false);
+
+  // Real data state
+  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+  const [strategies, setStrategies] = useState<StrategyData[]>([]);
 
   const handleAddKpi = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,14 +226,25 @@ export const MarketingOverview: React.FC = () => {
     toast.message('Filters cleared');
   };
 
-  const mapRowToKpi = (row: MarketingKpiRow) => ({
-    label: row.label,
-    value: row.value,
-    change: row.change,
-    trend: row.trend,
-    icon: Sparkles,
-    color: row.color,
-  });
+  const calculateAlignmentScore = () => {
+    if (campaigns.length === 0) return { score: 0, aligned: 0, needsReview: 0, suggestions: 0 };
+
+    let aligned = 0;
+    let needsReview = 0;
+
+    campaigns.forEach(campaign => {
+      if (campaign.strategy && strategies.length > 0) {
+        aligned++;
+      } else {
+        needsReview++;
+      }
+    });
+
+    const score = campaigns.length > 0 ? Math.round((aligned / campaigns.length) * 100) : 0;
+    const suggestions = Math.max(0, campaigns.length - aligned);
+
+    return { score, aligned, needsReview, suggestions };
+  };
 
   useEffect(() => {
     const loadKpis = async () => {
@@ -174,8 +268,140 @@ export const MarketingOverview: React.FC = () => {
       setLoading(false);
     };
 
+    const loadChannelPerformance = async () => {
+      if (!supabaseReady || !user) return;
+
+      try {
+        // Load campaigns and aggregate channel performance
+        const { data: campaigns, error } = await supabase
+          .from('marketing_campaigns')
+          .select('*')
+          .eq('created_by', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.warn('Failed to load campaigns for channel performance:', error);
+          return;
+        }
+
+        if (campaigns && campaigns.length > 0) {
+          // Aggregate performance by channel
+          const channelStats: { [key: string]: { leads: number; conversions: number; spent: number; campaigns: number } } = {};
+
+          campaigns.forEach((campaign: MarketingCampaignRow) => {
+            if (campaign.channels && Array.isArray(campaign.channels)) {
+              campaign.channels.forEach((channel: string) => {
+                if (!channelStats[channel]) {
+                  channelStats[channel] = { leads: 0, conversions: 0, spent: 0, campaigns: 0 };
+                }
+                channelStats[channel].leads += campaign.leads_generated || 0;
+                channelStats[channel].conversions += campaign.conversions || 0;
+                channelStats[channel].spent += campaign.spent || 0;
+                channelStats[channel].campaigns += 1;
+              });
+            }
+          });
+
+          // Convert to ChannelData format
+          const channelData: ChannelData[] = Object.entries(channelStats).map(([channel, stats]) => {
+            const conversionRate = stats.leads > 0 ? (stats.conversions / stats.leads) * 100 : 0;
+            const avgRevenuePerConversion = stats.conversions > 0 ? (stats.spent / stats.conversions) * 2 : 0; // Simple revenue estimate
+
+            return {
+              channel: channel.charAt(0).toUpperCase() + channel.slice(1),
+              leads: stats.leads,
+              conversion: Math.round(conversionRate * 10) / 10, // Round to 1 decimal
+              revenue: Math.round(avgRevenuePerConversion * stats.conversions),
+            };
+          });
+
+          setChannelPerformance(channelData);
+        }
+      } catch (error) {
+        console.error('Failed to load channel performance:', error);
+      }
+    };
+
+    const loadRealData = async () => {
+      // Load campaigns
+      try {
+        const savedCampaigns = localStorage.getItem('copcca-campaigns');
+        if (savedCampaigns) {
+          setCampaigns(JSON.parse(savedCampaigns));
+        }
+
+        if (supabaseReady) {
+          const { data: campaignData } = await supabase
+            .from('marketing_campaigns')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (campaignData) setCampaigns(campaignData);
+        }
+      } catch (error) {
+        console.error('Failed to load campaigns:', error);
+      }
+
+      // Load strategies
+      try {
+        const savedStrategies = localStorage.getItem('copcca-4ps-strategy');
+        if (savedStrategies) {
+          setStrategies([JSON.parse(savedStrategies)]);
+        }
+
+        if (supabaseReady) {
+          const { data: strategyData } = await supabase
+            .from('marketing_strategies')
+            .select('*')
+            .eq('strategy_type', '4ps')
+            .order('created_at', { ascending: false });
+          if (strategyData) setStrategies(strategyData.map((s: MarketingStrategyRow) => s.content));
+        }
+      } catch (error) {
+        console.error('Failed to load strategies:', error);
+      }
+    };
+
     loadKpis();
+    loadChannelPerformance();
+    loadRealData();
   }, [supabaseReady, initialKpis, user]);
+
+  const generateAIInsights = (): string => {
+    if (campaigns.length === 0 && strategies.length === 0 && kpis.length === 0) {
+      return 'Create your first marketing campaign or strategy to receive AI-powered insights based on your data.';
+    }
+
+    const insights: string[] = [];
+
+    if (campaigns.length > 0) {
+      const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+      const activeChannels = [...new Set(campaigns.flatMap(c => c.channels || []))];
+      insights.push(`You have ${campaigns.length} active campaigns with a total budget of ${formatCurrency(totalBudget)}.`);
+      if (activeChannels.length > 0) {
+        insights.push(`Your campaigns span ${activeChannels.length} different channels: ${activeChannels.join(', ')}.`);
+      }
+    }
+
+    if (strategies.length > 0) {
+      insights.push(`Your marketing strategy includes ${strategies.length} key initiatives.`);
+    }
+
+    if (kpis.length > 0) {
+      const positiveKpis = kpis.filter(k => k.trend === 'up').length;
+      const totalKpis = kpis.length;
+      if (positiveKpis > totalKpis / 2) {
+        insights.push('Most of your KPIs are trending positively - great job!');
+      } else if (positiveKpis < totalKpis / 2) {
+        insights.push('Some KPIs need attention - consider adjusting your marketing strategy.');
+      }
+    }
+
+    if (insights.length === 0) {
+      return 'Start building your marketing data to unlock personalized AI insights.';
+    }
+
+    return insights.join(' ');
+  };
 
   return (
     <div className="space-y-6">
@@ -209,8 +435,7 @@ export const MarketingOverview: React.FC = () => {
           <div>
             <h3 className="font-semibold mb-1">AI Marketing Insight</h3>
             <p className="text-sm opacity-90">
-              Promotion spend is high, but conversion is low in rural regions. Consider SMS + reseller 
-              channels. Your direct sales team outperforms digital by 37% in customer trust metrics.
+              {generateAIInsights()}
             </p>
           </div>
         </div>
@@ -303,28 +528,28 @@ export const MarketingOverview: React.FC = () => {
             <Target size={20} className="text-purple-600" />
             Strategy vs Campaign Alignment Score
           </h3>
-          <div className="text-2xl font-bold text-purple-600">87%</div>
+          <div className="text-2xl font-bold text-purple-600">{calculateAlignmentScore().score}%</div>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
             <CheckCircle className="text-green-600 flex-shrink-0" size={20} />
             <div>
               <div className="text-sm font-medium text-slate-900">Well-Aligned</div>
-              <div className="text-xs text-slate-600">12 campaigns linked to active strategies</div>
+              <div className="text-xs text-slate-600">{calculateAlignmentScore().aligned} campaigns linked to active strategies</div>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
             <AlertCircle className="text-yellow-600 flex-shrink-0" size={20} />
             <div>
               <div className="text-sm font-medium text-slate-900">Needs Review</div>
-              <div className="text-xs text-slate-600">2 campaigns without clear strategy link</div>
+              <div className="text-xs text-slate-600">{calculateAlignmentScore().needsReview} campaigns without clear strategy link</div>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
             <Sparkles className="text-blue-600 flex-shrink-0" size={20} />
             <div>
               <div className="text-sm font-medium text-slate-900">AI Suggestions</div>
-              <div className="text-xs text-slate-600">3 optimization recommendations available</div>
+              <div className="text-xs text-slate-600">{calculateAlignmentScore().suggestions} optimization recommendations available</div>
             </div>
           </div>
         </div>

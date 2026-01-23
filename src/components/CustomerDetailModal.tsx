@@ -290,24 +290,26 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ custom
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                             invoice.status === 'paid' ? 'bg-green-100 text-green-700' :
                             invoice.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
+                            invoice.status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                            invoice.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                            'bg-slate-100 text-slate-700'
                           }`}>
                             {invoice.status}
                           </span>
-                          {invoice.days_overdue && (
+                          {invoice.status === 'overdue' && (
                             <span className="text-xs text-red-600 font-medium">
-                              {invoice.days_overdue} days overdue
+                              Overdue
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold text-slate-900">{formatCurrency(invoice.amount)}</div>
-                        <div className="text-xs text-slate-600">Due: {invoice.due_date}</div>
+                        <div className="text-xl font-bold text-slate-900">{formatCurrency(invoice.total_amount)}</div>
+                        <div className="text-xs text-slate-600">Due: {new Date(invoice.due_date).toLocaleDateString()}</div>
                       </div>
                     </div>
                     <div className="text-xs text-slate-600">
-                      {invoice.products.length} item(s) • Created {invoice.created_date}
+                      {invoice.invoice_items?.length || 0} item(s) • Created {new Date(invoice.created_at).toLocaleDateString()}
                     </div>
                   </Card>
                 ))

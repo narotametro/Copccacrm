@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-// import { persist } from 'zustand/middleware';
-import { supabase } from '@/lib/supabase';
+// // import { persist } from 'zustand/middleware';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -44,6 +44,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setProfile: (profile) => set({ profile }),
 
   signIn: async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -81,6 +85,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signInWithGoogle: async () => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -99,6 +107,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     phone?: string;
     address?: string;
   }) => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -150,11 +162,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    if (!isSupabaseConfigured) {
+      set({ user: null, profile: null });
+      return;
+    }
+
     await supabase.auth.signOut();
     set({ user: null, profile: null });
   },
 
   resetPassword: async (email: string) => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -171,10 +192,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       // Check if Supabase is properly configured
-      const url = import.meta.env.VITE_SUPABASE_URL;
-      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!url || !key || url === 'https://placeholder.supabase.co') {
+      if (!isSupabaseConfigured) {
         console.warn('Supabase not configured, skipping auth initialization');
         clearTimeout(timeoutId);
         set({ loading: false });

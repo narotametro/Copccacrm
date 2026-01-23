@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Banknote,
   Target,
-  Brain,
   TrendingUp,
-  AlertTriangle,
   CheckCircle,
+  Edit,
+  Trash2,
+  Brain,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,29 +15,59 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { supabase } from '@/lib/supabase';
 
 interface Deal {
   id: string;
   title: string;
   value: number;
   stage: string;
-  company: string;
-  ai_probability: number;
-  ai_confidence: 'low' | 'medium' | 'high';
-  next_action: string;
-  action_priority: 'low' | 'medium' | 'high' | 'urgent';
-  days_in_stage: number;
-  estimated_close_date: string;
-  win_factors: string[];
-  risk_factors: string[];
+  company_id: string;
+  company_name?: string;
+  probability: number;
+  expected_close_date: string | null;
+  assigned_to: string | null;
+  assigned_user_name?: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+interface DealWithJoins {
+  id: string;
+  title: string;
+  value: number;
+  stage: string;
+  company_id: string;
+  probability: number;
+  expected_close_date: string | null;
+  assigned_to: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  companies?: { name: string } | null;
+  profiles?: { full_name: string; email: string } | null;
 }
 
 const stages = [
-  { id: 'lead', label: 'Lead', color: 'bg-slate-100 text-slate-700' },
-  { id: 'qualified', label: 'Qualified', color: 'bg-blue-100 text-blue-700' },
-  { id: 'proposal', label: 'Proposal', color: 'bg-purple-100 text-purple-700' },
-  { id: 'negotiation', label: 'Negotiation', color: 'bg-orange-100 text-orange-700' },
-  { id: 'closed-won', label: 'Closed Won', color: 'bg-green-100 text-green-700' },
+  { id: 'lead', label: 'Lead', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { id: 'qualified', label: 'Qualified', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { id: 'proposal', label: 'Proposal', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { id: 'negotiation', label: 'Negotiation', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { id: 'won', label: 'Closed Won', color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: 'lost', label: 'Closed Lost', color: 'bg-red-100 text-red-700 border-red-200' },
 ];
 
 const initialDeals: Deal[] = [];
@@ -45,38 +76,91 @@ export const SalesPipelineView: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [showDealModal, setShowDealModal] = useState(false);
   const [form, setForm] = useState({
     title: '',
-    company: '',
+    company_id: '',
     value: '',
     stage: 'lead',
-    ai_probability: '',
-    ai_confidence: 'medium',
-    next_action: '',
-    action_priority: 'medium',
-    days_in_stage: '',
-    estimated_close_date: '',
-    win_factors: '',
-    risk_factors: '',
+    probability: '50',
+    expected_close_date: '',
+    assigned_to: '',
+    notes: '',
   });
+
+  // Fetch deals, companies, and users
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch deals with company and user info
+      const { data: dealsData, error: dealsError } = await supabase
+        .from('deals')
+        .select(`
+          *,
+          companies:company_id(name),
+          profiles:assigned_to(full_name, email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (dealsError) throw dealsError;
+
+      // Transform the data
+      const transformedDeals = dealsData?.map((deal: DealWithJoins) => ({
+        ...deal,
+        company_name: deal.companies?.name || 'Unknown Company',
+        assigned_user_name: deal.profiles?.full_name || deal.profiles?.email || 'Unassigned',
+      })) || [];
+
+      setDeals(transformedDeals);
+
+      // Fetch companies for the form
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
+
+      if (!companiesError && companiesData) {
+        setCompanies(companiesData);
+      }
+
+      // Fetch users for assignment
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .order('full_name');
+
+      if (!usersError && usersData) {
+        setUsers(usersData);
+      }
+
+    } catch (error) {
+      console.error('Error fetching pipeline data:', error);
+      toast.error('Failed to load pipeline data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const resetForm = () => {
     setForm({
       title: '',
-      company: '',
+      company_id: '',
       value: '',
       stage: 'lead',
-      ai_probability: '',
-      ai_confidence: 'medium',
-      next_action: '',
-      action_priority: 'medium',
-      days_in_stage: '',
-      estimated_close_date: '',
-      win_factors: '',
-      risk_factors: '',
+      probability: '50',
+      expected_close_date: '',
+      assigned_to: '',
+      notes: '',
     });
     setActiveDealId(null);
     setModalMode('add');
@@ -93,70 +177,78 @@ export const SalesPipelineView: React.FC = () => {
     setActiveDealId(deal.id);
     setForm({
       title: deal.title,
-      company: deal.company,
+      company_id: deal.company_id,
       value: String(deal.value),
       stage: deal.stage,
-      ai_probability: String(deal.ai_probability),
-      ai_confidence: deal.ai_confidence,
-      next_action: deal.next_action,
-      action_priority: deal.action_priority,
-      days_in_stage: String(deal.days_in_stage),
-      estimated_close_date: deal.estimated_close_date,
-      win_factors: deal.win_factors.join(', '),
-      risk_factors: deal.risk_factors.join(', '),
+      probability: String(deal.probability),
+      expected_close_date: deal.expected_close_date || '',
+      assigned_to: deal.assigned_to || '',
+      notes: deal.notes || '',
     });
     setShowDealModal(true);
   };
 
-  const handleSave = () => {
-    if (!form.title.trim()) {
-      toast.error('Deal title is required');
-      return;
-    }
-    const payload: Deal = {
-      id: activeDealId || crypto.randomUUID(),
-      title: form.title.trim(),
-      company: form.company.trim() || 'Unspecified',
-      value: Number(form.value) || 0,
-      stage: form.stage,
-      ai_probability: Math.min(100, Math.max(0, Number(form.ai_probability) || 0)),
-      ai_confidence: form.ai_confidence as Deal['ai_confidence'],
-      next_action: form.next_action.trim() || 'Follow up',
-      action_priority: form.action_priority as Deal['action_priority'],
-      days_in_stage: Number(form.days_in_stage) || 0,
-      estimated_close_date: form.estimated_close_date || 'TBD',
-      win_factors: form.win_factors ? form.win_factors.split(',').map((w) => w.trim()).filter(Boolean) : [],
-      risk_factors: form.risk_factors ? form.risk_factors.split(',').map((r) => r.trim()).filter(Boolean) : [],
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    setDeals((prev) => {
-      if (modalMode === 'edit' && activeDealId) {
-        return prev.map((d) => (d.id === activeDealId ? payload : d));
+    try {
+      const dealData = {
+        title: form.title,
+        company_id: form.company_id,
+        value: parseFloat(form.value),
+        stage: form.stage,
+        probability: parseInt(form.probability),
+        expected_close_date: form.expected_close_date || null,
+        assigned_to: form.assigned_to || null,
+        notes: form.notes || null,
+      };
+
+      if (modalMode === 'add') {
+        const { error } = await supabase
+          .from('deals')
+          .insert([dealData]);
+
+        if (error) throw error;
+        toast.success('Deal created successfully');
+      } else {
+        const { error } = await supabase
+          .from('deals')
+          .update(dealData)
+          .eq('id', activeDealId);
+
+        if (error) throw error;
+        toast.success('Deal updated successfully');
       }
-      return [payload, ...prev];
-    });
 
-    toast.success(modalMode === 'edit' ? 'Deal updated' : 'Deal added', {
-      description: `${payload.title}${payload.company ? ` • ${payload.company}` : ''}`,
-    });
+      setShowDealModal(false);
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error saving deal:', error);
+      toast.error('Failed to save deal');
+    }
+  };
 
-    setShowDealModal(false);
-    resetForm();
+  const handleDelete = async (dealId: string) => {
+    if (!confirm('Are you sure you want to delete this deal?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .delete()
+        .eq('id', dealId);
+
+      if (error) throw error;
+      toast.success('Deal deleted successfully');
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error deleting deal:', error);
+      toast.error('Failed to delete deal');
+    }
   };
 
   const filteredDeals = selectedStage === 'all'
     ? deals
     : deals.filter((deal) => deal.stage === selectedStage);
-
-  const totalValue = useMemo(() => deals.reduce((sum, deal) => sum + deal.value, 0), [deals]);
-  const avgProbability = useMemo(
-    () => (deals.length ? Math.round(deals.reduce((sum, deal) => sum + deal.ai_probability, 0) / deals.length) : 0),
-    [deals]
-  );
-  const expectedRevenue = useMemo(
-    () => Math.round(deals.reduce((sum, deal) => sum + (deal.value * deal.ai_probability) / 100, 0)),
-    [deals]
-  );
 
   return (
     <div className="space-y-4">
@@ -169,151 +261,111 @@ export const SalesPipelineView: React.FC = () => {
         title={modalMode === 'edit' ? 'Edit Deal' : 'Add Deal'}
         size="md"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Deal Title</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
+              label="Deal Title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g., Enterprise CRM License"
               required
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
-            <Input
-              value={form.company}
-              onChange={(e) => setForm({ ...form, company: e.target.value })}
-              placeholder="e.g., Acme Corp"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Value</label>
-            <Input
-              type="number"
-              value={form.value}
-              onChange={(e) => setForm({ ...form, value: e.target.value })}
-              placeholder="e.g., 85000"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Stage</label>
-            <select
-              value={form.stage}
-              onChange={(e) => setForm({ ...form, stage: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+            <Select
+              label="Company"
+              value={form.company_id}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, company_id: e.target.value })}
+              required
             >
-              {stages.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
+              <option value="">Select Company</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Close Probability (%)</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
+              label="Deal Value"
               type="number"
-              value={form.ai_probability}
-              onChange={(e) => setForm({ ...form, ai_probability: e.target.value })}
-              placeholder="0-100"
+              step="0.01"
+              value={form.value}
+              onChange={(e) => setForm({ ...form, value: e.target.value })}
+              required
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Confidence</label>
-            <select
-              value={form.ai_confidence}
-              onChange={(e) => setForm({ ...form, ai_confidence: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+            <Select
+              label="Stage"
+              value={form.stage}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, stage: e.target.value })}
+              required
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+              {stages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Next Action</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              value={form.next_action}
-              onChange={(e) => setForm({ ...form, next_action: e.target.value })}
-              placeholder="e.g., Schedule pricing discussion"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Action Priority</label>
-            <select
-              value={form.action_priority}
-              onChange={(e) => setForm({ ...form, action_priority: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Days in Stage</label>
-            <Input
+              label="Probability (%)"
               type="number"
-              value={form.days_in_stage}
-              onChange={(e) => setForm({ ...form, days_in_stage: e.target.value })}
-              placeholder="e.g., 5"
+              min="0"
+              max="100"
+              value={form.probability}
+              onChange={(e) => setForm({ ...form, probability: e.target.value })}
+              required
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Estimated Close Date</label>
             <Input
+              label="Expected Close Date"
               type="date"
-              value={form.estimated_close_date}
-              onChange={(e) => setForm({ ...form, estimated_close_date: e.target.value })}
+              value={form.expected_close_date}
+              onChange={(e) => setForm({ ...form, expected_close_date: e.target.value })}
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Win Factors (comma separated)</label>
+          <Select
+            label="Assigned To"
+            value={form.assigned_to}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, assigned_to: e.target.value })}
+          >
+            <option value="">Unassigned</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.full_name || user.email}
+              </option>
+            ))}
+          </Select>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Notes
+            </label>
             <textarea
-              value={form.win_factors}
-              onChange={(e) => setForm({ ...form, win_factors: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-              rows={2}
-              placeholder="Strong champion, Budget approved"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              rows={3}
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Risk Factors (comma separated)</label>
-            <textarea
-              value={form.risk_factors}
-              onChange={(e) => setForm({ ...form, risk_factors: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-              rows={2}
-              placeholder="Competitor discounting, Budget risk"
-            />
-          </div>
-
-          <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-3 pt-4">
             <Button
-              variant="outline"
-              onClick={() => {
-                setShowDealModal(false);
-                resetForm();
-              }}
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDealModal(false)}
             >
               Cancel
             </Button>
-            <Button onClick={handleSave}>{modalMode === 'edit' ? 'Update Deal' : 'Save Deal'}</Button>
+            <Button type="submit">
+              {modalMode === 'add' ? 'Create Deal' : 'Update Deal'}
+            </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Action Buttons */}
@@ -335,28 +387,43 @@ export const SalesPipelineView: React.FC = () => {
             <Banknote className="text-blue-600" size={20} />
             <span className="text-xs text-slate-600">Total Pipeline</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalValue)}</div>
+          <div className="text-2xl font-bold text-slate-900">
+            {loading ? '...' : formatCurrency(deals.reduce((sum, deal) => sum + (deal.value || 0), 0))}
+          </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Target className="text-green-600" size={20} />
             <span className="text-xs text-slate-600">Expected Revenue</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{formatCurrency(expectedRevenue)}</div>
+          <div className="text-2xl font-bold text-slate-900">
+            {loading ? '...' : formatCurrency(
+              deals.reduce((sum, deal) => {
+                if (deal.stage === 'won') return sum + (deal.value || 0);
+                return sum + ((deal.value || 0) * (deal.probability || 0) / 100);
+              }, 0)
+            )}
+          </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="text-purple-600" size={20} />
-            <span className="text-xs text-slate-600">Avg AI Probability</span>
+            <span className="text-xs text-slate-600">Avg Probability</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{avgProbability}%</div>
+          <div className="text-2xl font-bold text-slate-900">
+            {loading ? '...' : deals.length > 0
+              ? Math.round(deals.reduce((sum, deal) => sum + (deal.probability || 0), 0) / deals.length)
+              : 0}%
+          </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="text-orange-600" size={20} />
             <span className="text-xs text-slate-600">Active Deals</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{deals.length}</div>
+          <div className="text-2xl font-bold text-slate-900">
+            {loading ? '...' : deals.filter(d => !['won', 'lost'].includes(d.stage)).length}
+          </div>
         </Card>
       </div>
 
@@ -391,100 +458,74 @@ export const SalesPipelineView: React.FC = () => {
 
       {/* Deal Cards */}
       <div className="grid gap-4">
-        {filteredDeals.map((deal) => (
-          <Card key={deal.id} className="p-4 hover:shadow-lg transition-all">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-900 text-lg">{deal.title}</h3>
-                <p className="text-sm text-slate-600">{deal.company}</p>
-              </div>
-              <div className="text-right">
-                <div className="text-xl font-bold text-slate-900">{formatCurrency(deal.value)}</div>
-                <span className={`text-xs px-2 py-1 rounded ${
-                  stages.find(s => s.id === deal.stage)?.color || 'bg-slate-100 text-slate-700'
-                }`}>
-                  {stages.find(s => s.id === deal.stage)?.label || deal.stage}
-                </span>
-                <div className="mt-2">
-                  <Button size="sm" variant="outline" onClick={() => openEditModal(deal)}>
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Health Score */}
-            <div className="flex items-center gap-3 mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
-              <Brain className="text-purple-600 flex-shrink-0" size={20} />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-slate-700">AI Close Probability</span>
-                  <span className={`text-sm font-bold ${
-                    deal.ai_probability >= 70 ? 'text-green-600' :
-                    deal.ai_probability >= 50 ? 'text-orange-600' : 'text-red-600'
-                  }`}>
-                    {deal.ai_probability}%
-                  </span>
-                </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${
-                      deal.ai_probability >= 70 ? 'bg-green-500' :
-                      deal.ai_probability >= 50 ? 'bg-orange-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${deal.ai_probability}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Next Action */}
-            <div className="mb-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-              <div className="flex items-center justify-between">
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-2 text-slate-600">Loading deals...</p>
+          </div>
+        ) : filteredDeals.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            No deals found in this stage
+          </div>
+        ) : (
+          filteredDeals.map((deal) => (
+            <Card key={deal.id} className="p-4 hover:shadow-lg transition-all">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <span className="text-xs font-medium text-blue-900">Next Action</span>
-                  <p className="text-sm text-blue-700 mt-1">{deal.next_action}</p>
+                  <h3 className="font-bold text-slate-900 text-lg">{deal.title}</h3>
+                  <p className="text-sm text-slate-600">{deal.company_name}</p>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  deal.action_priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                  deal.action_priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                  deal.action_priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-slate-100 text-slate-700'
-                }`}>
-                  {deal.action_priority}
-                </span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-slate-900">{formatCurrency(deal.value)}</div>
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    stages.find(s => s.id === deal.stage)?.color || 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {stages.find(s => s.id === deal.stage)?.label || deal.stage}
+                  </span>
+                  <div className="mt-2 flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => openEditModal(deal)}>
+                      <Edit size={12} />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(deal.id)} className="text-red-600 hover:text-red-700">
+                      <Trash2 size={12} />
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Win/Risk Factors */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-xs font-medium text-green-700">
-                  <CheckCircle size={14} />
-                  <span>Win Factors</span>
+              {/* Deal Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">Probability</span>
+                  <div className="font-semibold">{deal.probability}%</div>
                 </div>
-                {deal.win_factors.slice(0, 2).map((factor, idx) => (
-                  <div key={idx} className="text-xs text-slate-600 ml-4">• {factor}</div>
-                ))}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-xs font-medium text-red-700">
-                  <AlertTriangle size={14} />
-                  <span>Risk Factors</span>
+                {deal.expected_close_date && (
+                  <div>
+                    <span className="text-slate-500">Expected Close</span>
+                    <div className="font-semibold">{new Date(deal.expected_close_date).toLocaleDateString()}</div>
+                  </div>
+                )}
+                {deal.assigned_user_name && (
+                  <div>
+                    <span className="text-slate-500">Assigned To</span>
+                    <div className="font-semibold">{deal.assigned_user_name}</div>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-500">Created</span>
+                  <div className="font-semibold">{new Date(deal.created_at).toLocaleDateString()}</div>
                 </div>
-                {deal.risk_factors.slice(0, 2).map((factor, idx) => (
-                  <div key={idx} className="text-xs text-slate-600 ml-4">• {factor}</div>
-                ))}
               </div>
-            </div>
 
-            {/* Deal Info */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 text-xs text-slate-600">
-              <span>{deal.days_in_stage} days in stage</span>
-              <span>Est. close: {deal.estimated_close_date}</span>
-            </div>
-          </Card>
-        ))}
+              {deal.notes && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <span className="text-xs font-medium text-slate-700">Notes</span>
+                  <p className="text-sm text-slate-600 mt-1">{deal.notes}</p>
+                </div>
+              )}
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

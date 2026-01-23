@@ -25,6 +25,10 @@ import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { formatName, formatEmail } from '@/lib/textFormat';
 import { supabase } from '@/lib/supabase';
+import { Database } from '@/lib/types/database';
+
+type UserRow = Database['public']['Tables']['users']['Row'];
+type CompanyRow = Database['public']['Tables']['companies']['Row'];
 
 interface Subscription {
   id: string;
@@ -109,9 +113,9 @@ export const PlatformAdmin: React.FC = () => {
       }
 
       // Group users by email domain to simulate companies
-      const usersByDomain: { [key: string]: any[] } = {};
+      const usersByDomain: { [key: string]: UserRow[] } = {};
       
-      profiles.forEach(user => {
+      profiles.forEach((user: UserRow) => {
         const emailDomain = user.email?.split('@')[1] || 'unknown';
         if (!usersByDomain[emailDomain]) {
           usersByDomain[emailDomain] = [];
@@ -122,7 +126,7 @@ export const PlatformAdmin: React.FC = () => {
       // Convert to subscription format
       const subs: Subscription[] = Object.entries(usersByDomain).map(([domain, users]) => {
         const adminUser = users.find(u => u.role === 'admin') || users[0];
-        const company = companies?.find(c => c.email?.includes(domain));
+        const company = companies?.find((c: CompanyRow) => c.email?.includes(domain));
         
         const createdDate = new Date(adminUser.created_at);
         const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));

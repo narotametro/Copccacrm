@@ -60,7 +60,7 @@ export const Marketing: React.FC = () => {
       <div className="w-64 flex-shrink-0">
         <div className="sticky top-16 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">📈 Marketing</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Marketing</h1>
             <p className="text-xs text-slate-600 mt-1">Strategy-first system</p>
           </div>
           

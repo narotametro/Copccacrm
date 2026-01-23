@@ -16,7 +16,9 @@ import {
   Star,
   RefreshCw,
   Database,
-  Zap
+  Zap,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -30,11 +32,14 @@ type KPICategory = 'overview' | 'customers' | 'sales' | 'marketing' | 'customer-
 export const KPITracking: React.FC = () => {
   const [activeTab, setActiveTab] = useState<KPICategory>('overview');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingKPI, setEditingKPI] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     currentValue: '',
     targetValue: '',
     unit: '',
+    plannedStartDate: '',
+    plannedEndDate: '',
   });
   const { metrics: integratedMetrics, loading: integratedLoading, refreshData } = useIntegratedKPIData();
 
@@ -60,6 +65,8 @@ export const KPITracking: React.FC = () => {
     startDate?: string;
     endDate?: string;
     status: 'not-started' | 'in-progress' | 'completed';
+    plannedStartDate?: string;
+    plannedEndDate?: string;
   }>>(() => {
     // Load KPIs from localStorage on initial render
     try {
@@ -70,6 +77,8 @@ export const KPITracking: React.FC = () => {
       return [];
     }
   });
+
+
 
   // Save KPIs to localStorage whenever they change
   useEffect(() => {
@@ -184,6 +193,8 @@ export const KPITracking: React.FC = () => {
     startDate?: string;
     endDate?: string;
     status: 'not-started' | 'in-progress' | 'completed';
+    plannedStartDate?: string;
+    plannedEndDate?: string;
   };
 
   type CategoryConfig = {
@@ -214,8 +225,30 @@ export const KPITracking: React.FC = () => {
     setKpis(updatedKpis);
   };
 
+  const editKPI = (index: number) => {
+    const kpi = kpis[index];
+    setFormData({
+      name: kpi.name,
+      currentValue: kpi.value,
+      targetValue: kpi.target,
+      unit: kpi.unit,
+      plannedStartDate: kpi.plannedStartDate || '',
+      plannedEndDate: kpi.plannedEndDate || '',
+    });
+    setEditingKPI(index);
+    setShowAddModal(true);
+  };
+
+  const deleteKPI = (index: number) => {
+    if (window.confirm('Are you sure you want to delete this KPI?')) {
+      const updatedKpis = kpis.filter((_, i) => i !== index);
+      setKpis(updatedKpis);
+      toast.success('KPI deleted successfully');
+    }
+  };
+
   // Helper function to render KPI cards with timeline functionality
-  const renderKPICard = (kpi: KPI, index: number, categoryConfig: CategoryConfig) => (
+  const renderKPICard = (kpi: KPI, index: number, categoryConfig: CategoryConfig, isIntegrated: boolean = false) => (
     <Card key={index} className="p-6">
       <div className="flex items-center space-x-3 mb-4">
         <div className={`p-2 ${categoryConfig.bgColor} rounded-lg`}>
@@ -257,36 +290,69 @@ export const KPITracking: React.FC = () => {
           </div>
         )}
         
-        {/* Timeline Action Buttons */}
-        <div className="flex space-x-2 mt-3">
-          {kpi.status !== 'in-progress' && kpi.status !== 'completed' && (
-            <Button
-              onClick={() => startKPI(index)}
-              size="sm"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Start
-            </Button>
-          )}
-          {kpi.status === 'in-progress' && (
-            <Button
-              onClick={() => completeKPI(index)}
-              size="sm"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              Complete
-            </Button>
-          )}
-          {kpi.status === 'completed' && (
-            <Button
-              onClick={() => startKPI(index)}
-              size="sm"
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
-            >
-              Restart
-            </Button>
-          )}
-        </div>
+        {/* Planned Timeline Information */}
+        {(kpi.plannedStartDate || kpi.plannedEndDate) && (
+          <div className="text-xs text-gray-500 mt-1">
+            {kpi.plannedStartDate && `Planned Start: ${new Date(kpi.plannedStartDate).toLocaleDateString()}`}
+            {kpi.plannedEndDate && ` • Planned End: ${new Date(kpi.plannedEndDate).toLocaleDateString()}`}
+          </div>
+        )}
+        
+        {/* Timeline Action Buttons - Only show for user-added KPIs */}
+        {!isIntegrated && (
+          <div className="space-y-2 mt-3">
+            <div className="flex space-x-2">
+              {kpi.status !== 'in-progress' && kpi.status !== 'completed' && (
+                <Button
+                  onClick={() => startKPI(index)}
+                  size="sm"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Start
+                </Button>
+              )}
+              {kpi.status === 'in-progress' && (
+                <Button
+                  onClick={() => completeKPI(index)}
+                  size="sm"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Complete
+                </Button>
+              )}
+              {kpi.status === 'completed' && (
+                <Button
+                  onClick={() => startKPI(index)}
+                  size="sm"
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+                >
+                  Restart
+                </Button>
+              )}
+            </div>
+            {/* Edit and Delete Buttons */}
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => editKPI(index)}
+                size="sm"
+                variant="outline"
+                className="flex-1 flex items-center justify-center space-x-1"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit</span>
+              </Button>
+              <Button
+                onClick={() => deleteKPI(index)}
+                size="sm"
+                variant="outline"
+                className="flex-1 flex items-center justify-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -297,7 +363,7 @@ export const KPITracking: React.FC = () => {
       return;
     }
 
-    const newKpi = {
+    const kpiData = {
       name: formData.name,
       value: formData.currentValue,
       target: formData.targetValue,
@@ -306,10 +372,31 @@ export const KPITracking: React.FC = () => {
       trend: '+0%', // Default trend
       category: activeTab as KPICategory,
       status: 'not-started' as const,
+      plannedStartDate: formData.plannedStartDate || undefined,
+      plannedEndDate: formData.plannedEndDate || undefined,
     };
 
-    setKpis(prev => [...prev, newKpi]);
-    setFormData({ name: '', currentValue: '', targetValue: '', unit: '' });
+    if (editingKPI !== null) {
+      // Edit existing KPI
+      const updatedKpis = [...kpis];
+      updatedKpis[editingKPI] = {
+        ...updatedKpis[editingKPI],
+        ...kpiData,
+        // Preserve existing timeline data
+        startDate: updatedKpis[editingKPI].startDate,
+        endDate: updatedKpis[editingKPI].endDate,
+        status: updatedKpis[editingKPI].status,
+      };
+      setKpis(updatedKpis);
+      setEditingKPI(null);
+      toast.success('KPI updated successfully');
+    } else {
+      // Add new KPI
+      setKpis(prev => [...prev, kpiData]);
+      toast.success('KPI added successfully');
+    }
+
+    setFormData({ name: '', currentValue: '', targetValue: '', unit: '', plannedStartDate: '', plannedEndDate: '' });
     setShowAddModal(false);
   };
 
@@ -397,62 +484,14 @@ export const KPITracking: React.FC = () => {
             <Brain className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-900">🤖 AI Risk Scores</h3>
+            <h3 className="text-xl font-bold text-gray-900">AI Risk Scores</h3>
             <p className="text-sm text-gray-600">Real-time customer analytics powered by AI</p>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Health Score */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Health Score</span>
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-green-600 mb-1">75%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Target: 85%</p>
-          </div>
-
-          {/* Churn Risk */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Churn Risk</span>
-              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-yellow-600" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-yellow-600 mb-1">20%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '20%' }}></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Target: &lt;20%</p>
-          </div>
-
-          {/* Upsell Potential */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Upsell Potential</span>
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-blue-600 mb-1">50%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '50%' }}></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Target: 70%</p>
-          </div>
-        </div>
-        
-        <div className="mt-4 p-3 bg-purple-50 rounded-lg">
-          <p className="text-sm text-purple-700">
-            <strong>AI Analysis:</strong> Customer health is strong with moderate churn risk. Focus on upsell opportunities to maximize revenue potential.
-          </p>
+        <div className="text-center py-8">
+          <Brain className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+          <p className="text-gray-600">AI Risk Scores coming soon. Add customer KPIs to enable AI-powered analytics.</p>
         </div>
       </Card>
 
@@ -480,40 +519,10 @@ export const KPITracking: React.FC = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>Customers: {integratedMetrics.customers.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span>Sales: {integratedMetrics.sales.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-            <span>Marketing: {integratedMetrics.marketing.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-            <span>Customer Perf: {integratedMetrics.customerPerformance.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-            <span>Operations: {integratedMetrics.operations.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
-            <span>Team: {integratedMetrics.team.length} metrics</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-            <span>Debt Collection: {integratedMetrics.debtCollection.length} metrics</span>
-          </div>
+        <div className="text-center py-4">
+          <Database className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">Data integration ready. Click "Sync Data" to pull live metrics from business modules.</p>
         </div>
-
-        <p className="text-xs text-gray-500 mt-3">
-          Automatically pulls live data from Customers, Sales, Marketing, After Sales, Operations, Team, and Debt Collection modules.
-        </p>
       </Card>
 
       {/* KPI Category Cards */}
@@ -586,37 +595,6 @@ export const KPITracking: React.FC = () => {
           <span>Add KPI</span>
         </Button>
       </div>
-
-      {/* Integrated Customer KPIs */}
-      {integratedMetrics.customers.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Customer Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.customers.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'customers' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-green-100',
-                icon: Users,
-                label: 'Customer Metric',
-                progressColor: 'bg-green-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
 
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'customers').length > 0 && (
@@ -693,37 +671,6 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      {/* Integrated Sales KPIs */}
-      {integratedMetrics.sales.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Sales Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.sales.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'sales' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-purple-100',
-                icon: DollarSign,
-                label: 'Sales Metric',
-                progressColor: 'bg-purple-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
-
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'sales').length > 0 && (
         <div className="space-y-4">
@@ -773,35 +720,6 @@ export const KPITracking: React.FC = () => {
       </div>
 
       {/* Integrated Marketing KPIs */}
-      {integratedMetrics.marketing.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Marketing Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.marketing.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'marketing' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-orange-100',
-                icon: Megaphone,
-                label: 'Marketing Metric',
-                progressColor: 'bg-orange-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
 
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'marketing').length > 0 && (
@@ -852,35 +770,6 @@ export const KPITracking: React.FC = () => {
       </div>
 
       {/* Integrated Customer Performance KPIs */}
-      {integratedMetrics.customerPerformance.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Customer Performance Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.customerPerformance.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'customer-performance' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-pink-100',
-                icon: Brain,
-                label: 'Customer Performance Metric',
-                progressColor: 'bg-pink-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
 
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'customer-performance').length > 0 && (
@@ -931,35 +820,6 @@ export const KPITracking: React.FC = () => {
       </div>
 
       {/* Integrated Operations KPIs */}
-      {integratedMetrics.operations.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Operations Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.operations.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'operations' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-indigo-100',
-                icon: Settings,
-                label: 'Operations Metric',
-                progressColor: 'bg-indigo-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
 
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'operations').length > 0 && (
@@ -1009,37 +869,6 @@ export const KPITracking: React.FC = () => {
         </Button>
       </div>
 
-      {/* Integrated Team KPIs */}
-      {integratedMetrics.team.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Team Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.team.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'team' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-teal-100',
-                icon: Handshake,
-                label: 'Team Metric',
-                progressColor: 'bg-teal-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
-
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'team').length > 0 && (
         <div className="space-y-4">
@@ -1087,37 +916,6 @@ export const KPITracking: React.FC = () => {
           <span>Add KPI</span>
         </Button>
       </div>
-
-      {/* Integrated Debt Collection KPIs */}
-      {integratedMetrics.debtCollection.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <h3 className="text-lg font-semibold">Live Debt Collection Metrics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {integratedMetrics.debtCollection.map((metric, index) => {
-              const progress = Math.min((metric.currentValue / metric.targetValue) * 100, 100);
-              const kpiData = {
-                name: metric.name,
-                value: metric.currentValue.toString(),
-                target: metric.targetValue.toString(),
-                unit: metric.unit,
-                progress,
-                trend: '+0%',
-                category: 'debt-collection' as KPICategory,
-                status: (progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'not-started') as 'completed' | 'in-progress' | 'not-started'
-              };
-              return renderKPICard(kpiData, index, {
-                bgColor: 'bg-red-100',
-                icon: CreditCard,
-                label: 'Debt Collection Metric',
-                progressColor: 'bg-red-500'
-              });
-            })}
-          </div>
-        </div>
-      )}
 
       {/* User Added KPIs */}
       {kpis.filter(kpi => kpi.category === 'debt-collection').length > 0 && (
@@ -1210,8 +1008,16 @@ export const KPITracking: React.FC = () => {
       {/* Content */}
       {renderContent()}
 
-      {/* Add KPI Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New KPI">
+      {/* Add/Edit KPI Modal */}
+      <Modal 
+        isOpen={showAddModal} 
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingKPI(null);
+          setFormData({ name: '', currentValue: '', targetValue: '', unit: '', plannedStartDate: '', plannedEndDate: '' });
+        }} 
+        title={editingKPI !== null ? "Edit KPI" : "Add New KPI"}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">KPI Name</label>
@@ -1255,11 +1061,31 @@ export const KPITracking: React.FC = () => {
               required
             />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Planned Start Date</label>
+              <Input
+                type="date"
+                value={formData.plannedStartDate}
+                onChange={(e) => setFormData({ ...formData, plannedStartDate: e.target.value })}
+                placeholder="Select start date"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Planned End Date</label>
+              <Input
+                type="date"
+                value={formData.plannedEndDate}
+                onChange={(e) => setFormData({ ...formData, plannedEndDate: e.target.value })}
+                placeholder="Select end date"
+              />
+            </div>
+          </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add KPI</Button>
+            <Button type="submit">{editingKPI !== null ? 'Update KPI' : 'Add KPI'}</Button>
           </div>
         </form>
       </Modal>

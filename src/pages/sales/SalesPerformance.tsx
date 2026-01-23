@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Users,
   Banknote,
@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useCurrency } from '@/context/CurrencyContext';
+import { supabase } from '@/lib/supabase';
 
 interface SalesRep {
   id: string;
@@ -25,26 +26,26 @@ interface SalesRep {
   target: number;
   avg_deal_size: number;
   avg_cycle_days: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface WinLossReason {
+  id: string;
   reason: string;
   percentage: number;
   ai_insight: string;
+  created_at: string;
+  updated_at: string;
 }
-
-const initialReps: SalesRep[] = [];
-
-const initialWinReasons: WinLossReason[] = [];
-
-const initialLossReasons: WinLossReason[] = [];
 
 export const SalesPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();
 
-  const [reps, setReps] = useState<SalesRep[]>(initialReps);
-  const [winReasons, setWinReasons] = useState<WinLossReason[]>(initialWinReasons);
-  const [lossReasons, setLossReasons] = useState<WinLossReason[]>(initialLossReasons);
+  const [reps, setReps] = useState<SalesRep[]>([]);
+  const [winReasons, setWinReasons] = useState<WinLossReason[]>([]);
+  const [lossReasons, setLossReasons] = useState<WinLossReason[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [repForm, setRepForm] = useState({
     name: '',
@@ -60,6 +61,57 @@ export const SalesPerformance: React.FC = () => {
   const [winForm, setWinForm] = useState({ reason: '', percentage: '', ai_insight: '' });
   const [lossForm, setLossForm] = useState({ reason: '', percentage: '', ai_insight: '' });
 
+  // Fetch data from database
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch sales reps
+      const { data: repsData, error: repsError } = await supabase
+        .from('sales_reps')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (repsError) {
+        console.error('Error fetching sales reps:', repsError);
+      } else {
+        setReps(repsData || []);
+      }
+
+      // Fetch win reasons
+      const { data: winData, error: winError } = await supabase
+        .from('win_reasons')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (winError) {
+        console.error('Error fetching win reasons:', winError);
+      } else {
+        setWinReasons(winData || []);
+      }
+
+      // Fetch loss reasons
+      const { data: lossData, error: lossError } = await supabase
+        .from('loss_reasons')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (lossError) {
+        console.error('Error fetching loss reasons:', lossError);
+      } else {
+        setLossReasons(lossData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const totalRevenue = useMemo(() => reps.reduce((sum, rep) => sum + rep.revenue, 0), [reps]);
   const totalTarget = useMemo(() => reps.reduce((sum, rep) => sum + rep.target, 0), [reps]);
   const targetAchievement = totalTarget ? Math.round((totalRevenue / totalTarget) * 100) : 0;
@@ -70,98 +122,157 @@ export const SalesPerformance: React.FC = () => {
     ? Math.round(reps.reduce((sum, rep) => sum + rep.avg_cycle_days, 0) / reps.length)
     : 0;
 
-  const handleAddRep = (e: React.FormEvent) => {
+  const handleAddRep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!repForm.name.trim()) return;
 
-    const newRep: SalesRep = {
-      id: crypto.randomUUID(),
-      name: repForm.name.trim(),
-      deals_won: Number(repForm.deals_won) || 0,
-      deals_lost: Number(repForm.deals_lost) || 0,
-      conversion_rate: Number(repForm.conversion_rate) || 0,
-      revenue: Number(repForm.revenue) || 0,
-      target: Number(repForm.target) || 0,
-      avg_deal_size: Number(repForm.avg_deal_size) || 0,
-      avg_cycle_days: Number(repForm.avg_cycle_days) || 0,
-    };
+    try {
+      const { error } = await supabase
+        .from('sales_reps')
+        .insert({
+          name: repForm.name.trim(),
+          deals_won: Number(repForm.deals_won) || 0,
+          deals_lost: Number(repForm.deals_lost) || 0,
+          conversion_rate: Number(repForm.conversion_rate) || 0,
+          revenue: Number(repForm.revenue) || 0,
+          target: Number(repForm.target) || 0,
+          avg_deal_size: Number(repForm.avg_deal_size) || 0,
+          avg_cycle_days: Number(repForm.avg_cycle_days) || 0,
+        })
+        .select()
+        .single();
 
-    setReps((prev) => [newRep, ...prev]);
-    setRepForm({
-      name: '',
-      deals_won: '',
-      deals_lost: '',
-      conversion_rate: '',
-      revenue: '',
-      target: '',
-      avg_deal_size: '',
-      avg_cycle_days: '',
-    });
+      if (error) {
+        console.error('Error adding sales rep:', error);
+        return;
+      }
+
+      // Refresh data
+      await fetchData();
+
+      // Reset form
+      setRepForm({
+        name: '',
+        deals_won: '',
+        deals_lost: '',
+        conversion_rate: '',
+        revenue: '',
+        target: '',
+        avg_deal_size: '',
+        avg_cycle_days: '',
+      });
+    } catch (error) {
+      console.error('Error adding sales rep:', error);
+    }
   };
 
-  const handleAddWinReason = (e: React.FormEvent) => {
+  const handleAddWinReason = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!winForm.reason.trim()) return;
 
-    setWinReasons((prev) => [
-      {
-        reason: winForm.reason.trim(),
-        percentage: Number(winForm.percentage) || 0,
-        ai_insight: winForm.ai_insight.trim() || 'No insight yet',
-      },
-      ...prev,
-    ]);
-    setWinForm({ reason: '', percentage: '', ai_insight: '' });
+    try {
+      const { error } = await supabase
+        .from('win_reasons')
+        .insert({
+          reason: winForm.reason.trim(),
+          percentage: Number(winForm.percentage) || 0,
+          ai_insight: winForm.ai_insight.trim() || 'No insight yet',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding win reason:', error);
+        return;
+      }
+
+      // Refresh data
+      await fetchData();
+
+      // Reset form
+      setWinForm({ reason: '', percentage: '', ai_insight: '' });
+    } catch (error) {
+      console.error('Error adding win reason:', error);
+    }
   };
 
-  const handleAddLossReason = (e: React.FormEvent) => {
+  const handleAddLossReason = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lossForm.reason.trim()) return;
 
-    setLossReasons((prev) => [
-      {
-        reason: lossForm.reason.trim(),
-        percentage: Number(lossForm.percentage) || 0,
-        ai_insight: lossForm.ai_insight.trim() || 'No insight yet',
-      },
-      ...prev,
-    ]);
-    setLossForm({ reason: '', percentage: '', ai_insight: '' });
+    try {
+      const { error } = await supabase
+        .from('loss_reasons')
+        .insert({
+          reason: lossForm.reason.trim(),
+          percentage: Number(lossForm.percentage) || 0,
+          ai_insight: lossForm.ai_insight.trim() || 'No insight yet',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding loss reason:', error);
+        return;
+      }
+
+      // Refresh data
+      await fetchData();
+
+      // Reset form
+      setLossForm({ reason: '', percentage: '', ai_insight: '' });
+    } catch (error) {
+      console.error('Error adding loss reason:', error);
+    }
   };
 
   return (
     <div className="space-y-4">
-      {/* Performance Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Banknote className="text-green-600" size={20} />
-            <span className="text-xs text-slate-600">Total Revenue</span>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      ) : (
+        <>
+          {/* Performance Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Banknote className="text-green-600" size={20} />
+                <span className="text-xs text-slate-600">Total Revenue</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900">
+                {reps.length > 0 ? formatCurrency(totalRevenue) : 'No data'}
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="text-blue-600" size={20} />
+                <span className="text-xs text-slate-600">Target Achievement</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900">
+                {reps.length > 0 ? `${targetAchievement}%` : 'No data'}
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="text-purple-600" size={20} />
+                <span className="text-xs text-slate-600">Avg Conversion</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900">
+                {reps.length > 0 ? `${avgConversion}%` : 'No data'}
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="text-orange-600" size={20} />
+                <span className="text-xs text-slate-600">Avg Sales Cycle</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-900">
+                {reps.length > 0 ? `${avgCycle} days` : 'No data'}
+              </div>
+            </Card>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="text-blue-600" size={20} />
-            <span className="text-xs text-slate-600">Target Achievement</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{targetAchievement}%</div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="text-purple-600" size={20} />
-            <span className="text-xs text-slate-600">Avg Conversion</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{avgConversion}%</div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="text-orange-600" size={20} />
-            <span className="text-xs text-slate-600">Avg Sales Cycle</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{avgCycle} days</div>
-        </Card>
-      </div>
 
       {/* Sales Rep Performance */}
       <Card className="p-5">
@@ -170,75 +281,83 @@ export const SalesPerformance: React.FC = () => {
           <h3 className="text-lg font-bold text-slate-900">Sales Rep Performance</h3>
         </div>
         <div className="space-y-4">
-          {reps.map((rep) => {
-            const targetProgress = Math.round((rep.revenue / rep.target) * 100);
-            return (
-              <div key={rep.id} className="p-4 bg-slate-50 rounded-lg">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="font-bold text-slate-900">{rep.name}</h4>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-slate-600">
-                      <span>Won: {rep.deals_won}</span>
-                      <span>Lost: {rep.deals_lost}</span>
-                      <span>Conversion: {rep.conversion_rate}%</span>
+          {reps.length > 0 ? (
+            reps.map((rep) => {
+              const targetProgress = Math.round((rep.revenue / rep.target) * 100);
+              return (
+                <div key={rep.id} className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-bold text-slate-900">{rep.name}</h4>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-slate-600">
+                        <span>Won: {rep.deals_won}</span>
+                        <span>Lost: {rep.deals_lost}</span>
+                        <span>Conversion: {rep.conversion_rate}%</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-slate-900">{formatCurrency(rep.revenue)}</div>
+                      <div className="text-xs text-slate-600">of {formatCurrency(rep.target)}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-slate-900">{formatCurrency(rep.revenue)}</div>
-                    <div className="text-xs text-slate-600">of {formatCurrency(rep.target)}</div>
-                  </div>
-                </div>
 
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-slate-700">Target Progress</span>
-                    <span
-                      className={`text-xs font-bold ${
-                        targetProgress >= 100
-                          ? 'text-green-600'
-                          : targetProgress >= 80
-                            ? 'text-blue-600'
-                            : targetProgress >= 60
-                              ? 'text-orange-600'
-                              : 'text-red-600'
-                      }`}
-                    >
-                      {targetProgress}%
-                    </span>
+                  {/* Progress Bar */}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-slate-700">Target Progress</span>
+                      <span
+                        className={`text-xs font-bold ${
+                          targetProgress >= 100
+                            ? 'text-green-600'
+                            : targetProgress >= 80
+                              ? 'text-blue-600'
+                              : targetProgress >= 60
+                                ? 'text-orange-600'
+                                : 'text-red-600'
+                        }`}
+                      >
+                        {targetProgress}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${
+                          targetProgress >= 100
+                            ? 'bg-green-500'
+                            : targetProgress >= 80
+                              ? 'bg-blue-500'
+                              : targetProgress >= 60
+                                ? 'bg-orange-500'
+                                : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(targetProgress, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${
-                        targetProgress >= 100
-                          ? 'bg-green-500'
-                          : targetProgress >= 80
-                            ? 'bg-blue-500'
-                            : targetProgress >= 60
-                              ? 'bg-orange-500'
-                              : 'bg-red-500'
-                      }`}
-                      style={{ width: `${Math.min(targetProgress, 100)}%` }}
-                    />
-                  </div>
-                </div>
 
-                {/* Additional Metrics */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Award className="text-blue-600" size={14} />
-                    <span className="text-slate-600">Avg Deal:</span>
-                    <span className="font-medium text-slate-900">{formatCurrency(rep.avg_deal_size)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Clock className="text-purple-600" size={14} />
-                    <span className="text-slate-600">Avg Cycle:</span>
-                    <span className="font-medium text-slate-900">{rep.avg_cycle_days} days</span>
+                  {/* Additional Metrics */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <Award className="text-blue-600" size={14} />
+                      <span className="text-slate-600">Avg Deal:</span>
+                      <span className="font-medium text-slate-900">{formatCurrency(rep.avg_deal_size)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Clock className="text-purple-600" size={14} />
+                      <span className="text-slate-600">Avg Cycle:</span>
+                      <span className="font-medium text-slate-900">{rep.avg_cycle_days} days</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <Users className="mx-auto mb-2" size={48} />
+              <p>No sales reps data available</p>
+              <p className="text-sm">Add sales reps to see performance metrics</p>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -251,21 +370,29 @@ export const SalesPerformance: React.FC = () => {
             <h3 className="text-lg font-bold text-slate-900">Top Win Reasons</h3>
           </div>
           <div className="space-y-4">
-            {winReasons.map((reason, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-900">{reason.reason}</span>
-                  <span className="text-xs font-bold text-green-600">{reason.percentage}%</span>
+            {winReasons.length > 0 ? (
+              winReasons.map((reason, idx) => (
+                <div key={reason.id || idx} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-900">{reason.reason}</span>
+                    <span className="text-xs font-bold text-green-600">{reason.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500" style={{ width: `${reason.percentage}%` }} />
+                  </div>
+                  <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
+                    <Brain className="text-blue-600 flex-shrink-0" size={14} />
+                    <span className="text-xs text-blue-700">{reason.ai_insight}</span>
+                  </div>
                 </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${reason.percentage}%` }} />
-                </div>
-                <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
-                  <Brain className="text-blue-600 flex-shrink-0" size={14} />
-                  <span className="text-xs text-blue-700">{reason.ai_insight}</span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <TrendingUp className="mx-auto mb-2 text-green-400" size={48} />
+                <p>No win reasons data available</p>
+                <p className="text-sm">Add win reasons to see analysis</p>
               </div>
-            ))}
+            )}
           </div>
         </Card>
 
@@ -276,21 +403,29 @@ export const SalesPerformance: React.FC = () => {
             <h3 className="text-lg font-bold text-slate-900">Top Loss Reasons</h3>
           </div>
           <div className="space-y-4">
-            {lossReasons.map((reason, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-900">{reason.reason}</span>
-                  <span className="text-xs font-bold text-red-600">{reason.percentage}%</span>
+            {lossReasons.length > 0 ? (
+              lossReasons.map((reason, idx) => (
+                <div key={reason.id || idx} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-900">{reason.reason}</span>
+                    <span className="text-xs font-bold text-red-600">{reason.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-500" style={{ width: `${reason.percentage}%` }} />
+                  </div>
+                  <div className="flex items-start gap-2 p-2 bg-orange-50 rounded">
+                    <AlertCircle className="text-orange-600 flex-shrink-0" size={14} />
+                    <span className="text-xs text-orange-700">{reason.ai_insight}</span>
+                  </div>
                 </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-red-500" style={{ width: `${reason.percentage}%` }} />
-                </div>
-                <div className="flex items-start gap-2 p-2 bg-orange-50 rounded">
-                  <AlertCircle className="text-orange-600 flex-shrink-0" size={14} />
-                  <span className="text-xs text-orange-700">{reason.ai_insight}</span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <TrendingDown className="mx-auto mb-2 text-red-400" size={48} />
+                <p>No loss reasons data available</p>
+                <p className="text-sm">Add loss reasons to see analysis</p>
               </div>
-            ))}
+            )}
           </div>
         </Card>
       </div>
@@ -298,7 +433,7 @@ export const SalesPerformance: React.FC = () => {
       {/* Data Entry Forms */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
-          <h3 className="text-lg font-bold text-slate-900 mb-3">Add Sales Rep (demo)</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-3">Add Sales Rep</h3>
           <form className="grid grid-cols-1 sm:grid-cols-2 gap-3" onSubmit={handleAddRep}>
             <Input
               label="Name"
@@ -356,7 +491,7 @@ export const SalesPerformance: React.FC = () => {
 
         <div className="space-y-4">
           <Card className="p-5">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Win Reason (demo)</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Win Reason</h3>
             <form className="space-y-3" onSubmit={handleAddWinReason}>
               <Input
                 label="Reason"
@@ -382,7 +517,7 @@ export const SalesPerformance: React.FC = () => {
           </Card>
 
           <Card className="p-5">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Loss Reason (demo)</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Loss Reason</h3>
             <form className="space-y-3" onSubmit={handleAddLossReason}>
               <Input
                 label="Reason"
@@ -406,8 +541,10 @@ export const SalesPerformance: React.FC = () => {
               </div>
             </form>
           </Card>
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

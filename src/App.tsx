@@ -13,7 +13,7 @@ import { COPCCAAdminLogin } from '@/pages/auth/COPCCAAdminLogin';
 import { AcceptInvite } from '@/pages/auth/AcceptInvite';
 import Dashboard from '@/pages/Dashboard';
 import { Customers } from '@/pages/Customers';
-import { SalesPipeline } from '@/pages/SalesPipeline';
+import { CustomerDetailPage } from '@/pages/CustomerDetailPage';
 import { Sales } from '@/pages/Sales';
 import { AfterSales } from '@/pages/AfterSales';
 import { DebtCollection } from '@/pages/DebtCollection';
@@ -23,11 +23,17 @@ import { KPITracking } from '@/pages/KPITracking';
 import { Reports } from '@/pages/Reports';
 import { UserManagement } from '@/pages/UserManagement';
 import { Products } from '@/pages/Products';
+import { ProductDetailPage } from '@/pages/ProductDetailPage';
+import { CompetitorDetailPage } from '@/pages/CompetitorDetailPage';
 import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { MyWorkplace } from '@/pages/MyWorkplace';
 import { LandingPage } from '@/pages/LandingPage';
 import { Notifications } from '@/pages/Notifications';
+import InvoiceDashboard from '@/pages/InvoiceDashboard';
+import Invoices from '@/pages/Invoices';
+import CreateInvoice from '@/pages/CreateInvoice';
+import { Pipeline } from '@/pages/Pipeline';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { AdminCompanies } from '@/pages/admin/AdminCompanies';
 import { AdminSubscriptions } from '@/pages/admin/AdminSubscriptions';
@@ -109,16 +115,22 @@ const AppRoutes = () => {
       >
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="customers" element={<Customers />} />
-        <Route path="pipeline" element={<SalesPipeline />} />
+        <Route path="customers/:id" element={<CustomerDetailPage />} />
         <Route path="sales" element={<Sales />} />
+        <Route path="pipeline" element={<Pipeline />} />
         <Route path="after-sales" element={<AfterSales />} />
         <Route path="debt-collection" element={<DebtCollection />} />
         <Route path="competitors" element={<Competitors />} />
+        <Route path="competitors/:id" element={<CompetitorDetailPage />} />
         <Route path="marketing" element={<Marketing />} />
         <Route path="kpi-tracking" element={<KPITracking />} />
         <Route path="reports" element={<Reports />} />
         <Route path="products" element={<Products />} />
+        <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="invoices" element={<Invoices />} />
+        <Route path="invoices/dashboard" element={<InvoiceDashboard />} />
+        <Route path="invoices/create" element={<CreateInvoice />} />
         <Route 
           path="users" 
           element={

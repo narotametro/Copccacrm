@@ -37,3 +37,12 @@ export const formatEmail = (email: string): string => {
   if (!email) return '';
   return email.toLowerCase().trim();
 };
+
+/**
+ * Applies proper case formatting to input values (for names, cities, etc.)
+ * Converts to title case on blur/change
+ */
+export const applyProperCase = (value: string): string => {
+  if (!value) return '';
+  return toTitleCase(value.trim());
+};

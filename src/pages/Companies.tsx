@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
+import type { Database } from '@/lib/types/database';
 
 interface Company {
   id: string;
@@ -24,6 +25,8 @@ interface Company {
   max_users?: number;
   created_at: string;
   user_count?: number;
+  jtbd?: string | null;
+  sentiment?: 'positive' | 'neutral' | 'negative' | null;
 }
 
 export const Companies: React.FC = () => {
@@ -43,6 +46,8 @@ export const Companies: React.FC = () => {
     phone: '',
     email: '',
     address: '',
+    jtbd: '',
+    sentiment: 'neutral',
     subscription_plan: 'starter',
     max_users: 10,
     show_payment_popup: false,
@@ -67,7 +72,7 @@ export const Companies: React.FC = () => {
       if (companiesData) {
         // Get user counts for each company
         const companiesWithCounts = await Promise.all(
-          companiesData.map(async (company) => {
+          companiesData.map(async (company: Database['public']['Tables']['companies']['Row']) => {
             const { count } = await supabase
               .from('users')
               .select('*', { count: 'exact', head: true })
@@ -104,6 +109,8 @@ export const Companies: React.FC = () => {
           phone: formData.phone || null,
           email: formData.email || null,
           address: formData.address || null,
+          jtbd: formData.jtbd || null,
+          sentiment: formData.sentiment || 'neutral',
           status: 'active',
           subscription_plan: formData.subscription_plan,
           max_users: formData.max_users,
@@ -127,6 +134,8 @@ export const Companies: React.FC = () => {
         phone: '',
         email: '',
         address: '',
+        jtbd: '',
+        sentiment: 'neutral',
         subscription_plan: 'starter',
         max_users: 10,
         show_payment_popup: false,
@@ -153,6 +162,8 @@ export const Companies: React.FC = () => {
           phone: formData.phone || null,
           email: formData.email || null,
           address: formData.address || null,
+          jtbd: formData.jtbd || null,
+          sentiment: formData.sentiment || 'neutral',
           subscription_plan: formData.subscription_plan,
           max_users: formData.max_users,
           updated_at: new Date().toISOString(),
@@ -201,9 +212,11 @@ export const Companies: React.FC = () => {
       phone: company.phone || '',
       email: company.email || '',
       address: company.address || '',
+      jtbd: company.jtbd || '',
+      sentiment: company.sentiment || 'neutral',
       subscription_plan: company.subscription_plan || 'starter',
       max_users: company.max_users || 10,
-      show_payment_popup: (company as any).show_payment_popup || false,
+      show_payment_popup: company.show_payment_popup || false,
     });
     setShowEditModal(true);
   };
@@ -238,8 +251,8 @@ export const Companies: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Companies Management</h1>
-          <p className="text-slate-600 mt-1">Manage all companies and their subscriptions</p>
+          <h1 className="text-3xl font-bold text-slate-900">Businesses Management</h1>
+          <p className="text-slate-600 mt-1">Manage all businesses and their subscriptions</p>
         </div>
         <div className="flex gap-3">
           <Button 
@@ -247,10 +260,10 @@ export const Companies: React.FC = () => {
             icon={FileText} 
             onClick={() => navigate('/app/settings')}
           >
-            Company Information
+            Business Information
           </Button>
           <Button icon={Plus} onClick={() => setShowAddModal(true)}>
-            Add Company
+            Add Business
           </Button>
         </div>
       </div>
@@ -263,7 +276,7 @@ export const Companies: React.FC = () => {
               <Building className="text-blue-600" size={24} />
             </div>
             <div>
-              <p className="text-sm text-slate-600">Total Companies</p>
+              <p className="text-sm text-slate-600">Total Businesses</p>
               <p className="text-2xl font-bold text-slate-900">{companies.length}</p>
             </div>
           </div>
@@ -278,6 +291,36 @@ export const Companies: React.FC = () => {
               <p className="text-2xl font-bold text-slate-900">
                 {companies.filter(c => c.status === 'active').length}
               </p>
+            </div>
+          </div>
+          {/* JTBD and Sentiment fields */}
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Jobs To Be Done (JTBD)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.jtbd}
+                  onChange={e => setFormData({ ...formData, jtbd: e.target.value })}
+                  placeholder="Describe what the customer is trying to accomplish"
+                />
+                {formData.jtbd && (
+                  <Button type="button" variant="danger" onClick={() => setFormData({ ...formData, jtbd: '' })}>
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Sentiment</label>
+              <select
+                value={formData.sentiment}
+                onChange={e => setFormData({ ...formData, sentiment: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="positive">Positive</option>
+                <option value="neutral">Neutral</option>
+                <option value="negative">Negative</option>
+              </select>
             </div>
           </div>
         </Card>
@@ -396,7 +439,7 @@ export const Companies: React.FC = () => {
         </div>
       </Card>
 
-      {/* Add Company Modal */}
+      {/* Add Business Modal */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -467,6 +510,36 @@ export const Companies: React.FC = () => {
               </select>
             </div>
           </div>
+          {/* JTBD and Sentiment fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Jobs To Be Done (JTBD)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.jtbd}
+                  onChange={(e) => setFormData({ ...formData, jtbd: e.target.value })}
+                  placeholder="Describe what the customer is trying to accomplish"
+                />
+                {formData.jtbd && (
+                  <Button type="button" variant="danger" onClick={() => setFormData({ ...formData, jtbd: '' })}>
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Sentiment</label>
+              <select
+                value={formData.sentiment}
+                onChange={(e) => setFormData({ ...formData, sentiment: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="positive">Positive</option>
+                <option value="neutral">Neutral</option>
+                <option value="negative">Negative</option>
+              </select>
+            </div>
+          </div>
           <div className="border-t border-slate-200 pt-4">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -486,7 +559,7 @@ export const Companies: React.FC = () => {
               Cancel
             </Button>
             <Button type="submit" icon={Plus}>
-              Add Company
+              Add Business
             </Button>
           </div>
         </form>
@@ -560,6 +633,36 @@ export const Companies: React.FC = () => {
                 <option value="starter">Starter - ₦45K/mo (10 users)</option>
                 <option value="professional">Professional - ₦120K/mo (25 users)</option>
                 <option value="enterprise">Enterprise - ₦250K/mo (100 users)</option>
+              </select>
+            </div>
+          </div>
+          {/* JTBD and Sentiment fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Jobs To Be Done (JTBD)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.jtbd}
+                  onChange={(e) => setFormData({ ...formData, jtbd: e.target.value })}
+                  placeholder="Describe what the customer is trying to accomplish"
+                />
+                {formData.jtbd && (
+                  <Button type="button" variant="danger" onClick={() => setFormData({ ...formData, jtbd: '' })}>
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Sentiment</label>
+              <select
+                value={formData.sentiment}
+                onChange={(e) => setFormData({ ...formData, sentiment: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+              >
+                <option value="positive">Positive</option>
+                <option value="neutral">Neutral</option>
+                <option value="negative">Negative</option>
               </select>
             </div>
           </div>

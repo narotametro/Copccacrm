@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Lightbulb,
@@ -37,6 +37,52 @@ const strategyCards = [
 
 export const MarketingStrategy: React.FC = () => {
   const [activeView, setActiveView] = useState<StrategyView>('dashboard');
+  const [strategyStats, setStrategyStats] = useState({
+    strategyHealth: 0,
+    activePersonas: 0,
+    budgetAllocated: 0,
+    campaignsLinked: 0,
+  });
+
+  // Load strategy stats on component mount
+  useEffect(() => {
+    loadStrategyStats();
+  }, []);
+
+  const loadStrategyStats = () => {
+    try {
+      // Load personas count
+      const personas = JSON.parse(localStorage.getItem('copcca-target-personas') || '[]');
+      const activePersonas = personas.length;
+
+      // Load budget allocations
+      const budgets: { budget: number; spent: number }[] = JSON.parse(localStorage.getItem('copcca-budget-allocations') || '[]');
+      const totalBudget = budgets.reduce((sum: number, b) => sum + b.budget, 0);
+      const budgetAllocated = totalBudget > 0 ? Math.round((budgets.reduce((sum: number, b) => sum + b.spent, 0) / totalBudget) * 100) : 0;
+
+      // Load campaigns for linked count
+      const campaigns = JSON.parse(localStorage.getItem('copcca-campaigns') || '[]');
+      const campaignsLinked = campaigns.length;
+
+      // Calculate strategy health based on completion
+      let strategyHealth = 0;
+      if (activePersonas > 0) strategyHealth += 25;
+      if (budgetAllocated > 0) strategyHealth += 25;
+      if (campaignsLinked > 0) strategyHealth += 25;
+      // Check for value propositions
+      const valueProps = JSON.parse(localStorage.getItem('copcca-value-propositions') || '[]');
+      if (valueProps.length > 0) strategyHealth += 25;
+
+      setStrategyStats({
+        strategyHealth,
+        activePersonas,
+        budgetAllocated,
+        campaignsLinked,
+      });
+    } catch (error) {
+      console.error('Failed to load strategy stats:', error);
+    }
+  };
 
   const renderContent = () => {
     if (activeView === 'dashboard') {
@@ -46,19 +92,19 @@ export const MarketingStrategy: React.FC = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Strategy Health</div>
-              <div className="text-2xl font-bold">0%</div>
+              <div className="text-2xl font-bold">{strategyStats.strategyHealth}%</div>
             </Card>
             <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Active Personas</div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{strategyStats.activePersonas}</div>
             </Card>
             <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Budget Allocated</div>
-              <div className="text-2xl font-bold">0%</div>
+              <div className="text-2xl font-bold">{strategyStats.budgetAllocated}%</div>
             </Card>
             <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-none p-4">
               <div className="text-xs opacity-90 mb-1">Campaigns Linked</div>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{strategyStats.campaignsLinked}</div>
             </Card>
           </div>
 
