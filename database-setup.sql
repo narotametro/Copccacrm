@@ -136,6 +136,45 @@ CREATE TABLE interactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create sales_reps table
+CREATE TABLE sales_reps (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create win_reasons table
+CREATE TABLE win_reasons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reason TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create loss_reasons table
+CREATE TABLE loss_reasons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reason TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create marketing_budgets table
+CREATE TABLE marketing_budgets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  amount DECIMAL NOT NULL,
+  spent DECIMAL DEFAULT 0,
+  category TEXT,
+  start_date DATE NOT NULL,
+  end_date DATE,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
@@ -146,10 +185,16 @@ ALTER TABLE competitors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_strategies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE kpi_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales_reps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE win_reasons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE loss_reasons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marketing_budgets ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS Policies
-CREATE POLICY "Users can read own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Authenticated users can read users" ON users FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id OR auth.jwt()->>'role' = 'admin');
+CREATE POLICY "Admins can insert users" ON users FOR INSERT WITH CHECK (auth.jwt()->>'role' = 'admin');
+CREATE POLICY "Admins can delete users" ON users FOR DELETE USING (auth.jwt()->>'role' = 'admin');
 
 CREATE POLICY "Authenticated users can read companies" ON companies FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert companies" ON companies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
@@ -163,6 +208,10 @@ CREATE POLICY "Authenticated users can access competitors" ON competitors FOR AL
 CREATE POLICY "Authenticated users can access sales_strategies" ON sales_strategies FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can access kpi_data" ON kpi_data FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can access interactions" ON interactions FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can access sales_reps" ON sales_reps FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can access win_reasons" ON win_reasons FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can access loss_reasons" ON loss_reasons FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can access marketing_budgets" ON marketing_budgets FOR ALL USING (auth.role() = 'authenticated');
 
 -- Create indexes for better performance
 CREATE INDEX idx_companies_status ON companies(status);
@@ -196,3 +245,5 @@ CREATE TRIGGER update_debt_collection_updated_at BEFORE UPDATE ON debt_collectio
 CREATE TRIGGER update_competitors_updated_at BEFORE UPDATE ON competitors FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_sales_strategies_updated_at BEFORE UPDATE ON sales_strategies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_kpi_data_updated_at BEFORE UPDATE ON kpi_data FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_sales_reps_updated_at BEFORE UPDATE ON sales_reps FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_marketing_budgets_updated_at BEFORE UPDATE ON marketing_budgets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
