@@ -8,11 +8,41 @@ interface WorkplaceApp {
 }
 
 const apps: WorkplaceApp[] = [
-  { 
-    name: "COPCCA POS", 
-    logo: "🛒", 
+  {
+    name: "",
+    logo: "Package",
+    url: "https://procurement.copcca.com",
+    color: "from-indigo-500 to-indigo-600"
+  },
+  {
+    name: "",
+    logo: "Revenue",
+    url: "https://accounting.copcca.com",
+    color: "from-emerald-500 to-emerald-600"
+  },
+  {
+    name: "COPCCA POS",
+    logo: "🛒",
     url: "https://pos.copcca.com",
     color: "from-purple-500 to-purple-600"
+  },
+  {
+    name: "",
+    logo: "Mobile",
+    url: "https://contents.copcca.com",
+    color: "from-pink-500 to-pink-600"
+  },
+  {
+    name: "",
+    logo: "Construction",
+    url: "https://builders.copcca.com",
+    color: "from-orange-500 to-orange-600"
+  },
+  {
+    name: "",
+    logo: "Settings",
+    url: "https://manufacturing.copcca.com",
+    color: "from-red-500 to-red-600"
   }
 ];
 
@@ -180,8 +210,8 @@ export const MyWorkplace: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-8 text-center shadow-xl">
-          <div className="text-5xl font-bold mb-2">1</div>
-          <div className="text-lg font-semibold">Integrated App</div>
+          <div className="text-5xl font-bold mb-2">6</div>
+          <div className="text-lg font-semibold">Integrated Apps</div>
         </div>
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-8 text-center shadow-xl">
           <div className="text-5xl font-bold mb-2">1</div>
