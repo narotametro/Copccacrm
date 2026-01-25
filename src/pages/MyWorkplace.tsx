@@ -9,13 +9,13 @@ interface WorkplaceApp {
 
 const apps: WorkplaceApp[] = [
   {
-    name: "COPCCA PROCUREMENT",
+    name: "",
     logo: "Package",
     url: "https://procurement.copcca.com",
     color: "from-indigo-500 to-indigo-600"
   },
   {
-    name: "COPCCA ACCOUNTING",
+    name: "",
     logo: "Revenue",
     url: "https://accounting.copcca.com",
     color: "from-emerald-500 to-emerald-600"
@@ -27,46 +27,30 @@ const apps: WorkplaceApp[] = [
     color: "from-purple-500 to-purple-600"
   },
   {
-    name: "COPCCA CONTENTS",
+    name: "",
     logo: "Mobile",
     url: "https://contents.copcca.com",
     color: "from-pink-500 to-pink-600"
   },
   {
-    name: "COPCCA BUILDERS",
+    name: "",
     logo: "Construction",
     url: "https://builders.copcca.com",
     color: "from-orange-500 to-orange-600"
   },
   {
-    name: "COPCCA MANUFACTURING",
+    name: "",
     logo: "Settings",
     url: "https://manufacturing.copcca.com",
     color: "from-red-500 to-red-600"
   }
 ];
 
-interface Feature {
-  icon: string;
-  title: string;
-  description: string;
-  color: string;
-}
-
 interface Benefit {
   title: string;
   description: string;
   icon: string;
 }
-
-const features: Feature[] = [
-  {
-    icon: "🛒",
-    title: "Fast POS",
-    description: "Modern POS system for SMBs that's smart, fast, and reliable.",
-    color: "from-purple-500 to-purple-600"
-  }
-];
 
 const benefits: Benefit[] = [
   {
@@ -140,31 +124,6 @@ export const MyWorkplace: React.FC = () => {
 
       {/* Enhanced Landing Section */}
       <section className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-3xl p-12 lg:p-16">
-        {/* Feature Highlights */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-10">
-            Powerful Features for Your Business
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 text-center"
-              >
-                <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center text-3xl shadow-md`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Benefits Section */}
         <div>
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-10">
