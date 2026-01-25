@@ -9,13 +9,13 @@ interface WorkplaceApp {
 
 const apps: WorkplaceApp[] = [
   {
-    name: "",
+    name: "COPCCA PROCUREMENT",
     logo: "Package",
     url: "https://procurement.copcca.com",
     color: "from-indigo-500 to-indigo-600"
   },
   {
-    name: "",
+    name: "COPCCA ACCOUNTING",
     logo: "Revenue",
     url: "https://accounting.copcca.com",
     color: "from-emerald-500 to-emerald-600"
@@ -27,19 +27,19 @@ const apps: WorkplaceApp[] = [
     color: "from-purple-500 to-purple-600"
   },
   {
-    name: "",
+    name: "COPCCA CONTENTS",
     logo: "Mobile",
     url: "https://contents.copcca.com",
     color: "from-pink-500 to-pink-600"
   },
   {
-    name: "",
+    name: "COPCCA BUILDERS",
     logo: "Construction",
     url: "https://builders.copcca.com",
     color: "from-orange-500 to-orange-600"
   },
   {
-    name: "",
+    name: "COPCCA MANUFACTURING",
     logo: "Settings",
     url: "https://manufacturing.copcca.com",
     color: "from-red-500 to-red-600"
@@ -61,28 +61,10 @@ interface Benefit {
 
 const features: Feature[] = [
   {
-    icon: "Users",
-    title: "Smart CRM",
-    description: "Track leads, customers, and sales all in one place with AI-powered insights.",
-    color: "from-blue-500 to-blue-600"
-  },
-  {
-    icon: "Package",
-    title: "Effortless Procurement",
-    description: "Streamline purchase orders, suppliers, and approvals with ease.",
-    color: "from-indigo-500 to-indigo-600"
-  },
-  {
     icon: "🛒",
     title: "Fast POS",
     description: "Modern POS system for SMBs that's smart, fast, and reliable.",
     color: "from-purple-500 to-purple-600"
-  },
-  {
-    icon: "Revenue",
-    title: "Smart Accounting",
-    description: "Track expenses, profits, and stocks accurately, with AI assistance.",
-    color: "from-emerald-500 to-emerald-600"
   }
 ];
 
