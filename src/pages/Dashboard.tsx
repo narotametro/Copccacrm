@@ -26,6 +26,20 @@ const Dashboard = () => {
   const [salesFilter, setSalesFilter] = useState<'today' | 'week' | 'month'>('today');
   const [showQuickSales, setShowQuickSales] = useState(false);
   
+  // Dashboard data states
+  const [loading, setLoading] = useState(false);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [activeCustomers, setActiveCustomers] = useState(0);
+  const [dealsWon, setDealsWon] = useState(0);
+  const [growthRate, setGrowthRate] = useState(0);
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    type: string;
+    title: string;
+    description: string;
+    time: string;
+    color: string;
+  }>>([]);
+  
   // Removed useIntegratedKPIData hook as we're fetching data directly
   
   useEffect(() => {
@@ -89,6 +103,38 @@ const Dashboard = () => {
         if (!salesError && salesData) {
           const sales = salesData.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
           setSalesToday(sales);
+        }
+        
+        // Calculate growth rate (current month vs previous month)
+        const currentMonth = new Date();
+        const previousMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+        const currentMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        
+        const { data: currentMonthData, error: currentMonthError } = await supabase
+          .from('invoices')
+          .select('total_amount, status')
+          .eq('status', 'paid')
+          .gte('created_at', currentMonthStart.toISOString());
+        
+        const { data: previousMonthData, error: previousMonthError } = await supabase
+          .from('invoices')
+          .select('total_amount, status')
+          .eq('status', 'paid')
+          .gte('created_at', previousMonth.toISOString())
+          .lt('created_at', currentMonthStart.toISOString());
+        
+        if (!currentMonthError && !previousMonthError && currentMonthData && previousMonthData) {
+          const currentMonthRevenue = currentMonthData.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
+          const previousMonthRevenue = previousMonthData.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
+          
+          if (previousMonthRevenue > 0) {
+            const growth = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
+            setGrowthRate(Math.round(growth * 100) / 100); // Round to 2 decimal places
+          } else if (currentMonthRevenue > 0) {
+            setGrowthRate(100); // If no previous revenue but current revenue exists, show 100% growth
+          } else {
+            setGrowthRate(0);
+          }
         }
         
         // Fetch recent activities
