@@ -275,6 +275,148 @@ export const LandingPage = () => {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-slate-900 mb-4">
+            Simple, transparent pricing
+          </h2>
+          <p className="text-xl text-slate-600">
+            Choose the plan that fits your business needs
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          {/* START Plan */}
+          <div className="glass rounded-xl p-8 hover:shadow-2xl hover:scale-105 transition-all duration-300">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">START</h3>
+              <p className="text-slate-600">Perfect for micro-businesses</p>
+            </div>
+            <div className="text-center mb-6">
+              <div className="text-4xl font-black text-slate-900">TZS 25,000</div>
+              <div className="text-slate-600">per month</div>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Dashboard (AI Center)</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Customer Management</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Advanced POS</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>1 User</span>
+              </li>
+            </ul>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => navigate('/register')}
+            >
+              Get Started
+            </Button>
+          </div>
+
+          {/* GROW Plan - Popular */}
+          <div className="glass rounded-xl p-8 border-2 border-blue-500 hover:shadow-2xl hover:scale-105 transition-all duration-300 relative">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                Most Popular
+              </span>
+            </div>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">GROW</h3>
+              <p className="text-slate-600">Grow your business with POS</p>
+            </div>
+            <div className="text-center mb-6">
+              <div className="text-4xl font-black text-slate-900">TZS 80,000</div>
+              <div className="text-slate-600">per month</div>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Everything in START</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>After Sales & Tasks</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>KPI Tracking</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Up to 3 Users</span>
+              </li>
+            </ul>
+            <Button
+              className="w-full"
+              onClick={() => navigate('/register')}
+            >
+              Choose GROW
+            </Button>
+          </div>
+
+          {/* PRO Plan */}
+          <div className="glass rounded-xl p-8 hover:shadow-2xl hover:scale-105 transition-all duration-300">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">PRO</h3>
+              <p className="text-slate-600">Complete business platform</p>
+            </div>
+            <div className="text-center mb-6">
+              <div className="text-4xl font-black text-slate-900">TZS 120,000</div>
+              <div className="text-slate-600">per month</div>
+            </div>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Everything in GROW</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Marketing Campaigns</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Advanced Analytics</span>
+              </li>
+              <li className="flex items-center">
+                <CheckCircle className="text-green-500 mr-3" size={20} />
+                <span>Unlimited Users</span>
+              </li>
+            </ul>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => navigate('/register')}
+            >
+              Go PRO
+            </Button>
+          </div>
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-slate-600 mb-4">
+            All plans include 7-day free trial. No credit card required.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setShowContactModal(true)}
+          >
+            <MessageSquare size={20} className="mr-2" />
+            Need a custom plan? Contact Sales
+          </Button>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-white/20 bg-black backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

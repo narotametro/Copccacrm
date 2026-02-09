@@ -30,9 +30,7 @@ import { Settings } from '@/pages/Settings';
 import { MyWorkplace } from '@/pages/MyWorkplace';
 import { LandingPage } from '@/pages/LandingPage';
 import { Notifications } from '@/pages/Notifications';
-import InvoiceDashboard from '@/pages/InvoiceDashboard';
-import Invoices from '@/pages/Invoices';
-import CreateInvoice from '@/pages/CreateInvoice';
+import SalesHub from '@/pages/SalesHub';
 import { Pipeline } from '@/pages/Pipeline';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { AdminCompanies } from '@/pages/admin/AdminCompanies';
@@ -128,9 +126,7 @@ const AppRoutes = () => {
         <Route path="products" element={<Products />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="notifications" element={<Notifications />} />
-        <Route path="invoices" element={<Invoices />} />
-        <Route path="invoices/dashboard" element={<InvoiceDashboard />} />
-        <Route path="invoices/create" element={<CreateInvoice />} />
+        <Route path="sales-hub" element={<SalesHub />} />
         <Route 
           path="users" 
           element={
