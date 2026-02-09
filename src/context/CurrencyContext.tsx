@@ -45,26 +45,61 @@ export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Load saved currency preference on mount and when user changes
   useEffect(() => {
-    if (user?.id) {
-      const savedCurrencyCode = localStorage.getItem(`currency_${user.id}`);
-      if (savedCurrencyCode) {
-        const savedCurrency = currencies.find(c => c.code === savedCurrencyCode);
-        if (savedCurrency) {
-          setCurrencyState(savedCurrency);
+    const loadSavedCurrency = () => {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage && user?.id) {
+          const savedCurrencyCode = localStorage.getItem(`currency_${user.id}`);
+          if (savedCurrencyCode) {
+            const savedCurrency = currencies.find(c => c.code === savedCurrencyCode);
+            if (savedCurrency) {
+              console.log('Loading saved currency preference:', savedCurrency.code);
+              setCurrencyState(savedCurrency);
+              return;
+            }
+          }
         }
+        // Fallback to USD if no saved preference or user not logged in
+        console.log('Using default currency: USD');
+        setCurrencyState(currencies[0]);
+      } catch (error) {
+        console.warn('Failed to load saved currency preference:', error);
+        setCurrencyState(currencies[0]);
       }
+    };
+
+    loadSavedCurrency();
+  }, [user?.id]);
+
+  // Clear currency preference when user logs out
+  useEffect(() => {
+    if (!user?.id) {
+      // User logged out, reset to default but don't clear localStorage
+      // This allows the preference to persist for when they log back in
+      console.log('User logged out, resetting to default currency');
+      setCurrencyState(currencies[0]);
     }
   }, [user?.id]);
 
   // Wrapper to save currency preference when changed
   const setCurrency = (newCurrency: Currency) => {
+    console.log('Setting currency to:', newCurrency.code);
     setCurrencyState(newCurrency);
-    if (user?.id) {
-      localStorage.setItem(`currency_${user.id}`, newCurrency.code);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage && user?.id) {
+        localStorage.setItem(`currency_${user.id}`, newCurrency.code);
+        console.log('Saved currency preference to localStorage:', newCurrency.code);
+      } else {
+        console.warn('Cannot save currency preference: localStorage not available or user not logged in');
+      }
+    } catch (error) {
+      console.warn('Failed to save currency preference:', error);
     }
   };
 
   const formatCurrency = (amount: number): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return `${currency.symbol}0`;
+    }
     return `${currency.symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { Database } from '@/lib/types/database';
@@ -613,7 +613,7 @@ export const useIntegratedKPIData = () => {
     return [];
   };
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -650,11 +650,11 @@ export const useIntegratedKPIData = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshData();
-  }, [user]);
+  }, [user, refreshData]);
 
   return {
     metrics,

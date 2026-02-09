@@ -9,12 +9,45 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('lucide-react') || id.includes('@supabase') || id.includes('zustand')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('date-fns') || id.includes('xlsx') || id.includes('jspdf')) {
+              return 'utils-vendor';
+            }
+            return 'vendor';
+          }
+
+          // Feature-based chunks for instant loading
+          if (id.includes('/pages/')) {
+            if (id.includes('/auth/')) return 'auth-pages';
+            if (id.includes('/admin/')) return 'admin-pages';
+            if (id.includes('Dashboard') || id.includes('Customers') || id.includes('SalesHub')) {
+              return 'core-pages';
+            }
+            return 'feature-pages';
+          }
+
+          // Component chunks
+          if (id.includes('/components/ui/')) return 'ui-components';
+          if (id.includes('/components/layout/')) return 'layout-components';
+
+          // Keep critical app code together
+          if (id.includes('App.tsx') || id.includes('main.tsx')) return 'app-core';
+        },
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js'
       }
-    }
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
   },
   plugins: [
     react(),
@@ -48,6 +81,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: null,
         runtimeCaching: [

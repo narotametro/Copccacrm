@@ -76,6 +76,9 @@ export const LandingPage = () => {
               </span>
             </div>
             <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => navigate('/pricing')}>
+                Pricing
+              </Button>
               <Button variant="ghost" onClick={() => navigate('/login')}>
                 Sign In
               </Button>

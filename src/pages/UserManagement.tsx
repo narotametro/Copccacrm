@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { getUserSubscription } from '@/lib/subscription';
 import type { Database } from '@/lib/types/database';
 
 interface UserType {
@@ -107,6 +108,7 @@ export const UserManagement: React.FC = () => {
   const [invitationLink, setInvitationLink] = useState('');
   const [invites, setInvites] = useState<DbInvite[]>([]);
   const [companyInfo, setCompanyInfo] = useState<(Database['public']['Tables']['companies']['Row'] & { user_count: number }) | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -251,8 +253,20 @@ export const UserManagement: React.FC = () => {
       }
     };
 
+    const loadSubscriptionInfo = async () => {
+      if (!isSupabaseConfigured || !user) return;
+
+      try {
+        const subscription = await getUserSubscription();
+        setSubscriptionInfo(subscription);
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+      }
+    };
+
     loadUsers();
     loadCompanyInfo();
+    loadSubscriptionInfo();
   }, [user]);
 
   const filteredUsers = users.filter((user) => {
@@ -600,7 +614,7 @@ export const UserManagement: React.FC = () => {
                 <p className="text-xs font-medium text-slate-500 uppercase">Users</p>
               </div>
               <p className="text-lg font-bold text-slate-900">
-                {companyInfo.user_count}/{companyInfo.max_users || 10}
+                {companyInfo.user_count}/{subscriptionInfo?.plan?.max_users || companyInfo?.max_users || 10}
               </p>
             </div>
 
@@ -610,7 +624,7 @@ export const UserManagement: React.FC = () => {
                 <p className="text-xs font-medium text-slate-500 uppercase">Subscription Plan</p>
               </div>
               <p className="text-lg font-bold text-slate-900 capitalize">
-                {companyInfo.subscription_plan || 'Starter'}
+                {subscriptionInfo?.plan?.display_name || companyInfo?.subscription_plan || 'Starter'}
               </p>
             </div>
 

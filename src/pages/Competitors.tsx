@@ -18,6 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 
 interface Competitor {
   id: string;
@@ -628,7 +629,8 @@ export const Competitors: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <FeatureGate feature="customer_health">
+      <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1136,5 +1138,6 @@ export const Competitors: React.FC = () => {
       </Modal>
 
     </div>
+    </FeatureGate>
   );
 };

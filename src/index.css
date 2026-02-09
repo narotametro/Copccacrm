@@ -72,3 +72,21 @@
   background: linear-gradient(to right, #f1f5f9 4%, #e2e8f0 25%, #f1f5f9 36%);
   background-size: 1000px 100%;
 }
+
+/* PDF Page Break Styles */
+.pdf-page-break {
+  page-break-after: always;
+}
+
+.pdf-page-break:last-child {
+  page-break-after: avoid;
+}
+
+@media print {
+  .pdf-page-break {
+    page-break-after: always;
+  }
+  .pdf-page-break:last-child {
+    page-break-after: avoid;
+  }
+}

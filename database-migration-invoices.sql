@@ -4,6 +4,13 @@
 -- Enable UUID extension if not exists
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables if they exist (to avoid conflicts with old schemas)
+DROP TABLE IF EXISTS invoice_reminders CASCADE;
+DROP TABLE IF EXISTS invoice_payments CASCADE;
+DROP TABLE IF EXISTS invoice_items CASCADE;
+DROP TABLE IF EXISTS invoices CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+
 -- Create base tables if they don't exist
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY REFERENCES auth.users(id),

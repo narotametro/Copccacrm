@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Upload, Wand2, FolderPlus, FileText, Image, Video } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -74,9 +74,9 @@ export const ContentAssets: React.FC = () => {
   // Load campaigns on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
       const saved = localStorage.getItem('copcca-campaigns');
@@ -119,7 +119,7 @@ export const ContentAssets: React.FC = () => {
       console.error('Load error:', error);
       setLoading(false);
     }
-  };
+  }, [supabaseReady]);
 
   // Generate assets based on campaigns
   const assets = React.useMemo(() => {

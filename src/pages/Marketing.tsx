@@ -14,6 +14,7 @@ import { MarketingCampaigns } from './marketing/MarketingCampaigns';
 import { LeadsAttribution } from './marketing/LeadsAttribution';
 import { MarketingAnalytics } from './marketing/MarketingAnalytics';
 import { AutomationRules } from './marketing/AutomationRules';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 
 type MarketingSection = 
   | 'overview' 
@@ -55,42 +56,44 @@ export const Marketing: React.FC = () => {
   };
 
   return (
-    <div className="flex gap-6">
-      {/* Vertical Sticky Navigation */}
-      <div className="w-64 flex-shrink-0">
-        <div className="sticky top-16 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto">
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">Marketing</h1>
-            <p className="text-xs text-slate-600 mt-1">Strategy-first system</p>
-          </div>
-          
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+    <FeatureGate feature="marketing_campaigns">
+      <div className="flex gap-6">
+        {/* Vertical Sticky Navigation */}
+        <div className="w-64 flex-shrink-0">
+          <div className="sticky top-16 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto">
+            <div className="mb-4">
+              <h1 className="text-2xl font-bold text-slate-900">Marketing</h1>
+              <p className="text-xs text-slate-600 mt-1">Strategy-first system</p>
+            </div>
+            
+            {sections.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
 
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id as MarketingSection)}
-                className={`w-full flex items-center gap-3 px-5 py-5 rounded-lg transition-all text-left min-h-[72px] ${
-                  isActive
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md'
-                }`}
-              >
-                <Icon size={22} />
-                <span className="text-sm font-medium leading-relaxed">{section.label}</span>
-                {isActive && <ChevronRight size={18} className="ml-auto" />}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id as MarketingSection)}
+                  className={`w-full flex items-center gap-3 px-5 py-5 rounded-lg transition-all text-left min-h-[72px] ${
+                    isActive
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <Icon size={22} />
+                  <span className="text-sm font-medium leading-relaxed">{section.label}</span>
+                  {isActive && <ChevronRight size={18} className="ml-auto" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Section Content */}
+        <div className="flex-1 animate-fadeIn">
+          {renderSection()}
         </div>
       </div>
-
-      {/* Section Content */}
-      <div className="flex-1 animate-fadeIn">
-        {renderSection()}
-      </div>
-    </div>
+    </FeatureGate>
   );
 };

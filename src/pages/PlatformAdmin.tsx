@@ -36,7 +36,7 @@ interface Subscription {
   adminEmail: string;
   adminName: string;
   plan: 'starter' | 'professional' | 'enterprise';
-  status: 'active' | 'expired' | 'trial' | 'suspended';
+  status: 'active' | 'expired' | 'trial' | 'suspended' | 'past_due';
   userCount: number;
   maxUsers: number;
   monthlyFee: number;
@@ -67,6 +67,7 @@ interface PlatformStats {
   trialAccounts: number;
   expiredAccounts: number;
   suspendedAccounts: number;
+  pastDueAccounts: number;
 }
 
 export const PlatformAdmin: React.FC = () => {
@@ -75,7 +76,7 @@ export const PlatformAdmin: React.FC = () => {
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'trial' | 'expired' | 'suspended'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'trial' | 'expired' | 'suspended' | 'past_due'>('all');
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -203,6 +204,7 @@ export const PlatformAdmin: React.FC = () => {
     trialAccounts: subscriptions.filter(s => s.status === 'trial').length,
     expiredAccounts: subscriptions.filter(s => s.status === 'expired').length,
     suspendedAccounts: subscriptions.filter(s => s.status === 'suspended').length,
+    pastDueAccounts: subscriptions.filter(s => s.status === 'past_due').length,
   };
 
   // Loading state
@@ -400,6 +402,7 @@ export const PlatformAdmin: React.FC = () => {
       case 'trial': return 'text-blue-300 bg-blue-500/20 border-blue-400/30';
       case 'expired': return 'text-red-300 bg-red-500/20 border-red-400/30';
       case 'suspended': return 'text-orange-300 bg-orange-500/20 border-orange-400/30';
+      case 'past_due': return 'text-yellow-300 bg-yellow-500/20 border-yellow-400/30';
       default: return 'text-white/70 bg-white/10 border-white/20';
     }
   };
@@ -459,7 +462,7 @@ export const PlatformAdmin: React.FC = () => {
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white/5 backdrop-blur-sm border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
@@ -487,6 +490,15 @@ export const PlatformAdmin: React.FC = () => {
             <AlertTriangle className="text-orange-400" size={32} />
           </div>
         </Card>
+        <Card className="bg-white/5 backdrop-blur-sm border-yellow-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-white/70 font-medium">Past Due Accounts</p>
+              <p className="text-2xl font-bold text-white">{stats.pastDueAccounts}</p>
+            </div>
+            <CreditCard className="text-yellow-400" size={32} />
+          </div>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -501,7 +513,7 @@ export const PlatformAdmin: React.FC = () => {
             />
           </div>
           <div className="flex gap-2">
-            {['all', 'active', 'trial', 'expired', 'suspended'].map((status) => (
+            {['all', 'active', 'trial', 'expired', 'suspended', 'past_due'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status as typeof filterStatus)}
@@ -511,7 +523,7 @@ export const PlatformAdmin: React.FC = () => {
                     : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'past_due' ? 'Past Due' : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>
@@ -554,7 +566,8 @@ export const PlatformAdmin: React.FC = () => {
                       {sub.status === 'trial' && <Clock size={12} />}
                       {sub.status === 'expired' && <XCircle size={12} />}
                       {sub.status === 'suspended' && <AlertTriangle size={12} />}
-                      {sub.status.toUpperCase()}
+                      {sub.status === 'past_due' && <CreditCard size={12} />}
+                      {sub.status === 'past_due' ? 'PAST DUE' : sub.status.toUpperCase()}
                     </span>
                     {sub.status === 'trial' && sub.trialDaysLeft !== undefined && (
                       <p className="text-xs text-orange-300 font-semibold mt-1">

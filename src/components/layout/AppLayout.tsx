@@ -4,50 +4,49 @@ import type { Database } from '@/lib/types/database';
 import {
   LayoutDashboard,
   Users,
-  TrendingUp,
-  Package,
-  Coins,
-  Target,
-  BarChart3,
   FileText,
-  Settings,
   Menu,
   X,
   Bell,
   Search,
   LogOut,
   User,
-  Shield,
   ChevronDown,
-  Mail,
-  Phone,
-  Building,
-  CheckCircle,
-  AlertCircle,
   Globe,
   Filter,
-  ClipboardCheck,
+  Building,
+  Shield,
+  TrendingUp,
+  DollarSign,
+  BarChart3,
+  Settings,
+  Package,
+  Target,
+  Mail,
+  CheckCircle,
+  PieChart,
   Activity,
-  Workflow,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { TrialBanner } from '@/components/ui/FeatureGate';
+import { hasModuleAccess } from '@/lib/subscription';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
-  { icon: Users, label: 'Customers', path: '/app/customers' },
-  { icon: FileText, label: 'Sales Hub', path: '/app/sales-hub' },
-  { icon: TrendingUp, label: 'Sales', path: '/app/sales' },
-  { icon: Workflow, label: 'Pipeline', path: '/app/pipeline' },
-  { icon: ClipboardCheck, label: 'After Sales & Tasks', path: '/app/after-sales' },
-  { icon: BarChart3, label: 'Marketing', path: '/app/marketing' },
-  { icon: Package, label: 'Products', path: '/app/products' },
-  { icon: Target, label: 'Competitors', path: '/app/competitors' },
-  { icon: Coins, label: 'Debt Collection', path: '/app/debt-collection' },
-  { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
-  { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
-  { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', feature: 'dashboard' },
+  { icon: Users, label: 'Customers 360', path: '/app/customers', feature: 'customers_basic' },
+  { icon: FileText, label: 'Sales Hub', path: '/app/sales-hub', feature: 'pos_system' },
+  { icon: Activity, label: 'Sales', path: '/app/sales', feature: 'sales_pipeline' },
+  { icon: Target, label: 'Pipeline', path: '/app/pipeline', feature: 'sales_pipeline' },
+  { icon: PieChart, label: 'Kpi Center', path: '/app/kpi-tracking', feature: 'analytics' },
+  { icon: DollarSign, label: 'Debt Collection', path: '/app/debt-collection', feature: 'debt_collection' },
+  { icon: CheckCircle, label: 'After Sales', path: '/app/after-sales', feature: 'customer_health' },
+  { icon: Shield, label: 'Competitors', path: '/app/competitors', feature: 'marketing_campaigns' },
+  { icon: Package, label: 'Products', path: '/app/products', feature: 'products-management' },
+  { icon: TrendingUp, label: 'Marketing', path: '/app/marketing', feature: 'marketing' },
+  { icon: BarChart3, label: 'Reports', path: '/app/reports', feature: 'reports_advanced' },
+  { icon: Settings, label: 'Admin', path: '/app/users', feature: 'admin', requiresAdmin: true },
   { icon: Globe, label: 'My Workplace', path: '/app/my-workplace' },
 ];
 
@@ -66,6 +65,56 @@ export const AppLayout: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([
     { id: 'all', name: 'All Users', role: '' },
   ]);
+  const [featureAccess, setFeatureAccess] = useState<Record<string, boolean>>({});
+  const [featureAccessLoaded, setFeatureAccessLoaded] = useState(false);
+
+  // Check feature access for menu items
+  React.useEffect(() => {
+    const checkFeatureAccess = async () => {
+      if (!user) return;
+
+      const accessMap: Record<string, boolean> = {};
+
+      // Get unique features to check (avoid duplicate calls)
+      const featuresToCheck = new Set<string>();
+      for (const item of menuItems) {
+        if (item.feature) {
+          featuresToCheck.add(item.feature);
+        }
+        if (item.requiresAdmin) {
+          featuresToCheck.add('admin');
+        }
+      }
+
+      // Check all features in parallel
+      const featureChecks = Array.from(featuresToCheck).map(async (feature) => {
+        try {
+          const hasAccess = await hasModuleAccess(feature);
+          return { feature, hasAccess };
+        } catch (error) {
+          console.error(`Error checking access for ${feature}:`, error);
+          return { feature, hasAccess: false };
+        }
+      });
+
+      // Wait for all checks to complete
+      const results = await Promise.all(featureChecks);
+
+      // Build access map
+      results.forEach(({ feature, hasAccess }) => {
+        accessMap[feature] = hasAccess;
+        // Also set admin_panel for admin features
+        if (feature === 'admin') {
+          accessMap['admin_panel'] = hasAccess;
+        }
+      });
+
+      setFeatureAccess(accessMap);
+      setFeatureAccessLoaded(true);
+    };
+
+    checkFeatureAccess();
+  }, [user]);
 
   // Notification state with sender info
   const [notifications, setNotifications] = useState<Array<{
@@ -236,7 +285,18 @@ export const AppLayout: React.FC = () => {
         </div>
 
         <nav className="mt-4">
-          {menuItems.filter(item => !item.requiresAdmin || isAdmin).map((item) => {
+          {menuItems.filter(item => {
+            // Show all items until feature access is loaded
+            if (!featureAccessLoaded) return true;
+
+            // Check admin requirement - allow if user is admin OR has admin_panel feature
+            if (item.requiresAdmin && !isAdmin && !featureAccess['admin_panel']) return false;
+
+            // Check feature requirement
+            if (item.feature && !featureAccess[item.feature]) return false;
+
+            return true;
+          }).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -517,6 +577,8 @@ export const AppLayout: React.FC = () => {
             </div>
           </div>
         </header>
+        {/* Trial Banner */}
+        <TrialBanner />
         {/* Page Content */}
         <main className="p-6">
           <Outlet />

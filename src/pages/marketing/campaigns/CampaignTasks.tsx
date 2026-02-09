@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CheckSquare, Clock, User, Plus, Filter, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -54,9 +54,9 @@ export const CampaignTasks: React.FC = () => {
   // Load campaigns on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
       const saved = localStorage.getItem('copcca-campaigns');
@@ -98,7 +98,7 @@ export const CampaignTasks: React.FC = () => {
       console.error('Load error:', error);
       setLoading(false);
     }
-  };
+  }, [supabaseReady]);
 
   // Generate tasks based on campaigns
   const tasks = React.useMemo(() => {

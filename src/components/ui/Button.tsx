@@ -42,6 +42,7 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       type="button"
       className={`${baseStyles} ${variants[actualVariant]} ${sizes[actualSize]} ${className}`}
+      tabIndex={-1}
       {...props}
     >
       {Icon && <Icon size={size === 'sm' ? 16 : size === 'lg' || size === 'xl' || size === 'large' ? 24 : 20} />}

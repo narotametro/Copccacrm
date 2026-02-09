@@ -1,46 +1,42 @@
 import React, { useState } from 'react';
 import {
   Target,
-  TrendingUp,
   BarChart3,
   ChevronRight,
 } from 'lucide-react';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 import { SalesStrategy } from './sales/SalesStrategy';
-import { SalesPipelineView } from './sales/SalesPipelineView';
 import { SalesPerformance } from './sales/SalesPerformance';
 
-type SalesSection = 'strategy' | 'pipeline' | 'performance';
+type SalesSection = 'strategy' | 'performance';
 
 const sections = [
   { id: 'strategy', label: 'Sales Strategy', icon: Target, color: 'purple' },
-  { id: 'pipeline', label: 'Sales Pipeline', icon: TrendingUp, color: 'blue' },
   { id: 'performance', label: 'Sales Performance', icon: BarChart3, color: 'green' },
 ];
 
 export const Sales: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<SalesSection>('pipeline');
+  const [activeSection, setActiveSection] = useState<SalesSection>('strategy');
 
   const renderSection = () => {
     switch (activeSection) {
       case 'strategy':
         return <SalesStrategy />;
-      case 'pipeline':
-        return <SalesPipelineView />;
       case 'performance':
         return <SalesPerformance />;
       default:
-        return <SalesPipelineView />;
+        return <SalesStrategy />;
     }
   };
 
   return (
-    <div className="flex gap-6">
+    <FeatureGate feature="sales_pipeline">
+      <div className="flex gap-6">
       {/* Vertical Sticky Navigation */}
       <div className="w-64 flex-shrink-0">
         <div className="sticky top-16 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">💼 Sales</h1>
-            <p className="text-xs text-slate-600 mt-1">Strategy + Execution</p>
+            <h1 className="text-2xl font-bold text-slate-900">Sales Strategies & Execution</h1>
           </div>
           
           {sections.map((section) => {
@@ -72,5 +68,6 @@ export const Sales: React.FC = () => {
         {renderSection()}
       </div>
     </div>
+    </FeatureGate>
   );
 };

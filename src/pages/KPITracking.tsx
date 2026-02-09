@@ -24,6 +24,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 import { useIntegratedKPIData, IntegratedKPIData } from '@/hooks/useIntegratedKPIData';
 
@@ -979,7 +980,8 @@ export const KPITracking: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <FeatureGate feature="kpi_dashboard">
+      <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">KPI Center</h1>
         <p className="text-gray-600">Comprehensive business performance tracking and AI-driven insights</p>
@@ -1090,5 +1092,6 @@ export const KPITracking: React.FC = () => {
         </form>
       </Modal>
     </div>
+    </FeatureGate>
   );
 };

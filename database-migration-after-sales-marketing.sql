@@ -4,10 +4,15 @@
 -- Ensure uuid extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables if they exist (to avoid conflicts with old policies)
+DROP TABLE IF EXISTS after_sales_feedback CASCADE;
+DROP TABLE IF EXISTS after_sales_tasks CASCADE;
+DROP TABLE IF EXISTS marketing_kpis CASCADE;
+
 -- After-sales tasks
 CREATE TABLE IF NOT EXISTS after_sales_tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  company_id UUID,
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','in-progress','review','done')),
@@ -26,7 +31,7 @@ CREATE TABLE IF NOT EXISTS after_sales_tasks (
   estimated_hours NUMERIC,
   actual_hours NUMERIC,
   tags TEXT[] DEFAULT ARRAY[]::TEXT[],
-  created_by UUID REFERENCES users(id),
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -36,20 +41,20 @@ CREATE TABLE IF NOT EXISTS after_sales_feedback (
   task_id UUID NOT NULL REFERENCES after_sales_tasks(id) ON DELETE CASCADE,
   user_name TEXT NOT NULL,
   comment TEXT NOT NULL,
-  created_by UUID REFERENCES users(id),
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Marketing KPIs
 CREATE TABLE IF NOT EXISTS marketing_kpis (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  company_id UUID,
   label TEXT NOT NULL,
   value TEXT NOT NULL,
   change TEXT NOT NULL,
   trend TEXT NOT NULL CHECK (trend IN ('up','down')),
   color TEXT NOT NULL,
-  created_by UUID REFERENCES users(id),
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -82,61 +87,23 @@ ALTER TABLE after_sales_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE after_sales_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE marketing_kpis ENABLE ROW LEVEL SECURITY;
 
--- Policies: scope by creator or company_id when present
+DROP POLICY IF EXISTS "Company or owner access after_sales_tasks" ON after_sales_tasks;
 DROP POLICY IF EXISTS "Authenticated users access after_sales_tasks" ON after_sales_tasks;
-CREATE POLICY "Company or owner access after_sales_tasks" ON after_sales_tasks
+CREATE POLICY "Authenticated users access after_sales_tasks" ON after_sales_tasks
   FOR ALL
-  USING (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-    )
-  )
-  WITH CHECK (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-    )
-  );
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Company or owner access after_sales_feedback" ON after_sales_feedback;
 DROP POLICY IF EXISTS "Authenticated users access after_sales_feedback" ON after_sales_feedback;
-CREATE POLICY "Company or owner access after_sales_feedback" ON after_sales_feedback
+CREATE POLICY "Authenticated users access after_sales_feedback" ON after_sales_feedback
   FOR ALL
-  USING (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (
-        task_id IN (
-          SELECT id FROM after_sales_tasks WHERE created_by = auth.uid()
-            OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-        )
-      )
-    )
-  )
-  WITH CHECK (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (
-        task_id IN (
-          SELECT id FROM after_sales_tasks WHERE created_by = auth.uid()
-            OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-        )
-      )
-    )
-  );
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Company or owner access marketing_kpis" ON marketing_kpis;
 DROP POLICY IF EXISTS "Authenticated users access marketing_kpis" ON marketing_kpis;
-CREATE POLICY "Company or owner access marketing_kpis" ON marketing_kpis
+CREATE POLICY "Authenticated users access marketing_kpis" ON marketing_kpis
   FOR ALL
-  USING (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-    )
-  )
-  WITH CHECK (
-    auth.role() = 'authenticated' AND (
-      created_by = auth.uid()
-      OR (company_id IS NOT NULL AND company_id = (auth.jwt()->>'company_id')::uuid)
-    )
-  );
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');

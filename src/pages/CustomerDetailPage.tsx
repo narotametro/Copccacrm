@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -185,103 +185,8 @@ export const CustomerDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load customer data from Supabase
-  React.useEffect(() => {
-    const loadCustomerData = async () => {
-      if (!id || !supabaseReady) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch company data with feedback
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select(`
-            *,
-            customer_feedback (
-              id,
-              type,
-              rating,
-              feedback_text,
-              created_at
-            )
-          `)
-          .eq('id', id)
-          .single();
-
-        if (companyError) {
-          console.error('Error fetching company:', companyError);
-          setError('Failed to load customer data');
-          setLoading(false);
-          return;
-        }
-
-        if (!company) {
-          setError('Customer not found');
-          setLoading(false);
-          return;
-        }
-
-        // Transform the data to match the Business interface
-        const customer: Business = {
-          id: company.id,
-          name: company.name,
-          industry: company.industry,
-          size: company.size,
-          website: company.website,
-          phone: company.phone,
-          email: company.email,
-          address: company.address,
-          status: company.status,
-          health_score: company.health_score,
-          annual_revenue: company.annual_revenue,
-          employee_count: company.employee_count,
-          jtbd: company.jtbd,
-          sentiment: (company.sentiment as 'positive' | 'neutral' | 'negative') || 'neutral',
-          feedback_count: company.feedback_count || 0,
-          pain_points: company.pain_points || [],
-          feedback_history: (company.customer_feedback || []).map((fb: FeedbackRow) => ({
-            id: fb.id,
-            date: fb.created_at,
-            type: (fb.rating >= 4 ? 'positive' : fb.rating <= 2 ? 'negative' : 'neutral') as 'positive' | 'negative' | 'neutral',
-            comment: fb.feedback_text || '',
-            category: fb.type || 'general'
-          })),
-          // Calculate derived fields
-          customer_type: calculateCustomerType(company),
-          churn_risk: calculateChurnRisk(company),
-          upsell_potential: calculateUpsellPotential(company),
-          total_revenue: company.annual_revenue || 0,
-          purchases: 0, // Would need to be calculated from deals/invoices
-          avg_order_value: 0, // Would need to be calculated from deals/invoices
-          last_purchase: '', // Would need to be calculated from deals/invoices
-          tier: calculateTier(company),
-          contactPerson: null, // Not in current schema
-          priority_actions: [] // Would need to be calculated
-        };
-
-        setCustomerData(customer);
-
-        // Analyze and update JTBD and sentiment if needed
-        analyzeAndUpdateCustomerInsights(customer);
-
-      } catch (err) {
-        console.error('Error loading customer data:', err);
-        setError('Failed to load customer data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCustomerData();
-  }, [id, supabaseReady]);
-
   // Function to analyze customer data and generate JTBD and sentiment
-  const analyzeAndUpdateCustomerInsights = async (customer: Business) => {
+  const analyzeAndUpdateCustomerInsights = useCallback(async (customer: Business) => {
     try {
       // Generate JTBD based on customer data
       const jtbd = generateJTBD(customer);
@@ -313,7 +218,7 @@ export const CustomerDetailPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to analyze customer insights:', error);
     }
-  };
+  }, [supabaseReady, setCustomerData]);
 
   // Generate Jobs To Be Done (JTBD) based on customer data
   const generateJTBD = (customer: Business): string => {
@@ -408,6 +313,101 @@ export const CustomerDetailPage: React.FC = () => {
       return 'neutral';
     }
   };
+
+  // Load customer data from Supabase
+  React.useEffect(() => {
+    const loadCustomerData = async () => {
+      if (!id || !supabaseReady) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch company data with feedback
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .select(`
+            *,
+            customer_feedback (
+              id,
+              type,
+              rating,
+              feedback_text,
+              created_at
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (companyError) {
+          console.error('Error fetching company:', companyError);
+          setError('Failed to load customer data');
+          setLoading(false);
+          return;
+        }
+
+        if (!company) {
+          setError('Customer not found');
+          setLoading(false);
+          return;
+        }
+
+        // Transform the data to match the Business interface
+        const customer: Business = {
+          id: company.id,
+          name: company.name,
+          industry: company.industry,
+          size: company.size,
+          website: company.website,
+          phone: company.phone,
+          email: company.email,
+          address: company.address,
+          status: company.status,
+          health_score: company.health_score,
+          annual_revenue: company.annual_revenue,
+          employee_count: company.employee_count,
+          jtbd: company.jtbd,
+          sentiment: (company.sentiment as 'positive' | 'neutral' | 'negative') || 'neutral',
+          feedback_count: company.feedback_count || 0,
+          pain_points: company.pain_points || [],
+          feedback_history: (company.customer_feedback || []).map((fb: FeedbackRow) => ({
+            id: fb.id,
+            date: fb.created_at,
+            type: (fb.rating >= 4 ? 'positive' : fb.rating <= 2 ? 'negative' : 'neutral') as 'positive' | 'negative' | 'neutral',
+            comment: fb.feedback_text || '',
+            category: fb.type || 'general'
+          })),
+          // Calculate derived fields
+          customer_type: calculateCustomerType(company),
+          churn_risk: calculateChurnRisk(company),
+          upsell_potential: calculateUpsellPotential(company),
+          total_revenue: company.annual_revenue || 0,
+          purchases: 0, // Would need to be calculated from deals/invoices
+          avg_order_value: 0, // Would need to be calculated from deals/invoices
+          last_purchase: '', // Would need to be calculated from deals/invoices
+          tier: calculateTier(company),
+          contactPerson: null, // Not in current schema
+          priority_actions: [] // Would need to be calculated
+        };
+
+        setCustomerData(customer);
+
+        // Analyze and update JTBD and sentiment if needed
+        analyzeAndUpdateCustomerInsights(customer);
+
+      } catch (err) {
+        console.error('Error loading customer data:', err);
+        setError('Failed to load customer data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCustomerData();
+  }, [id, supabaseReady, analyzeAndUpdateCustomerInsights]);
 
   // Find customer by id
   const customer = customerData;

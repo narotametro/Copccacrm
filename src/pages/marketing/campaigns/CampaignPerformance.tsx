@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Users, Banknote, Target, Sparkles, Download, Calendar, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -46,9 +46,9 @@ export const CampaignPerformance: React.FC = () => {
   // Load campaigns on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
       const saved = localStorage.getItem('copcca-campaigns');
@@ -90,7 +90,7 @@ export const CampaignPerformance: React.FC = () => {
       console.error('Load error:', error);
       setLoading(false);
     }
-  };
+  }, [supabaseReady]);
 
   return (
     <div className="space-y-6">

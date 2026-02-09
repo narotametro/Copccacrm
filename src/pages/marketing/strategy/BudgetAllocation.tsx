@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Plus, Save, RefreshCw, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -54,10 +54,10 @@ export const BudgetAllocation: React.FC = () => {
   useEffect(() => {
     loadCampaigns();
     loadBudgets();
-  }, []);
+  }, [loadCampaigns, loadBudgets]);
 
   // Load campaigns from localStorage
-  const loadCampaigns = () => {
+  const loadCampaigns = useCallback(() => {
     try {
       const saved = localStorage.getItem('copcca-campaigns');
       const campaignData = saved ? JSON.parse(saved) : [];
@@ -65,10 +65,10 @@ export const BudgetAllocation: React.FC = () => {
     } catch (error) {
       console.error('Failed to load campaigns:', error);
     }
-  };
+  }, []);
 
   // Load budgets from localStorage
-  const loadBudgets = () => {
+  const loadBudgets = useCallback(() => {
     try {
       const saved = localStorage.getItem('copcca-budget-allocations');
       if (saved) {
@@ -82,10 +82,10 @@ export const BudgetAllocation: React.FC = () => {
       console.error('Failed to load budgets:', error);
       generateBudgetsFromCampaigns();
     }
-  };
+  }, [generateBudgetsFromCampaigns]);
 
   // Generate budget allocations from campaign data
-  const generateBudgetsFromCampaigns = () => {
+  const generateBudgetsFromCampaigns = useCallback(() => {
     if (campaigns.length === 0) return;
 
     // Group campaigns by channel/type for budget allocation
@@ -124,14 +124,14 @@ export const BudgetAllocation: React.FC = () => {
     });
 
     setBudgets(generatedBudgets);
-  };
+  }, [campaigns]);
 
   // Regenerate budgets when campaigns change
   useEffect(() => {
     if (campaigns.length > 0 && budgets.length === 0) {
       generateBudgetsFromCampaigns();
     }
-  }, [campaigns]);
+  }, [campaigns, budgets.length, generateBudgetsFromCampaigns]);
 
   const handleAddBudget = () => {
     if (!budgetForm.strategy || !budgetForm.budget) {

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useSharedData, Customer } from '@/context/SharedDataContext';
 import { supabase } from '@/lib/supabase';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 
 type Debt = {
   id: string;
@@ -356,21 +357,22 @@ export const DebtCollection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">Loading debt collection data...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
-              <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
+    <FeatureGate feature="debt_collection">
+      <div className="space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading debt collection data...</p>
             </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
+                <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
+              </div>
         <div className="flex gap-2">
           <Button 
             variant={automationEnabled ? "default" : "secondary"} 
@@ -694,5 +696,6 @@ export const DebtCollection: React.FC = () => {
         </>
       )}
     </div>
+    </FeatureGate>
   );
 };

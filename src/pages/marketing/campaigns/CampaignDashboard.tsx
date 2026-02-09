@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Megaphone, TrendingUp, Banknote, Users, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -34,9 +34,9 @@ export const CampaignDashboard: React.FC = () => {
   // Load campaigns on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
       const saved = localStorage.getItem('copcca-campaigns');
@@ -78,7 +78,7 @@ export const CampaignDashboard: React.FC = () => {
       console.error('Load error:', error);
       setLoading(false);
     }
-  };
+  }, [supabaseReady]);
 
   const kpiColorStyles: Record<string, { bg: string; icon: string }> = {
     green: { bg: 'bg-green-100', icon: 'text-green-600' },

@@ -42,10 +42,6 @@ const Invoices: React.FC = () => {
   const [sortBy, setSortBy] = useState<'due_date' | 'created_at' | 'total_amount'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    loadInvoices();
-  }, [statusFilter, sortBy, sortOrder]);
-
   const loadInvoices = useCallback(async () => {
     try {
       let query = supabase
@@ -74,6 +70,10 @@ const Invoices: React.FC = () => {
       setLoading(false);
     }
   }, [statusFilter, sortBy, sortOrder]);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [statusFilter, sortBy, sortOrder, loadInvoices]);
 
   const filteredInvoices = invoices.filter(invoice =>
     invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,9 +115,9 @@ const Invoices: React.FC = () => {
     alert('Invoice sent successfully!');
   };
 
-  const handleDownloadInvoice = async (_invoiceId: string) => {
-    // Mock downloading invoice
-    alert('Invoice downloaded successfully!');
+  const handleDownloadInvoice = async (invoiceId: string) => {
+    // Navigate to invoice detail page which has print functionality
+    navigate(`/app/invoices/${invoiceId}`);
   };
 
   if (loading) {

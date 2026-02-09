@@ -18,6 +18,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 import { Select } from '@/components/ui/Select';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/types/database';
@@ -277,7 +278,8 @@ export const Pipeline: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <FeatureGate feature="sales_pipeline">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -555,5 +557,6 @@ export const Pipeline: React.FC = () => {
         </form>
       </Modal>
     </div>
+    </FeatureGate>
   );
 };

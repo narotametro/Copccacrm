@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link as LinkIcon, AlertTriangle, Target, Plus, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -38,9 +38,9 @@ export const StrategyCampaignMapping: React.FC = () => {
   // Load data on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = () => {
+  const loadCampaigns = useCallback(() => {
     try {
       const saved = localStorage.getItem('copcca-campaigns');
       const campaignData = saved ? JSON.parse(saved) : [];
@@ -49,7 +49,7 @@ export const StrategyCampaignMapping: React.FC = () => {
     } catch (error) {
       console.error('Failed to load campaigns:', error);
     }
-  };
+  }, []);
 
   const generateMappings = (campaignData: Campaign[]) => {
     // Group campaigns by channel/type as strategy

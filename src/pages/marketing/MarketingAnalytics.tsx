@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, CheckCircle, XCircle, Download, RefreshCw, Settings } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -62,9 +62,9 @@ export const MarketingAnalytics: React.FC = () => {
   // Load campaigns on component mount
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
       const saved = localStorage.getItem('copcca-campaigns');
@@ -103,7 +103,7 @@ export const MarketingAnalytics: React.FC = () => {
     } catch (error) {
       console.error('Load error:', error);
     }
-  };
+  }, [supabaseReady]);
 
   const totalBudget = useMemo(
     () => budgets.reduce((sum, b) => sum + (b.monthly_budget || 0), 0),
@@ -246,14 +246,14 @@ export const MarketingAnalytics: React.FC = () => {
       campaign: Math.round(campaignScore),
       customer: Math.round(customerScore),
     };
-  }, [campaigns]);
+  }, [campaigns, totalBudget]);
 
   // Load budgets on component mount
   useEffect(() => {
     loadBudgets();
-  }, [supabaseReady, user]);
+  }, [supabaseReady, user, loadBudgets]);
 
-  const loadBudgets = async () => {
+  const loadBudgets = useCallback(async () => {
     if (!supabaseReady || !user) return;
 
     try {
@@ -283,7 +283,7 @@ export const MarketingAnalytics: React.FC = () => {
     } catch (error) {
       console.error('Error loading budgets:', error);
     }
-  };
+  }, [supabaseReady, user]);
 
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();

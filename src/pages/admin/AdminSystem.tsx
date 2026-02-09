@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Database, Activity, Lock, Eye, EyeOff, UserPlus, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, Activity, Lock, Eye, EyeOff, UserPlus, Save, RefreshCw, AlertTriangle, CheckCircle, Clock, DollarSign } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -14,15 +14,66 @@ export const AdminSystem: React.FC = () => {
   const [showPasswords, setShowPasswords] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // System monitoring state
+  const [systemStats, setSystemStats] = useState({
+    totalSubscriptions: 0,
+    activeTrials: 0,
+    expiredTrials: 0,
+    cashPaymentsPending: 0,
+    databaseSize: '0 MB',
+    lastBackup: 'Never',
+    systemHealth: 'Good'
+  });
+  const [isRunningTrialUpdate, setIsRunningTrialUpdate] = useState(false);
+
   // Demo admin creation
   const [admins, setAdmins] = useState<Array<{ id: string; email: string; role: string }>>([
     { id: '1', email: 'superadmin@copcca.com', role: 'super_admin' },
   ]);
   const [adminForm, setAdminForm] = useState({ email: '', role: 'admin' });
 
+  useEffect(() => {
+    fetchSystemStats();
+  }, []);
+
+  const fetchSystemStats = async () => {
+    try {
+      // Get subscription statistics
+      const { data: subscriptions, error: subError } = await supabase
+        .from('user_subscriptions')
+        .select('status, trial_end_date');
+
+      if (!subError && subscriptions) {
+        const activeTrials = subscriptions.filter(s => s.status === 'trial').length;
+        const expiredTrials = subscriptions.filter(s =>
+          s.status === 'trial' &&
+          s.trial_end_date &&
+          new Date(s.trial_end_date) < new Date()
+        ).length;
+
+        // Get cash payment stats
+        const { data: cashPayments, error: cashError } = await supabase
+          .from('cash_payments')
+          .select('status');
+
+        const cashPaymentsPending = cashPayments?.filter(p => p.status === 'pending').length || 0;
+
+        setSystemStats(prev => ({
+          ...prev,
+          totalSubscriptions: subscriptions.length,
+          activeTrials,
+          expiredTrials,
+          cashPaymentsPending
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching system stats:', error);
+    }
+  };
+
   const handleChangePassword = async () => {
     const adminEmail = sessionStorage.getItem('copcca_admin_email');
-    
+
     if (!adminEmail) {
       toast.error('Admin session not found');
       return;
@@ -58,7 +109,7 @@ export const AdminSystem: React.FC = () => {
       }
 
       const result = data?.[0];
-      
+
       if (result?.success) {
         toast.success('Password changed successfully!');
         setCurrentPassword('');
@@ -73,6 +124,38 @@ export const AdminSystem: React.FC = () => {
       toast.error('Failed to change password');
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const handleRunTrialUpdate = async () => {
+    setIsRunningTrialUpdate(true);
+    try {
+      const { data, error } = await supabase.rpc('update_trial_statuses');
+
+      if (error) throw error;
+
+      const updatedCount = data || 0;
+      toast.success(`Trial statuses updated! ${updatedCount} trials processed.`);
+      fetchSystemStats();
+    } catch (error) {
+      console.error('Error updating trial statuses:', error);
+      toast.error('Failed to update trial statuses');
+    } finally {
+      setIsRunningTrialUpdate(false);
+    }
+  };
+
+  const handleProcessTrialExpirations = async () => {
+    try {
+      const { data, error } = await supabase.rpc('process_trial_expirations');
+
+      if (error) throw error;
+
+      toast.success('Trial expiration processing completed!');
+      fetchSystemStats();
+    } catch (error) {
+      console.error('Error processing trial expirations:', error);
+      toast.error('Failed to process trial expirations');
     }
   };
 
@@ -213,6 +296,85 @@ export const AdminSystem: React.FC = () => {
               <strong>Security:</strong> Passwords are hashed using SHA-256 and stored securely in the database.
               This change affects only your admin account login.
             </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Subscription Management */}
+      <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">
+            <Clock className="text-blue-400" size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Subscription Management</h3>
+            <p className="text-purple-200 text-sm">Monitor and manage trial expirations and payments</p>
+          </div>
+        </div>
+
+        {/* System Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+            <p className="text-blue-400 text-sm mb-1">Total Subscriptions</p>
+            <p className="text-2xl font-bold text-blue-400">{systemStats.totalSubscriptions}</p>
+          </div>
+          <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+            <p className="text-yellow-400 text-sm mb-1">Active Trials</p>
+            <p className="text-2xl font-bold text-yellow-400">{systemStats.activeTrials}</p>
+          </div>
+          <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+            <p className="text-red-400 text-sm mb-1">Expired Trials</p>
+            <p className="text-2xl font-bold text-red-400">{systemStats.expiredTrials}</p>
+          </div>
+          <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+            <p className="text-orange-400 text-sm mb-1">Pending Cash Payments</p>
+            <p className="text-2xl font-bold text-orange-400">{systemStats.cashPaymentsPending}</p>
+          </div>
+        </div>
+
+        {/* Management Actions */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+            <div>
+              <h4 className="text-white font-medium">Update Trial Statuses</h4>
+              <p className="text-purple-200 text-sm">Automatically update expired trials to past_due status</p>
+            </div>
+            <Button
+              onClick={handleRunTrialUpdate}
+              disabled={isRunningTrialUpdate}
+              className="bg-blue-500/80 hover:bg-blue-500 text-white"
+              icon={isRunningTrialUpdate ? RefreshCw : CheckCircle}
+            >
+              {isRunningTrialUpdate ? 'Processing...' : 'Run Update'}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+            <div>
+              <h4 className="text-white font-medium">Process Trial Expirations</h4>
+              <p className="text-purple-200 text-sm">Send notifications and update expired accounts</p>
+            </div>
+            <Button
+              onClick={handleProcessTrialExpirations}
+              className="bg-purple-500/80 hover:bg-purple-500 text-white"
+              icon={AlertTriangle}
+            >
+              Process Expirations
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+            <div>
+              <h4 className="text-white font-medium">Refresh System Stats</h4>
+              <p className="text-purple-200 text-sm">Update dashboard statistics and counters</p>
+            </div>
+            <Button
+              onClick={fetchSystemStats}
+              className="bg-green-500/80 hover:bg-green-500 text-white"
+              icon={RefreshCw}
+            >
+              Refresh Stats
+            </Button>
           </div>
         </div>
       </Card>

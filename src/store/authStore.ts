@@ -18,7 +18,7 @@ interface AuthState {
     website?: string;
     phone?: string;
     address?: string;
-  }) => Promise<void>;
+  }) => Promise<{ autoSignedIn: boolean; requiresEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   initialize: () => Promise<void>;
@@ -101,11 +101,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signUp: async (email: string, password: string, fullName: string, companyInfo?: {
     companyName: string;
-    industry?: string;
-    companySize?: string;
-    website?: string;
     phone?: string;
-    address?: string;
   }) => {
     if (!isSupabaseConfigured) {
       throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
@@ -120,6 +116,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           role: 'admin', // self-signup defaults to admin
           company_name: companyInfo?.companyName || fullName + "'s Company", // Pass company name to trigger
         },
+        emailRedirectTo: window.location.origin + '/dashboard', // Redirect to dashboard after email confirmation
       },
     });
 
@@ -132,11 +129,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         .from('companies')
         .insert({
           name: companyInfo.companyName,
-          industry: companyInfo.industry,
-          size: companyInfo.companySize,
-          website: companyInfo.website,
           phone: companyInfo.phone,
-          address: companyInfo.address,
           email: email,
           status: 'active',
           subscription_plan: 'starter',
@@ -158,7 +151,51 @@ export const useAuthStore = create<AuthState>((set) => ({
           .eq('id', data.user.id);
       }
     }
-    // Profile will be auto-created by database trigger
+
+    // Auto sign in the user immediately after successful signup
+    if (data.user) {
+      // Try to sign in immediately (works if email confirmation is disabled)
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (!signInError && signInData.user) {
+        // Successfully signed in, update the store
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', signInData.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.warn('Error fetching profile on auto sign in:', profileError);
+          // Use auth metadata as fallback
+          const fallbackProfile: UserProfile = {
+            id: signInData.user.id,
+            email: signInData.user.email || '',
+            full_name: signInData.user.user_metadata?.full_name || signInData.user.email?.split('@')[0] || 'User',
+            role: 'user',
+            avatar_url: signInData.user.user_metadata?.avatar_url || null,
+            phone: null,
+            department: null,
+            status: 'active'
+          };
+          set({ user: signInData.user, profile: fallbackProfile });
+        } else {
+          set({ user: signInData.user, profile: profile || null });
+        }
+        // Return a flag indicating successful auto-signin
+        return { autoSignedIn: true };
+      } else {
+        // Auto-signin failed (likely due to email confirmation requirement)
+        console.log('Auto-signin failed, email confirmation may be required');
+        // Return a flag indicating auto-signin failed
+        return { autoSignedIn: false, requiresEmailConfirmation: true };
+      }
+    }
+
+    return { autoSignedIn: false };
   },
 
   signOut: async () => {
@@ -188,7 +225,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const timeoutId = setTimeout(() => {
       console.warn('Auth initialization timeout, setting loading to false');
       set({ loading: false });
-    }, 2000); // Reduced from 5000ms to 2000ms
+    }, 1000); // Reduced from 2000ms to 1000ms
 
     try {
       // Check if Supabase is properly configured

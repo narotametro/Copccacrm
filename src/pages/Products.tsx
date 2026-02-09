@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 
@@ -257,7 +258,8 @@ export const Products: React.FC = () => {
   });
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <FeatureGate feature="inventory_basic">
+      <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -624,5 +626,6 @@ export const Products: React.FC = () => {
         </form>
       </Modal>
     </div>
+    </FeatureGate>
   );
 };

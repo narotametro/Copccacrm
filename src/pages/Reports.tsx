@@ -3,6 +3,7 @@ import { Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, 
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useSharedData } from '@/context/SharedDataContext';
@@ -357,7 +358,8 @@ Generated with real-time data from your business operations
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <FeatureGate feature="reports_basic">
+      <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Reports & AI Insights</h1>
@@ -1261,5 +1263,6 @@ Generated with real-time data from your business operations
         </div>
       </Modal>
     </div>
+    </FeatureGate>
   );
 };
