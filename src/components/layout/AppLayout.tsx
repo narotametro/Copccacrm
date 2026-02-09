@@ -37,6 +37,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Home (AI Center)', path: '/app/dashboard' },
   { icon: Users, label: 'Customers', path: '/app/customers' },
+  { icon: FileText, label: 'Sales Hub', path: '/app/sales-hub' },
   { icon: TrendingUp, label: 'Sales', path: '/app/sales' },
   { icon: Workflow, label: 'Pipeline', path: '/app/pipeline' },
   { icon: ClipboardCheck, label: 'After Sales & Tasks', path: '/app/after-sales' },
@@ -44,7 +45,6 @@ const menuItems = [
   { icon: Package, label: 'Products', path: '/app/products' },
   { icon: Target, label: 'Competitors', path: '/app/competitors' },
   { icon: Coins, label: 'Debt Collection', path: '/app/debt-collection' },
-  { icon: FileText, label: 'Invoices', path: '/app/invoices' },
   { icon: Activity, label: 'KPI Tracking', path: '/app/kpi-tracking' },
   { icon: FileText, label: 'Reports & AI', path: '/app/reports' },
   { icon: Shield, label: 'Admin', path: '/app/users', requiresAdmin: true },

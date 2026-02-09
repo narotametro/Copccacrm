@@ -21,19 +21,10 @@ const Dashboard = () => {
   const displayName = formatName(profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User');
   const { currency, setCurrency, formatCurrency } = useCurrency();
   
-  // Real data state
-  const [totalRevenue, setTotalRevenue] = useState<number>(0);
-  const [activeCustomers, setActiveCustomers] = useState<number>(0);
-  const [dealsWon, setDealsWon] = useState<number>(0);
-  const [growthRate, setGrowthRate] = useState<number>(0);
-  const [recentActivities, setRecentActivities] = useState<Array<{
-    type: string;
-    title: string;
-    description: string;
-    time: string;
-    color: string;
-  }>>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Sales today state
+  const [salesToday, setSalesToday] = useState<number>(0);
+  const [salesFilter, setSalesFilter] = useState<'today' | 'week' | 'month'>('today');
+  const [showQuickSales, setShowQuickSales] = useState(false);
   
   // Removed useIntegratedKPIData hook as we're fetching data directly
   
@@ -73,9 +64,32 @@ const Dashboard = () => {
           setDealsWon(deals.length);
         }
         
-        // Calculate growth rate (simplified - compare current vs previous month)
-        // For now, use a static value or calculate from available data
-        setGrowthRate(12.5);
+        // Fetch sales today based on filter
+        const now = new Date();
+        let startDate: Date;
+        
+        switch (salesFilter) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        }
+        
+        const { data: salesData, error: salesError } = await supabase
+          .from('invoices')
+          .select('total_amount, status, created_at')
+          .eq('status', 'paid')
+          .gte('created_at', startDate.toISOString());
+        
+        if (!salesError && salesData) {
+          const sales = salesData.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
+          setSalesToday(sales);
+        }
         
         // Fetch recent activities
         const activities: Array<{
@@ -277,6 +291,79 @@ const Dashboard = () => {
               <p className="text-2xl font-bold text-slate-900">{loading ? '...' : `+${growthRate}%`}</p>
             </div>
           </div>
+        </Card>
+      </div>
+
+      {/* Sales Today Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="text-primary-600" size={24} />
+              <h3 className="text-xl font-bold text-slate-900">Sales Today</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={salesFilter}
+                onChange={(e) => setSalesFilter(e.target.value as 'today' | 'week' | 'month')}
+                className="px-3 py-1 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
+          </div>
+          <div className="text-center py-8">
+            <p className="text-4xl font-bold text-slate-900 mb-2">{loading ? '...' : formatCurrency(salesToday)}</p>
+            <p className="text-slate-600">
+              {salesFilter === 'today' ? 'Today' : salesFilter === 'week' ? 'This Week' : 'This Month'}
+            </p>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-slate-900">Quick Sales</h3>
+            <Button
+              onClick={() => setShowQuickSales(!showQuickSales)}
+              size="sm"
+              variant="outline"
+            >
+              {showQuickSales ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+          {showQuickSales && (
+            <div className="space-y-3">
+              <Button
+                onClick={() => navigate('/app/sales-hub')}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                🛒 Open Sales Hub
+              </Button>
+              <Button
+                onClick={() => navigate('/app/customers')}
+                variant="outline"
+                className="w-full"
+              >
+                👥 Quick Customer Add
+              </Button>
+              <Button
+                onClick={() => navigate('/app/products')}
+                variant="outline"
+                className="w-full"
+              >
+                📦 Manage Products
+              </Button>
+              <Button
+                onClick={() => navigate('/app/reports')}
+                variant="outline"
+                className="w-full"
+              >
+                📊 View Reports
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
 
