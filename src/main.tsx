@@ -5,16 +5,6 @@ import './index.css';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Toaster } from 'sonner';
 
-// Performance optimization: Preload critical resources
-const preloadCriticalResources = () => {
-  // Preload critical CSS
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.href = './index.css';
-  link.as = 'style';
-  document.head.appendChild(link);
-};
-
 // Apply saved theme on app load
 const savedTheme = localStorage.getItem('theme') || 'light';
 if (savedTheme === 'dark') {
@@ -27,9 +17,6 @@ if (savedTheme === 'dark') {
     document.body.classList.add('bg-slate-900');
   }
 }
-
-// Initialize performance optimizations
-preloadCriticalResources();
 
 // Check if root element exists
 const rootElement = document.getElementById('root');
