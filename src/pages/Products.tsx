@@ -9,6 +9,7 @@ import {
   Trash2,
   Plus,
   Zap,
+  Download,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ import { Input } from '@/components/ui/Input';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
+import { supabase } from '@/lib/supabase';
 
 interface Product {
   id: string;
@@ -108,7 +110,10 @@ export const Products: React.FC = () => {
     pain_points: '',
     strengths: '',
     weaknesses: '',
+    dataSource: 'manual' as 'manual' | 'saleshub', // manual entry or pull from Sales Hub
   });
+  const [salesHubProducts, setSalesHubProducts] = useState<any[]>([]);
+  const [selectedSalesHubProduct, setSelectedSalesHubProduct] = useState<string>('');
   const navigate = useNavigate();
 
   // Save products to localStorage whenever they change
@@ -119,6 +124,51 @@ export const Products: React.FC = () => {
       console.error('Failed to save products to localStorage:', error);
     }
   }, [products]);
+
+  // Load Sales Hub products when modal opens
+  useEffect(() => {
+    if (showAddModal && productForm.dataSource === 'saleshub') {
+      loadSalesHubProducts();
+    }
+  }, [showAddModal, productForm.dataSource]);
+
+  const loadSalesHubProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          sku,
+          price,
+          categories (
+            name
+          )
+        `)
+        .order('name');
+
+      if (error) throw error;
+      setSalesHubProducts(data || []);
+    } catch (error) {
+      console.error('Error loading Sales Hub products:', error);
+      toast.error('Failed to load Sales Hub products');
+    }
+  };
+
+  const handleSalesHubProductSelect = (productId: string) => {
+    setSelectedSalesHubProduct(productId);
+    const selected = salesHubProducts.find(p => p.id === productId);
+    
+    if (selected) {
+      setProductForm(prev => ({
+        ...prev,
+        name: selected.name,
+        category: selected.categories?.name || '',
+        price: selected.price.toString(),
+        // Keep other fields for user to fill
+      }));
+    }
+  };
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) {
@@ -194,7 +244,9 @@ export const Products: React.FC = () => {
       pain_points: '',
       strengths: '',
       weaknesses: '',
+      dataSource: 'manual',
     });
+    setSelectedSalesHubProduct('');
   };
   const getPositionColor = (position: string) => {
     const colors = {
@@ -446,13 +498,71 @@ export const Products: React.FC = () => {
       {/* Add Product Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => {
+          setShowAddModal(false);
+          setProductForm({ ...productForm, dataSource: 'manual' });
+          setSelectedSalesHubProduct('');
+        }}
         title="Add New Product"
         size="lg"
       >
         <form className="space-y-4" onSubmit={handleAddProduct}>
           <p className="text-sm text-slate-600">Track your product performance and get AI-powered recommendations</p>
           
+          {/* Data Source Toggle */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-3">Data Source</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setProductForm({ ...productForm, dataSource: 'manual' })}
+                className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                  productForm.dataSource === 'manual'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                ✍️ Enter Manually
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductForm({ ...productForm, dataSource: 'saleshub' })}
+                className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                  productForm.dataSource === 'saleshub'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <Download className="inline h-4 w-4 mr-1" />
+                Pull from Sales Hub
+              </button>
+            </div>
+          </div>
+
+          {/* Sales Hub Product Selector */}
+          {productForm.dataSource === 'saleshub' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Select Sales Hub Product
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                value={selectedSalesHubProduct}
+                onChange={(e) => handleSalesHubProductSelect(e.target.value)}
+              >
+                <option value="">-- Select a product --</option>
+                {salesHubProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} - {product.sku} (${product.price})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-blue-600 mt-2">
+                💡 Product name, category, and price will be auto-filled. You can still edit them.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Product Name"

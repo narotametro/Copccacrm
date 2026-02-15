@@ -8,15 +8,15 @@ import {
   Zap,
   Users,
   TrendingUp,
-  Shield,
-  Star,
-  Calendar,
-  DollarSign,
+  // Shield,
+  // Star,
+  // Calendar,
+  // Banknote,
   AlertTriangle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+// import { Modal } from '@/components/ui/Modal';
 import { getUserSubscription, changeSubscriptionPlan, getCurrentUsage } from '@/lib/subscription';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -40,7 +40,7 @@ const pricingPlans: PricingPlan[] = [
     id: 'start',
     name: 'start',
     displayName: 'START',
-    price: 'TZS 15,000',
+    price: 'TZS 25,000',
     period: 'per month',
     description: 'Perfect for micro-businesses',
     icon: Users,
@@ -59,7 +59,7 @@ const pricingPlans: PricingPlan[] = [
     id: 'grow',
     name: 'grow',
     displayName: 'GROW',
-    price: 'TZS 45,000',
+    price: 'TZS 80,000',
     period: 'per month',
     description: 'Grow your business with POS',
     icon: TrendingUp,
@@ -127,6 +127,7 @@ const pricingPlans: PricingPlan[] = [
 export const SubscriptionManagement: React.FC = () => {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [usage, setUsage] = useState<Record<string, { current: number; limit: number; percentage: number }>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -138,7 +139,7 @@ export const SubscriptionManagement: React.FC = () => {
 
   const fetchSubscriptionData = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       const [subscription, currentUsage] = await Promise.all([
         getUserSubscription(),
         getCurrentUsage(),
@@ -186,12 +187,14 @@ export const SubscriptionManagement: React.FC = () => {
     return pricingPlans.findIndex(plan => plan.name === currentSubscription.plan.name);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getUpgradeOptions = () => {
     const currentIndex = getCurrentPlanIndex();
     if (currentIndex === -1) return pricingPlans;
     return pricingPlans.slice(currentIndex + 1);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getDowngradeOptions = () => {
     const currentIndex = getCurrentPlanIndex();
     if (currentIndex <= 0) return [];
@@ -217,25 +220,32 @@ export const SubscriptionManagement: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-slate-900">Current Plan</h3>
             <p className="text-slate-600 mt-1">
-              {currentSubscription?.status === 'trial'
-                ? `Trial ends ${new Date(currentSubscription.trial_end_date).toLocaleDateString()}`
-                : currentSubscription?.status === 'past_due'
+              {currentSubscription?.status === 'past_due'
                 ? 'Payment required to continue'
+                : currentSubscription?.status === 'trial'
+                ? (() => {
+                    const trialEnd = new Date(currentSubscription.trial_end_date);
+                    const today = new Date();
+                    const daysRemaining = Math.ceil((trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    return `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining in free trial`;
+                  })()
                 : 'Active subscription'
               }
             </p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-slate-900">
-              {currentPlan?.displayName || 'Free Trial'}
-            </p>
+            <div className="flex items-center gap-2 justify-end mb-1">
+              <p className="text-2xl font-bold text-slate-900">
+                {currentPlan?.displayName || 'Free'}
+              </p>
+              {currentSubscription?.status === 'trial' && (
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                  Trial
+                </span>
+              )}
+            </div>
             <p className="text-slate-600">
-              {currentSubscription?.status === 'trial' 
-                ? 'Trial' 
-                : currentSubscription?.status === 'past_due'
-                ? 'Payment Required'
-                : currentPlan?.price || 'Free'
-              }
+              {currentPlan?.price || 'Free'}
             </p>
           </div>
         </div>
@@ -300,6 +310,7 @@ export const SubscriptionManagement: React.FC = () => {
             const Icon = plan.icon;
             const isCurrentPlan = currentPlan?.name === plan.name;
             const isUpgrade = index > currentPlanIndex;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const isDowngrade = index < currentPlanIndex;
 
             return (

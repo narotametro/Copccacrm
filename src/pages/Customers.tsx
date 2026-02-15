@@ -26,6 +26,9 @@ import {
   ChevronDown,
   Edit,
   Trash2,
+  FileText,
+  Wrench,
+  Package,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -36,6 +39,22 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useSharedData, SupportTicket } from '@/context/SharedDataContext';
 import { formatName, applyProperCase } from '@/lib/textFormat';
 import { supabase } from '@/lib/supabase';
+
+interface SalesHubProduct {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  stock_quantity: number;
+  brands?: {
+    id: string;
+    name: string;
+  }[] | null;
+  categories?: {
+    id: string;
+    name: string;
+  }[] | null;
+}
 
 interface Business {
   id: string;
@@ -135,6 +154,7 @@ export const Customers: React.FC = () => {
   const [reminderTime, setReminderTime] = useState('09:00');
   const [escalateFeedback, setEscalateFeedback] = useState<Business['feedback_history'][number] | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Business | null>(null);
+  const [salesHubProducts, setSalesHubProducts] = useState<SalesHubProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights'>(
     (localStorage.getItem('copcca-customer-modal-active-tab') as 'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights' | null) || 'overview'
   );
@@ -161,9 +181,13 @@ export const Customers: React.FC = () => {
   useEffect(() => {
     const loadCompaniesFromDatabase = async () => {
       try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
         const { data, error } = await supabase
           .from('companies')
           .select('*')
+          .eq('created_by', userData.user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -199,7 +223,10 @@ export const Customers: React.FC = () => {
           setCompanies(formattedCompanies);
         }
       } catch (error) {
-        console.error('Error loading companies from database:', error);
+        // Don't log AbortErrors - they're expected during navigation/remounts
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error('Error loading companies from database:', error);
+        }
         // Fallback to localStorage if database fails
         const saved = localStorage.getItem('copcca-customers');
         if (saved) {
@@ -220,6 +247,48 @@ export const Customers: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('copcca-customer-modal-active-tab', activeTab);
   }, [activeTab]);
+
+  // Load Sales Hub products
+  useEffect(() => {
+    const loadSalesHubProducts = async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', userData.user.id)
+          .single();
+
+        if (!userProfile?.company_id) return;
+
+        const { data: salesProducts } = await supabase
+          .from('products')
+          .select(`
+            id,
+            name,
+            sku,
+            price,
+            stock_quantity,
+            brands (id, name),
+            categories (id, name)
+          `)
+          .eq('company_id', userProfile.company_id)
+          .order('name');
+
+        if (salesProducts) {
+          setSalesHubProducts(salesProducts as SalesHubProduct[]);
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error('Error loading Sales Hub products:', error);
+        }
+      }
+    };
+
+    loadSalesHubProducts();
+  }, []);
 
   const getCustomerTypeColor = (type: string) => {
     const colors = {
@@ -407,9 +476,30 @@ export const Customers: React.FC = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Customer 360°</h1>
           <p className="text-slate-600 mt-1 text-sm md:text-base">Complete view of all your customers</p>
         </div>
-        <Button icon={Plus} onClick={() => setShowModal(true)} className="text-sm md:text-base">
-          <span className="hidden sm:inline">Add </span>Customer
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            icon={FileText} 
+            variant="outline"
+            onClick={() => navigate('/app/support')}
+            className="text-sm md:text-base"
+          >
+            <span className="hidden sm:inline">View All Support </span>Tickets
+          </Button>
+          <Button 
+            icon={Wrench} 
+            variant="outline"
+            onClick={() => {
+              setSelectedCustomer(null);
+              setShowCreateTicketModal(true);
+            }}
+            className="text-sm md:text-base"
+          >
+            <span className="hidden sm:inline">New Support </span>Ticket
+          </Button>
+          <Button icon={Plus} onClick={() => setShowModal(true)} className="text-sm md:text-base">
+            <span className="hidden sm:inline">Add </span>Customer
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -1452,70 +1542,219 @@ export const Customers: React.FC = () => {
       )}
 
       {/* Create Support Ticket Modal */}
-      {selectedCustomer && (
-        <Modal
-          isOpen={showCreateTicketModal}
-          onClose={() => setShowCreateTicketModal(false)}
-          title="Create Support Ticket"
-          size="lg"
-        >
-          <form className="space-y-4" onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target as HTMLFormElement);
-            const title = formData.get('title') as string;
-            const description = formData.get('description') as string;
-            const priority = formData.get('priority') as string;
+      <Modal
+        isOpen={showCreateTicketModal}
+        onClose={() => {
+          setShowCreateTicketModal(false);
+          setSelectedCustomer(null);
+        }}
+        title="Create Support Ticket"
+        size="xl"
+      >
+        <form className="space-y-4" onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target as HTMLFormElement);
+          const customerId = formData.get('customer_id') as string;
+          const title = formData.get('title') as string;
+          const description = formData.get('description') as string;
+          const priority = formData.get('priority') as string;
+          const productIds = formData.getAll('product_ids') as string[];
 
-            const newTicket: SupportTicket = {
-              id: `TICK-${String(supportTickets.length + 1).padStart(3, '0')}`,
-              customer_id: selectedCustomer.id,
-              customer_name: selectedCustomer.name,
-              title,
-              description,
-              status: 'open',
-              priority: priority as 'low' | 'medium' | 'high' | 'urgent',
-              assigned_to: '',
-              created_date: new Date().toISOString().split('T')[0],
-              related_products: [],
-              resolved_date: undefined
-            };
+          const customer = companies.find(c => c.id === customerId);
+          if (!customer && !selectedCustomer) {
+            toast.error('Please select a customer');
+            return;
+          }
 
-            setSupportTickets([...supportTickets, newTicket]);
-            toast.success('Support ticket created successfully!');
-            setShowCreateTicketModal(false);
-          }}>
-            <Card className="border-l-4 border-orange-500 bg-orange-50">
-              <p className="text-sm text-orange-900"><strong>Customer:</strong> {selectedCustomer.name}</p>
-              <p className="text-sm text-orange-900"><strong>Email:</strong> {selectedCustomer.email}</p>
-            </Card>
-            <Input name="title" label="Ticket Title" placeholder="Brief description of the issue" required />
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-              <textarea 
-                name="description"
-                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none min-h-[120px]" 
-                placeholder="Detailed description of the customer's issue or request..."
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
-                <select name="priority" className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" required>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
+          const ticketCustomer = customer || selectedCustomer!;
+
+          // Get product details from Sales Hub (with brands)
+          const relatedProducts = productIds
+            .map(pid => {
+              const product = salesHubProducts.find(p => p.id === pid);
+              if (!product) return null;
+              
+              const brands = Array.isArray(product.brands) && product.brands.length > 0 ? product.brands : [];
+              const brandInfo = brands.length > 0 ? ` - ${brands[0].name}` : '';
+              return `${product.name} (SKU: ${product.sku})${brandInfo}`;
+            })
+            .filter(Boolean) as string[];
+
+          const newTicket: SupportTicket = {
+            id: `TICK-${String(supportTickets.length + 1).padStart(3, '0')}`,
+            customer_id: ticketCustomer.id,
+            customer_name: ticketCustomer.name,
+            title,
+            description,
+            status: 'open',
+            priority: priority as 'low' | 'medium' | 'high' | 'urgent',
+            assigned_to: '',
+            created_date: new Date().toISOString().split('T')[0],
+            related_products: relatedProducts,
+            resolved_date: undefined
+          };
+
+          setSupportTickets([...supportTickets, newTicket]);
+          toast.success('Support ticket created successfully!');
+          setShowCreateTicketModal(false);
+          setSelectedCustomer(null);
+        }}>
+          {/* Customer Information */}
+          {selectedCustomer ? (
+            <Card className="border-l-4 border-orange-500 bg-gradient-to-r from-orange-50 to-orange-100">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-orange-700 font-medium">Customer Name</p>
+                  <p className="text-sm text-orange-900 font-semibold">{selectedCustomer.name}</p>
+                </div>
+                {selectedCustomer.email && (
+                  <div>
+                    <p className="text-xs text-orange-700 font-medium">Email</p>
+                    <p className="text-sm text-orange-900">{selectedCustomer.email}</p>
+                  </div>
+                )}
+                {selectedCustomer.phone && (
+                  <div>
+                    <p className="text-xs text-orange-700 font-medium">Phone</p>
+                    <p className="text-sm text-orange-900">{selectedCustomer.phone}</p>
+                  </div>
+                )}
+                {selectedCustomer.townCity && (
+                  <div>
+                    <p className="text-xs text-orange-700 font-medium">Town/City</p>
+                    <p className="text-sm text-orange-900">{selectedCustomer.townCity}</p>
+                  </div>
+                )}
               </div>
+              
+              {/* Show customer's previous tickets */}
+              {(() => {
+                const customerTickets = supportTickets.filter(t => t.customer_id === selectedCustomer.id);
+                if (customerTickets.length > 0) {
+                  return (
+                    <div className="mt-3 pt-3 border-t border-orange-200">
+                      <p className="text-xs text-orange-700 font-medium mb-2">
+                        ⚠️ Customer History: {customerTickets.length} previous ticket{customerTickets.length > 1 ? 's' : ''}
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {customerTickets.slice(-3).map(ticket => (
+                          <div key={ticket.id} className="text-xs bg-white/60 rounded px-2 py-1">
+                            <span className="font-medium text-orange-900">{ticket.title}</span>
+                            <span className="text-orange-600 ml-2">• {ticket.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </Card>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Customer *</label>
+              <select 
+                name="customer_id" 
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                required
+                onChange={(e) => {
+                  const customer = companies.find(c => c.id === e.target.value);
+                  if (customer) {
+                    setSelectedCustomer(customer);
+                  }
+                }}
+              >
+                <option value="">Choose a customer...</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name} 
+                    {company.email && ` (${company.email})`}
+                    {company.phone && ` • ${company.phone}`}
+                    {company.townCity && ` • ${company.townCity}`}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="flex gap-3">
-              <Button type="button" variant="secondary" onClick={() => setShowCreateTicketModal(false)}>Cancel</Button>
-              <Button type="submit" icon={AlertCircle}>Create Ticket</Button>
+          )}
+
+          <Input name="title" label="Ticket Title *" placeholder="Brief description of the issue" required />
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Description *</label>
+            <textarea 
+              name="description"
+              className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none min-h-[120px]" 
+              placeholder="Detailed description of the customer's issue or request..."
+              required
+            />
+          </div>
+
+          {/* Product Selection with SKU and Brand */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Related Products (Optional)
+            </label>
+            <select
+              name="product_ids"
+              multiple
+              size={6}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+            >
+              {salesHubProducts.length === 0 ? (
+                <option disabled>No products available</option>
+              ) : (
+                salesHubProducts.map(product => {
+                  // Calculate how many times this product had issues with this customer
+                  const productIssueCount = selectedCustomer 
+                    ? supportTickets.filter(t => 
+                        t.customer_id === selectedCustomer.id && 
+                        t.related_products?.some(rp => rp.includes(product.sku))
+                      ).length
+                    : 0;
+
+                  const brandInfo = Array.isArray(product.brands) && product.brands.length > 0 
+                    ? ` - ${product.brands[0].name}` 
+                    : '';
+                  
+                  const issueWarning = productIssueCount > 0 
+                    ? ` ⚠️ ${productIssueCount} previous issue${productIssueCount > 1 ? 's' : ''}` 
+                    : '';
+
+                  return (
+                    <option
+                      key={product.id}
+                      value={product.id}
+                      className={productIssueCount > 0 ? 'bg-red-50 font-semibold' : ''}
+                    >
+                      {product.name} (SKU: {product.sku}){brandInfo}{issueWarning}
+                    </option>
+                  );
+                })
+              )}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple products</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Priority *</label>
+              <select name="priority" className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" required>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
             </div>
-          </form>
-        </Modal>
-      )}
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" variant="secondary" onClick={() => {
+              setShowCreateTicketModal(false);
+              setSelectedCustomer(null);
+            }}>Cancel</Button>
+            <Button type="submit" icon={AlertCircle}>Create Ticket</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* JTBD Modal */}
       {selectedCustomer && (

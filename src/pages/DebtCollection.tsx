@@ -9,6 +9,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { useSharedData, Customer } from '@/context/SharedDataContext';
 import { supabase } from '@/lib/supabase';
 import { FeatureGate } from '@/components/ui/FeatureGate';
+import { sendSMS, generateDebtReminderMessage, loadSMSConfig } from '@/lib/services/smsService';
 
 type Debt = {
   id: string;
@@ -23,6 +24,7 @@ type Debt = {
   company_id?: string;
   company_name: string;
   company_contact_email?: string;
+  company_contact_phone?: string;
   payment_plan?: string;
   created_by?: string;
   created_at?: string;
@@ -62,7 +64,7 @@ export const DebtCollection: React.FC = () => {
   // Load debts from Supabase
   const loadDebts = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       const { data, error } = await supabase
         .from('debts')
         .select('*')
@@ -201,35 +203,100 @@ export const DebtCollection: React.FC = () => {
     if (isSendingReminders) return;
 
     setIsSendingReminders(true);
-    const overdueDebts = debts.filter(d => d.status === 'overdue');
+    const overdueDebts = debts.filter(d => d.status === 'overdue' && d.auto_reminder);
 
     if (overdueDebts.length === 0) {
-      toast.info('No overdue debts to send reminders for');
+      toast.info('No overdue debts with auto-reminder enabled');
       setIsSendingReminders(false);
       return;
     }
 
-    toast.success(`Sending reminders to ${overdueDebts.length} overdue customers...`, {
-      description: 'Emails will be sent in the next few minutes'
+    // Check SMS configuration
+    const smsConfig = await loadSMSConfig();
+    const smsMode = smsConfig.enabled ? 'Twilio SMS' : 'Demo Mode (SMS not sent)';
+
+    toast.success(`Sending ${overdueDebts.length} SMS reminders via ${smsMode}...`, {
+      description: smsConfig.enabled 
+        ? 'SMS messages will be delivered in the next few minutes' 
+        : 'Configure Twilio in Settings to send real SMS'
     });
 
-    // Simulate sending reminders with progress
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Send SMS to each customer
     for (let i = 0; i < overdueDebts.length; i++) {
       const debt = overdueDebts[i];
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+      
+      // Check if phone number exists
+      if (!debt.company_contact_phone) {
+        console.warn(`No phone number for debt ${debt.invoice_number}`);
+        failedCount++;
+        continue;
+      }
 
-      // Update debt status to 'reminded'
-      setDebts(prev => prev.map(d =>
-        d.id === debt.id ? { ...d, status: 'reminded' as const } : d
-      ));
+      try {
+        // Generate SMS message with configured language
+        const message = generateDebtReminderMessage(
+          debt.company_name,
+          debt.invoice_number,
+          formatCurrency(debt.amount),
+          debt.days_overdue,
+          smsConfig.language || 'en'
+        );
 
-      // Show progress
-      if (i === overdueDebts.length - 1) {
-        toast.success(`All ${overdueDebts.length} reminders sent successfully!`);
+        // Send SMS
+        const result = await sendSMS({
+          to: debt.company_contact_phone,
+          body: message,
+          debtId: debt.id,
+          invoiceNumber: debt.invoice_number
+        });
+
+        if (result.success) {
+          sentCount++;
+          
+          // Update debt status to 'reminded'
+          await supabase
+            .from('debts')
+            .update({ status: 'reminded' })
+            .eq('id', debt.id);
+
+          setDebts(prev => prev.map(d =>
+            d.id === debt.id ? { ...d, status: 'reminded' as const } : d
+          ));
+        } else {
+          failedCount++;
+          console.error(`Failed to send SMS to ${debt.company_name}:`, result.error);
+        }
+      } catch (error) {
+        failedCount++;
+        console.error(`Error sending SMS for debt ${debt.invoice_number}:`, error);
+      }
+
+      // Rate limiting: wait 1 second between messages
+      if (i < overdueDebts.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
     setIsSendingReminders(false);
+
+    // Show final result
+    if (sentCount > 0) {
+      toast.success(`✅ SMS Reminders Sent: ${sentCount} successful, ${failedCount} failed`, {
+        description: smsConfig.enabled 
+          ? `${sentCount} SMS messages delivered via Twilio` 
+          : `${sentCount} demo messages logged (configure Twilio to send real SMS)`
+      });
+    } else {
+      toast.error('❌ No SMS reminders sent', {
+        description: 'Check that customers have valid phone numbers in their records'
+      });
+    }
+
+    // Reload debts to reflect updated statuses
+    await loadDebts();
   };
 
   const handleGenerateAIReport = async () => {
@@ -359,25 +426,16 @@ export const DebtCollection: React.FC = () => {
   return (
     <FeatureGate feature="debt_collection">
       <div className="space-y-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading debt collection data...</p>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
+            <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
-                <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
-              </div>
-        <div className="flex gap-2">
-          <Button 
-            variant={automationEnabled ? "default" : "secondary"} 
-            icon={Zap}
-            onClick={() => {
+          <div className="flex gap-2">
+            <Button 
+              variant={automationEnabled ? "default" : "secondary"} 
+              icon={Zap}
+              onClick={() => {
               setAutomationEnabled(!automationEnabled);
               toast.success(automationEnabled ? 'Automation paused' : 'Automation activated');
             }}
@@ -446,7 +504,18 @@ export const DebtCollection: React.FC = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <Card>
+        {loading ? (
+          // Show skeleton loading cards
+          [1, 2, 3, 4, 5].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded mb-2"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2"></div>
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card>
           <Banknote className="text-primary-600 mb-2" size={24} />
           <h3 className="text-sm text-slate-600">Total Outstanding</h3>
           <p className="text-2xl font-bold text-slate-900">
@@ -479,6 +548,8 @@ export const DebtCollection: React.FC = () => {
           <h3 className="text-sm text-slate-600">Recovery Rate</h3>
           <p className="text-2xl font-bold text-green-600">94%</p>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Add Debt Record Button */}
@@ -518,12 +589,58 @@ export const DebtCollection: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {debts.map((debt) => (
+              {loading ? (
+                // Show skeleton loading rows
+                [1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-1 animate-pulse"></div>
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
+                        <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                        <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                debts.map((debt) => (
                 <tr key={debt.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="py-3 px-4">
                     <div>
                       <p className="font-medium text-slate-900">{debt.company_name}</p>
-                      <p className="text-xs text-slate-500">{debt.company_contact_email}</p>
+                      {debt.company_contact_phone && (
+                        <p className="text-xs text-slate-500">📱 {debt.company_contact_phone}</p>
+                      )}
+                      {debt.company_contact_email && (
+                        <p className="text-xs text-slate-500">✉️ {debt.company_contact_email}</p>
+                      )}
+                      {!debt.company_contact_phone && (
+                        <p className="text-xs text-red-500">⚠️ No phone number</p>
+                      )}
                     </div>
                   </td>
                   <td className="py-3 px-4 font-medium">{debt.invoice_number}</td>
@@ -598,7 +715,8 @@ export const DebtCollection: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
@@ -693,8 +811,6 @@ export const DebtCollection: React.FC = () => {
           </div>
         </form>
       </Modal>
-        </>
-      )}
     </div>
     </FeatureGate>
   );

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { createWithEqualityFn } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
 
 export interface CartItem {
@@ -8,7 +8,12 @@ export interface CartItem {
     sku: string;
     price: number;
     stock_quantity: number;
-    model: string;
+    model?: string;
+    brand_id?: string;
+    brands?: {
+      id: string;
+      name: string;
+    };
   };
   quantity: number;
   price: number;
@@ -100,7 +105,7 @@ const initialState = {
   showOrderSummary: false,
 };
 
-export const useSalesHubStore = create<SalesHubState>()(
+export const useSalesHubStore = createWithEqualityFn<SalesHubState>()(
   persist(
     (set, get) => ({
       ...initialState,
@@ -206,26 +211,22 @@ export const useSalesHubStore = create<SalesHubState>()(
         discount: state.discount,
         showOrderSummary: state.showOrderSummary,
       }),
-      // Clean up invalid cart items and demo data when loading from storage
+      // Clean up invalid cart items when loading from storage (removed automatic demo data clearing)
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Filter out cart items with invalid products and demo data
-          state.cart = state.cart.filter(item => 
-            item && 
-            item.product && 
+          // Filter out cart items with invalid products only (keep all valid products)
+          state.cart = state.cart.filter(item =>
+            item &&
+            item.product &&
             typeof item.product === 'object' &&
-            item.product.id && 
+            item.product.id &&
             item.product.name &&
             typeof item.quantity === 'number' &&
-            typeof item.price === 'number' &&
-            // Filter out demo products (products with names that look like test data)
-            !isDemoProduct(item.product)
+            typeof item.price === 'number'
           );
-          
-          // Clear selected customer if it's demo data
-          if (state.selectedCustomer && isDemoCustomer(state.selectedCustomer)) {
-            state.selectedCustomer = null;
-          }
+
+          // Keep selected customer (don't auto-clear)
+          // Customer clearing should only happen when explicitly requested
         }
       },
     }

@@ -184,11 +184,11 @@ export const TrialBanner: React.FC = () => {
     return null;
   }
 
-  const { status, daysLeft, isInGracePeriod, gracePeriodDaysLeft, canAccessFeatures, message } = trialStatus;
+  const { isTrial, daysLeft, isInGracePeriod, gracePeriodDaysLeft, message } = trialStatus;
   const { planName } = subscriptionStatus;
 
   // Don't show for active subscriptions
-  if (status === 'active' || subscriptionStatus.status === 'active') {
+  if (subscriptionStatus.status === 'active' && !isTrial) {
     return null;
   }
 

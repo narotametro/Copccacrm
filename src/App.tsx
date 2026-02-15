@@ -7,6 +7,7 @@ import { COPCCAProtectedRoute } from '@/components/auth/COPCCAProtectedRoute';
 import { COPCCAAdminLayout } from '@/components/layout/COPCCAAdminLayout';
 import { CurrencyProvider } from '@/context/CurrencyContext';
 import { SharedDataProvider } from '@/context/SharedDataContext';
+import { FeatureGate } from '@/components/ui/FeatureGate';
 
 // Lazy load all page components for instant loading
 const Login = lazy(() => import('@/pages/auth/Login'));
@@ -42,11 +43,13 @@ const Invoices = lazy(() => import('@/pages/Invoices'));
 const CreateInvoice = lazy(() => import('@/pages/CreateInvoice'));
 const InvoiceDetail = lazy(() => import('@/pages/InvoiceDetail'));
 const Pipeline = lazy(() => import('@/pages/Pipeline').then(module => ({ default: module.Pipeline })));
+const Support = lazy(() => import('@/pages/Support').then(module => ({ default: module.Support })));
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminCompanies = lazy(() => import('@/pages/admin/AdminCompanies').then(module => ({ default: module.AdminCompanies })));
 const AdminSubscriptions = lazy(() => import('@/pages/admin/AdminSubscriptions').then(module => ({ default: module.AdminSubscriptions })));
 const AdminSystem = lazy(() => import('@/pages/admin/AdminSystem').then(module => ({ default: module.AdminSystem })));
+const SMSAdminPanel = lazy(() => import('@/pages/admin/SMSAdminPanel').then(module => ({ default: module.SMSAdminPanel })));
 
 // Instant loading component
 const InstantLoader = () => (
@@ -69,37 +72,16 @@ const preloadCriticalRoutes = () => {
 };
 
 const AppRoutes = () => {
-  const { user, loading } = useAuthStore();
-  const [maxLoadingReached, setMaxLoadingReached] = useState(false);
+  const { user } = useAuthStore();
 
+  // Preload critical routes after authentication (optimistic)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) {
-        setMaxLoadingReached(true);
-      }
-    }, 500); // Reduced from 1500ms to 500ms for faster loading
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  // Preload critical routes after authentication
-  useEffect(() => {
-    if (user && !loading) {
-      // Small delay to not block initial render
-      setTimeout(preloadCriticalRoutes, 100);
+    if (user) {
+      setTimeout(preloadCriticalRoutes, 50); // Faster preload
     }
-  }, [user, loading]);
+  }, [user]);
   
-  if (loading && !maxLoadingReached) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // No loading check - render immediately!
   return (
     <Suspense fallback={<InstantLoader />}>
       <Routes>
@@ -137,6 +119,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="companies" element={<AdminCompanies />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />
+          <Route path="sms" element={<SMSAdminPanel />} />
           <Route path="system" element={<AdminSystem />} />
           <Route path="" element={<Navigate to="/copcca-admin/dashboard" replace />} />
         </Route>
@@ -153,15 +136,16 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="customers" element={<Customers />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />
+          <Route path="support" element={<Support />} />
           <Route path="sales" element={<Sales />} />
           <Route path="sales-hub" element={<SalesHub />} />
-          <Route path="pipeline" element={<Pipeline />} />
-          <Route path="after-sales" element={<AfterSales />} />
-          <Route path="debt-collection" element={<DebtCollection />} />
+          <Route path="pipeline" element={<FeatureGate feature="sales_pipeline"><Pipeline /></FeatureGate>} />
+          <Route path="after-sales" element={<FeatureGate feature="after_sales"><AfterSales /></FeatureGate>} />
+          <Route path="debt-collection" element={<FeatureGate feature="debt_collection"><DebtCollection /></FeatureGate>} />
           <Route path="competitors" element={<Competitors />} />
           <Route path="competitors/:id" element={<CompetitorDetailPage />} />
           <Route path="marketing" element={<Marketing />} />
-          <Route path="kpi-tracking" element={<KPITracking />} />
+          <Route path="kpi-tracking" element={<FeatureGate feature="kpi_dashboard"><KPITracking /></FeatureGate>} />
           <Route path="reports" element={<Reports />} />
           <Route path="products" element={<Products />} />
           <Route path="products/:id" element={<ProductDetailPage />} />

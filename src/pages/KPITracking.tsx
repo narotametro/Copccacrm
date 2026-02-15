@@ -5,7 +5,7 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
-  DollarSign,
+  Banknote,
   Megaphone,
   Brain,
   Settings,
@@ -47,7 +47,7 @@ export const KPITracking: React.FC = () => {
   const kpiCategories = [
     { id: 'overview' as KPICategory, name: 'Overview', icon: BarChart3, color: 'bg-blue-500' },
     { id: 'customers' as KPICategory, name: 'Customers', icon: Users, color: 'bg-green-500' },
-    { id: 'sales' as KPICategory, name: 'Sales', icon: DollarSign, color: 'bg-purple-500' },
+    { id: 'sales' as KPICategory, name: 'Sales', icon: Banknote, color: 'bg-purple-500' },
     { id: 'marketing' as KPICategory, name: 'Marketing', icon: Megaphone, color: 'bg-orange-500' },
     { id: 'customer-performance' as KPICategory, name: 'Customer Performance', icon: Brain, color: 'bg-pink-500' },
     { id: 'operations' as KPICategory, name: 'Operations', icon: Settings, color: 'bg-indigo-500' },
@@ -680,7 +680,7 @@ export const KPITracking: React.FC = () => {
             {kpis.filter(kpi => kpi.category === 'sales').map((kpi) => 
               renderKPICard(kpi, kpis.findIndex(k => k === kpi), {
                 bgColor: 'bg-purple-100',
-                icon: DollarSign,
+                icon: Banknote,
                 label: 'Sales KPI',
                 progressColor: 'bg-purple-500'
               })

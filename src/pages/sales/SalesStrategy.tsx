@@ -3,7 +3,7 @@ import {
   ArrowLeft,
   Users,
   Lightbulb,
-  DollarSign,
+  Banknote,
   Radio,
   Shield,
   ChevronRight,
@@ -18,7 +18,7 @@ import { CompetitiveDealPositioning } from './strategy/CompetitiveDealPositionin
 const strategyCards = [
   { id: 'segments', label: 'Target Segments', icon: Users, description: 'Define ideal customer segments', color: 'bg-blue-500' },
   { id: 'value-prop', label: 'Value Proposition', icon: Lightbulb, description: 'Align value to customer needs', color: 'bg-yellow-500' },
-  { id: 'pricing', label: 'Pricing Logic', icon: DollarSign, description: 'Pricing strategy & discounts', color: 'bg-green-500' },
+  { id: 'pricing', label: 'Pricing Logic', icon: Banknote, description: 'Pricing strategy & discounts', color: 'bg-green-500' },
   { id: 'channels', label: 'Channel Strategy', icon: Radio, description: 'Sales channels & approach', color: 'bg-purple-500' },
   { id: 'positioning', label: 'Competitive Positioning', icon: Shield, description: 'Win against competitors', color: 'bg-red-500' },
  ] as const;

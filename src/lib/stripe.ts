@@ -1,4 +1,6 @@
-import { loadStripe, Stripe, StripeElements, StripeCardElement } from '@stripe/stripe-js';
+// Stripe integration disabled - package not installed
+// import { loadStripe, Stripe } from '@stripe/stripe-js';
+type Stripe = any;
 
 // Initialize Stripe
 let stripePromise: Promise<Stripe | null>;

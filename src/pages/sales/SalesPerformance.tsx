@@ -64,42 +64,31 @@ export const SalesPerformance: React.FC = () => {
   // Fetch data from database
   const fetchData = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
 
-      // Fetch sales reps
-      const { data: repsData, error: repsError } = await supabase
-        .from('sales_reps')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // PARALLEL API CALLS - fetch all data simultaneously
+      const [repsResult, winResult, lossResult] = await Promise.all([
+        supabase.from('sales_reps').select('*').order('created_at', { ascending: false }),
+        supabase.from('win_reasons').select('*').order('created_at', { ascending: false }),
+        supabase.from('loss_reasons').select('*').order('created_at', { ascending: false })
+      ]);
 
-      if (repsError) {
-        console.error('Error fetching sales reps:', repsError);
+      if (repsResult.error) {
+        console.error('Error fetching sales reps:', repsResult.error);
       } else {
-        setReps(repsData || []);
+        setReps(repsResult.data || []);
       }
 
-      // Fetch win reasons
-      const { data: winData, error: winError } = await supabase
-        .from('win_reasons')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (winError) {
-        console.error('Error fetching win reasons:', winError);
+      if (winResult.error) {
+        console.error('Error fetching win reasons:', winResult.error);
       } else {
-        setWinReasons(winData || []);
+        setWinReasons(winResult.data || []);
       }
 
-      // Fetch loss reasons
-      const { data: lossData, error: lossError } = await supabase
-        .from('loss_reasons')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (lossError) {
-        console.error('Error fetching loss reasons:', lossError);
+      if (lossResult.error) {
+        console.error('Error fetching loss reasons:', lossResult.error);
       } else {
-        setLossReasons(lossData || []);
+        setLossReasons(lossResult.data || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -228,14 +217,21 @@ export const SalesPerformance: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
-      ) : (
-        <>
-          {/* Performance Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Performance Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {loading ? (
+          // Show skeleton loading cards
+          [1, 2, 3, 4].map((i) => (
+            <Card key={i} className="p-4 animate-pulse">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-5 w-5 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-20"></div>
+              </div>
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
+            </Card>
+          ))
+        ) : (
+          <>
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Banknote className="text-green-600" size={20} />
@@ -272,7 +268,9 @@ export const SalesPerformance: React.FC = () => {
                 {reps.length > 0 ? `${avgCycle} days` : 'No data'}
               </div>
             </Card>
-          </div>
+          </>
+        )}
+      </div>
 
       {/* Sales Rep Performance */}
       <Card className="p-5">
@@ -543,8 +541,6 @@ export const SalesPerformance: React.FC = () => {
           </Card>
             </div>
           </div>
-        </>
-      )}
     </div>
   );
 };

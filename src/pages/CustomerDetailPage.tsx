@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/types/database';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
 type FeedbackRow = {
   id: string;
@@ -82,39 +83,93 @@ interface Business {
   priority_actions?: string[];
 }
 
-// Helper functions to calculate derived fields
-const calculateCustomerType = (company: CompanyRow): 'lead' | 'active' | 'vip' | 'at-risk' => {
-  const healthScore = company.health_score || 50;
-  const annualRevenue = company.annual_revenue || 0;
+// Helper functions to calculate derived fields based on Sales Hub data
+const calculateHealthScore = (totalPurchases: number, lastPurchaseDate: string, totalRevenue: number): number => {
+  let score = 50; // Base score
 
-  if (healthScore >= 80 && annualRevenue > 1000000) return 'vip';
+  // Factor 1: Purchase frequency (0-30 points)
+  if (totalPurchases >= 10) score += 30;
+  else if (totalPurchases >= 5) score += 20;
+  else if (totalPurchases >= 2) score += 10;
+  else if (totalPurchases === 1) score += 5;
+
+  // Factor 2: Recency of last purchase (0-40 points)
+  if (lastPurchaseDate) {
+    const daysSinceLastPurchase = Math.floor((Date.now() - new Date(lastPurchaseDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceLastPurchase <= 7) score += 40;  // Within a week
+    else if (daysSinceLastPurchase <= 30) score += 30; // Within a month
+    else if (daysSinceLastPurchase <= 90) score += 20; // Within 3 months
+    else if (daysSinceLastPurchase <= 180) score += 10; // Within 6 months
+  }
+
+  // Factor 3: Revenue contribution (0-30 points)
+  if (totalRevenue >= 50000000) score += 30; // 50M+
+  else if (totalRevenue >= 10000000) score += 25; // 10M+
+  else if (totalRevenue >= 5000000) score += 20; // 5M+
+  else if (totalRevenue >= 1000000) score += 15; // 1M+
+  else if (totalRevenue >= 500000) score += 10; // 500K+
+  else if (totalRevenue > 0) score += 5;
+
+  return Math.max(0, Math.min(100, score));
+};
+
+const calculateChurnRisk = (healthScore: number, totalPurchases: number, lastPurchaseDate: string): number => {
+  let risk = 0;
+
+  // Factor 1: Low health score increases risk
+  if (healthScore < 30) risk += 50;
+  else if (healthScore < 50) risk += 30;
+  else if (healthScore < 70) risk += 10;
+
+  // Factor 2: Inactivity increases risk
+  if (lastPurchaseDate) {
+    const daysSinceLastPurchase = Math.floor((Date.now() - new Date(lastPurchaseDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceLastPurchase > 180) risk += 40; // 6+ months
+    else if (daysSinceLastPurchase > 90) risk += 25; // 3+ months
+    else if (daysSinceLastPurchase > 60) risk += 15; // 2+ months
+  } else if (totalPurchases === 0) {
+    risk += 50; // Never purchased
+  }
+
+  // Factor 3: Low purchase count
+  if (totalPurchases === 0) risk += 10;
+  else if (totalPurchases === 1) risk += 5;
+
+  return Math.max(0, Math.min(100, risk));
+};
+
+const calculateUpsellPotential = (healthScore: number, totalPurchases: number, avgOrderValue: number, _totalRevenue: number): number => {
+  let potential = 0;
+
+  // Factor 1: High health score = good upsell potential
+  if (healthScore >= 80) potential += 40;
+  else if (healthScore >= 60) potential += 30;
+  else if (healthScore >= 40) potential += 15;
+
+  // Factor 2: Active customer (multiple purchases)
+  if (totalPurchases >= 5) potential += 30;
+  else if (totalPurchases >= 3) potential += 20;
+  else if (totalPurchases >= 2) potential += 10;
+
+  // Factor 3: Good average order value
+  if (avgOrderValue >= 10000000) potential += 30; // 10M+ per order
+  else if (avgOrderValue >= 5000000) potential += 20; // 5M+ per order
+  else if (avgOrderValue >= 1000000) potential += 10; // 1M+ per order
+
+  return Math.max(0, Math.min(100, potential));
+};
+
+const calculateCustomerType = (healthScore: number, totalRevenue: number): 'lead' | 'active' | 'vip' | 'at-risk' => {
+  if (healthScore >= 80 && totalRevenue > 10000000) return 'vip';
   if (healthScore >= 60) return 'active';
   if (healthScore <= 30) return 'at-risk';
   return 'lead';
 };
 
-const calculateChurnRisk = (company: CompanyRow): number => {
-  const healthScore = company.health_score || 50;
-  // Simple calculation: lower health score = higher churn risk
-  return Math.max(0, Math.min(100, 100 - healthScore));
-};
-
-const calculateUpsellPotential = (company: CompanyRow): number => {
-  const healthScore = company.health_score || 50;
-  const annualRevenue = company.annual_revenue || 0;
-
-  // Higher health score and revenue = higher upsell potential
-  const healthFactor = healthScore / 100;
-  const revenueFactor = Math.min(1, annualRevenue / 1000000); // Cap at 1M
-  return Math.round((healthFactor * revenueFactor) * 100);
-};
-
-const calculateTier = (company: CompanyRow): 'bronze' | 'silver' | 'gold' | 'platinum' => {
-  const annualRevenue = company.annual_revenue || 0;
-
-  if (annualRevenue >= 10000000) return 'platinum';
-  if (annualRevenue >= 5000000) return 'gold';
-  if (annualRevenue >= 1000000) return 'silver';
+const calculateTier = (totalRevenue: number): 'bronze' | 'silver' | 'gold' | 'platinum' => {
+  if (totalRevenue >= 50000000) return 'platinum'; // 50M+
+  if (totalRevenue >= 10000000) return 'gold';     // 10M+
+  if (totalRevenue >= 5000000) return 'silver';    // 5M+
   return 'bronze';
 };
 
@@ -182,8 +237,8 @@ export const CustomerDetailPage: React.FC = () => {
 
   // State for customer data to handle updates
   const [customerData, setCustomerData] = useState<Business | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; name: string; type: string; status: string }>>([]);
 
   // Function to analyze customer data and generate JTBD and sentiment
   const analyzeAndUpdateCustomerInsights = useCallback(async (customer: Business) => {
@@ -318,42 +373,77 @@ export const CustomerDetailPage: React.FC = () => {
   React.useEffect(() => {
     const loadCustomerData = async () => {
       if (!id || !supabaseReady) {
-        setLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
+        // Removed setLoading(true) - show UI immediately
         setError(null);
 
-        // Fetch company data with feedback
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select(`
-            *,
-            customer_feedback (
-              id,
-              type,
-              rating,
-              feedback_text,
-              created_at
-            )
-          `)
-          .eq('id', id)
-          .single();
+        // PARALLEL API CALLS - fetch company and feedback data
+        const [companyResult, feedbackResult] = await Promise.all([
+          supabase.from('companies').select('*').eq('id', id).single(),
+          supabase.from('customer_feedback').select('id, type, rating, feedback_text, created_at').eq('company_id', id).order('created_at', { ascending: false })
+        ]);
 
-        if (companyError) {
-          console.error('Error fetching company:', companyError);
+        if (companyResult.error) {
+          console.error('Error fetching company:', companyResult.error);
           setError('Failed to load customer data');
-          setLoading(false);
           return;
         }
 
-        if (!company) {
+        if (!companyResult.data) {
           setError('Customer not found');
-          setLoading(false);
           return;
         }
+
+        const company = companyResult.data;
+        const feedbackData = feedbackResult.error ? [] : (feedbackResult.data || []);
+        
+        // Try to find matching sales hub customer by name/email
+        // Note: companies and sales_hub_customers are separate entities with no direct FK relationship
+        let totalRevenue = 0;
+        let totalPurchases = 0;
+        let avgOrderValue = 0;
+        let lastPurchaseDate = '';
+        
+        // Attempt to find sales hub customer by matching company name or email
+        const salesHubCustomerResult = await supabase
+          .from('sales_hub_customers')
+          .select('id')
+          .or(`name.eq.${company.name},email.eq.${company.email}`)
+          .limit(1)
+          .maybeSingle();
+        
+        if (!salesHubCustomerResult.error && salesHubCustomerResult.data) {
+          const salesHubCustomerId = salesHubCustomerResult.data.id;
+          
+          const ordersResult = await supabase
+            .from('sales_hub_orders')
+            .select('total_amount, created_at, status')
+            .eq('customer_id', salesHubCustomerId)
+            .in('status', ['completed', 'pending'])
+            .order('created_at', { ascending: false });
+          
+          if (!ordersResult.error && ordersResult.data) {
+            const orders = ordersResult.data;
+            totalPurchases = orders.length;
+            totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+            avgOrderValue = totalPurchases > 0 ? totalRevenue / totalPurchases : 0;
+            
+            if (orders.length > 0) {
+              const mostRecentOrder = orders[0];
+              lastPurchaseDate = new Date(mostRecentOrder.created_at).toLocaleDateString();
+            }
+          }
+        }
+
+        // Calculate performance metrics from Sales Hub data
+        const healthScore = calculateHealthScore(totalPurchases, lastPurchaseDate, totalRevenue);
+        const churnRisk = calculateChurnRisk(healthScore, totalPurchases, lastPurchaseDate);
+        const upsellPotential = calculateUpsellPotential(healthScore, totalPurchases, avgOrderValue, totalRevenue);
+        const customerType = calculateCustomerType(healthScore, totalRevenue);
+        const tier = calculateTier(totalRevenue);
 
         // Transform the data to match the Business interface
         const customer: Business = {
@@ -366,29 +456,29 @@ export const CustomerDetailPage: React.FC = () => {
           email: company.email,
           address: company.address,
           status: company.status,
-          health_score: company.health_score,
+          health_score: healthScore, // Calculated from Sales Hub data
           annual_revenue: company.annual_revenue,
           employee_count: company.employee_count,
           jtbd: company.jtbd,
           sentiment: (company.sentiment as 'positive' | 'neutral' | 'negative') || 'neutral',
           feedback_count: company.feedback_count || 0,
           pain_points: company.pain_points || [],
-          feedback_history: (company.customer_feedback || []).map((fb: FeedbackRow) => ({
+          feedback_history: feedbackData.map((fb: FeedbackRow) => ({
             id: fb.id,
             date: fb.created_at,
             type: (fb.rating >= 4 ? 'positive' : fb.rating <= 2 ? 'negative' : 'neutral') as 'positive' | 'negative' | 'neutral',
             comment: fb.feedback_text || '',
             category: fb.type || 'general'
           })),
-          // Calculate derived fields
-          customer_type: calculateCustomerType(company),
-          churn_risk: calculateChurnRisk(company),
-          upsell_potential: calculateUpsellPotential(company),
-          total_revenue: company.annual_revenue || 0,
-          purchases: 0, // Would need to be calculated from deals/invoices
-          avg_order_value: 0, // Would need to be calculated from deals/invoices
-          last_purchase: '', // Would need to be calculated from deals/invoices
-          tier: calculateTier(company),
+          // Use calculated metrics from Sales Hub data
+          customer_type: customerType,
+          churn_risk: churnRisk,
+          upsell_potential: upsellPotential,
+          total_revenue: totalRevenue,
+          purchases: totalPurchases,
+          avg_order_value: avgOrderValue,
+          last_purchase: lastPurchaseDate,
+          tier: tier,
           contactPerson: null, // Not in current schema
           priority_actions: [] // Would need to be calculated
         };
@@ -401,13 +491,37 @@ export const CustomerDetailPage: React.FC = () => {
       } catch (err) {
         console.error('Error loading customer data:', err);
         setError('Failed to load customer data');
-      } finally {
-        setLoading(false);
       }
     };
 
     loadCustomerData();
   }, [id, supabaseReady, analyzeAndUpdateCustomerInsights]);
+
+  // Load marketing campaigns for campaign modal
+  React.useEffect(() => {
+    const loadCampaigns = async () => {
+      if (!supabaseReady) return;
+
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const { data, error } = await supabase
+          .from('marketing_campaigns')
+          .select('id, name, type, status')
+          .eq('created_by', userData.user.id)
+          .in('status', ['planned', 'active'])
+          .order('name');
+
+        if (error) throw error;
+        if (data) setCampaigns(data);
+      } catch (err) {
+        console.error('Error loading campaigns:', err);
+      }
+    };
+
+    loadCampaigns();
+  }, [supabaseReady]);
 
   // Find customer by id
   const customer = customerData;
@@ -425,20 +539,8 @@ export const CustomerDetailPage: React.FC = () => {
     }
   }, [showSentimentModal, customer]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-4">Loading Customer Data...</h1>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !customer) {
+  // Removed blocking loading screen - show error state only if there's an error
+  if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
         <div className="max-w-7xl mx-auto">
@@ -452,6 +554,11 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // If customer data is not loaded yet, return null (React will show nothing while loading)
+  if (!customer) {
+    return null;
   }
 
   const customerDeals = getDealsByCustomer(customer.id) || [];
@@ -548,34 +655,46 @@ Best regards,
             </div>
           </div>
 
-          <div className="text-center">
-            <div className="text-2xl font-bold text-slate-900">{totalDeals}</div>
-            <div className="text-sm text-slate-600">Total Deals</div>
-          </div>
+          <button 
+            onClick={() => navigate('/app/pipeline', { state: { filterCustomerId: customer.id, filterCustomerName: customer.name } })}
+            className="text-center hover:bg-white hover:shadow-md transition-all rounded-lg p-2 cursor-pointer group"
+            title="View all deals in Pipeline"
+          >
+            <div className="text-2xl font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{totalDeals}</div>
+            <div className="text-sm text-slate-600 group-hover:text-primary-500 transition-colors">Total Deals</div>
+          </button>
 
-          <div className="text-center">
-            <div className="text-2xl font-bold text-slate-900">{wonDeals}</div>
-            <div className="text-sm text-slate-600">Won Deals</div>
-          </div>
+          <button 
+            onClick={() => navigate('/app/pipeline', { state: { filterCustomerId: customer.id, filterCustomerName: customer.name, filterStage: 'closed-won' } })}
+            className="text-center hover:bg-white hover:shadow-md transition-all rounded-lg p-2 cursor-pointer group"
+            title="View won deals in Pipeline"
+          >
+            <div className="text-2xl font-bold text-slate-900 group-hover:text-green-600 transition-colors">{wonDeals}</div>
+            <div className="text-sm text-slate-600 group-hover:text-green-500 transition-colors">Won Deals</div>
+          </button>
 
-          <div className="text-center">
-            <div className="text-2xl font-bold text-slate-900">{totalInvoices}</div>
-            <div className="text-sm text-slate-600">Total Invoices</div>
-          </div>
+          <button 
+            onClick={() => setActiveTab('invoices')}
+            className="text-center hover:bg-white hover:shadow-md transition-all rounded-lg p-2 cursor-pointer group"
+            title="View invoices"
+          >
+            <div className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{totalInvoices}</div>
+            <div className="text-sm text-slate-600 group-hover:text-blue-500 transition-colors">Total Invoices</div>
+          </button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 bg-white p-1 rounded-lg border overflow-x-auto">
-          {[
-            { id: 'overview', label: 'Overview', count: null },
-            { id: 'performance', label: 'Performance', count: null },
-            { id: 'feedback', label: 'Feedback', count: customer.feedback_count },
-            { id: 'pain-points', label: 'Pain Points', count: customer.pain_points?.length || 0 },
-            { id: 'ai-insights', label: 'AI Insights', count: null },
-            { id: 'deals', label: 'Deals', count: totalDeals },
-            { id: 'invoices', label: 'Invoices', count: totalInvoices },
-            { id: 'support', label: 'Support', count: fallbackTickets.length },
-          ].map((tab) => (
+          {([
+            { id: 'overview' as const, label: 'Overview', count: null },
+            { id: 'performance' as const, label: 'Performance', count: null },
+            { id: 'feedback' as const, label: 'Feedback', count: customer.feedback_count },
+            { id: 'pain-points' as const, label: 'Pain Points', count: customer.pain_points?.length || 0 },
+            { id: 'ai-insights' as const, label: 'AI Insights', count: null },
+            { id: 'deals' as const, label: 'Deals', count: totalDeals },
+            { id: 'invoices' as const, label: 'Invoices', count: totalInvoices },
+            { id: 'support' as const, label: 'Support', count: fallbackTickets.length },
+          ]).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1236,9 +1355,28 @@ Best regards,
 
         {activeTab === 'support' && (
           <Card>
-            <h3 className="text-lg font-semibold mb-4">Support Tickets</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Support Tickets for {customer.name}</h3>
+            </div>
             {fallbackTickets.length === 0 ? (
-              <p className="text-slate-600">No support tickets found for this customer.</p>
+              <div className="text-center py-8">
+                <Wrench className="mx-auto mb-3 opacity-20" size={48} />
+                <p className="text-slate-600 mb-4">No support tickets found for this customer.</p>
+                <Button 
+                  onClick={() => {
+                    setTicketData({
+                      title: '',
+                      description: `Issue reported by ${customer.name}`,
+                      priority: 'medium',
+                      category: ''
+                    });
+                    setShowCreateTicketModal(true);
+                  }}
+                  icon={Plus}
+                >
+                  Create First Ticket
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 {fallbackTickets.map((ticket) => (
@@ -1631,28 +1769,58 @@ Best regards,
         onClose={() => setShowCampaignModal(false)}
         title="Add to Campaign"
       >
-        <form onSubmit={(e) => {
+        <form onSubmit={async (e) => {
           e.preventDefault();
-          toast.success(`${customer.name} added to campaign successfully!`);
-          setShowCampaignModal(false);
-          setCampaignData({ campaignId: '', notes: '' });
+          
+          try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData?.user) {
+              toast.error('Authentication required');
+              return;
+            }
+
+            // Save to campaign_leads table
+            const { error } = await supabase
+              .from('campaign_leads')
+              .insert({
+                campaign_id: campaignData.campaignId,
+                company_id: customer.id,
+                notes: campaignData.notes,
+                created_by: userData.user.id,
+              });
+
+            if (error) throw error;
+
+            toast.success(`${customer.name} added to campaign successfully!`);
+            setShowCampaignModal(false);
+            setCampaignData({ campaignId: '', notes: '' });
+          } catch (err) {
+            console.error('Error adding to campaign:', err);
+            toast.error('Failed to add customer to campaign');
+          }
         }}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Select Campaign</label>
-              <select 
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                value={campaignData.campaignId}
-                onChange={(e) => setCampaignData({ ...campaignData, campaignId: e.target.value })}
-                required
-              >
-                <option value="">Choose a campaign...</option>
-                <option value="newsletter-q1">Q1 Newsletter Campaign</option>
-                <option value="product-launch">New Product Launch</option>
-                <option value="re-engagement">Customer Re-engagement</option>
-                <option value="upsell">Upsell Campaign</option>
-                <option value="seasonal">Seasonal Promotion</option>
-              </select>
+              {campaigns.length > 0 ? (
+                <select 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  value={campaignData.campaignId}
+                  onChange={(e) => setCampaignData({ ...campaignData, campaignId: e.target.value })}
+                  required
+                >
+                  <option value="">Choose a campaign...</option>
+                  {campaigns.map(campaign => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name} ({campaign.type} - {campaign.status})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-sm text-slate-600 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  No active campaigns available. Create a campaign in the Marketing module first.
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Notes (Optional)</label>
@@ -1666,7 +1834,9 @@ Best regards,
             </div>
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={() => setShowCampaignModal(false)}>Cancel</Button>
-              <Button type="submit" icon={Target}>Add to Campaign</Button>
+              <Button type="submit" icon={Target} disabled={campaigns.length === 0 || !campaignData.campaignId}>
+                Add to Campaign
+              </Button>
             </div>
           </div>
         </form>
@@ -1742,20 +1912,40 @@ Best regards,
       <Modal
         isOpen={showCreateTicketModal}
         onClose={() => setShowCreateTicketModal(false)}
-        title="Create Support Ticket"
+        title={`Create Support Ticket - ${customer.name}`}
       >
         <form onSubmit={(e) => {
           e.preventDefault();
-          toast.success(`Support ticket "${ticketData.title}" created successfully!`);
+          toast.success(`Support ticket "${ticketData.title}" created for ${customer.name}!`);
           setShowCreateTicketModal(false);
           setTicketData({ title: '', description: '', priority: 'medium', category: '' });
         }}>
           <div className="space-y-4">
+            {/* Customer Info Display */}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <p className="text-sm font-medium text-slate-700 mb-1">Customer Information</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                <div>
+                  <span className="font-medium">Name:</span> {customer.name}
+                </div>
+                <div>
+                  <span className="font-medium">Email:</span> {customer.email || 'N/A'}
+                </div>
+                <div>
+                  <span className="font-medium">Phone:</span> {customer.phone || 'N/A'}
+                </div>
+                <div>
+                  <span className="font-medium">Tier:</span> {customer.tier?.toUpperCase()}
+                </div>
+              </div>
+            </div>
+            
             <Input 
               label="Ticket Title" 
               value={ticketData.title}
               onChange={(e) => setTicketData({ ...ticketData, title: e.target.value })}
               required 
+              placeholder="Brief description of the issue"
             />
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>

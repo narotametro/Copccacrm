@@ -32,7 +32,6 @@ interface AutomationRule {
 export const AutomationRules: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddRuleModal, setShowAddRuleModal] = useState(false);
   const [newRule, setNewRule] = useState({ name: '', description: '', type: 'lead' });
 
@@ -42,11 +41,6 @@ export const AutomationRules: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
   const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
@@ -54,7 +48,6 @@ export const AutomationRules: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -84,12 +77,15 @@ export const AutomationRules: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   // Generate automation rules based on campaigns
   const rules = React.useMemo(() => {
@@ -166,11 +162,7 @@ export const AutomationRules: React.FC = () => {
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        {loading ? (
-          <div className="col-span-full text-center py-8">
-            <p className="text-slate-500">Loading automation rules...</p>
-          </div>
-        ) : rules.length === 0 ? (
+        {rules.length === 0 ? (
           <div className="col-span-full text-center py-8">
             <p className="text-slate-500">No automation rules yet. Create campaigns to generate rules!</p>
           </div>

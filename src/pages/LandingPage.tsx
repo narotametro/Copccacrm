@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { ContactSalesModal } from '@/components/ContactSalesModal';
+import { Logo } from '@/components/Logo';
 import {
   Brain,
   TrendingUp,
@@ -68,12 +69,9 @@ export const LandingPage = () => {
       {/* Navigation */}
       <nav className="glass border-b border-white/20 sticky top-0 z-50 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <Brain className="text-primary-600" size={32} />
-              <span className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">
-                COPCCA CRM
-              </span>
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center gap-3">
+              <Logo className="h-16 md:h-20 w-auto" />
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={() => navigate('/pricing')}>
@@ -425,9 +423,8 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             {/* Left - Logo */}
-            <div className="flex items-center gap-2">
-              <Brain className="text-white" size={28} />
-              <span className="text-xl font-bold text-white">COPCCA CRM</span>
+            <div className="flex items-center gap-3">
+              <Logo className="h-12 md:h-16 w-auto" variant="light" />
             </div>
             
             {/* Middle - Copyright */}

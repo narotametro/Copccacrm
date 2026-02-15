@@ -23,7 +23,6 @@ interface MarketingCampaignRow {
 
 export const ChannelExecution: React.FC = () => {
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddChannelModal, setShowAddChannelModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -35,11 +34,6 @@ export const ChannelExecution: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
   const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
@@ -47,7 +41,6 @@ export const ChannelExecution: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -77,12 +70,15 @@ export const ChannelExecution: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   // Calculate channel statistics from real campaigns
   const channelStats = React.useMemo(() => {
@@ -143,18 +139,13 @@ export const ChannelExecution: React.FC = () => {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          <div className="col-span-full text-center py-8">
-            <p className="text-slate-500">Loading channel data...</p>
-          </div>
-        ) : (
-          channelStats.map((channel) => {
-            const Icon = channel.icon;
-            return (
-              <Card key={channel.name}>
+        {channelStats.map((channel) => {
+          const Icon = channel.icon;
+          return (
+            <Card key={channel.name}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <Icon className="text-blue-600" size={20} />
+                    <Icon />
                   </div>
                   <h3 className="font-semibold text-slate-900">{channel.name}</h3>
                 </div>
@@ -174,8 +165,7 @@ export const ChannelExecution: React.FC = () => {
                 </div>
               </Card>
             );
-          })
-        )}
+          })}
       </div>
 
       {/* Add Channel Modal */}

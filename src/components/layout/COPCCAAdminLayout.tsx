@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LogOut, Users, BarChart3, Clock, Database, DollarSign } from 'lucide-react';
+import { Shield, LogOut, Users, BarChart3, Clock, Database, Banknote, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useCurrency, currencies } from '@/context/CurrencyContext';
@@ -38,7 +38,7 @@ export const COPCCAAdminLayout: React.FC = () => {
             <div className="flex items-center gap-4">
               {/* Currency Selector */}
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                <DollarSign className="text-purple-300" size={16} />
+                <Banknote className="text-purple-300" size={16} />
                 <select
                   value={currency.code}
                   onChange={(e) => {
@@ -103,6 +103,15 @@ export const COPCCAAdminLayout: React.FC = () => {
             >
               <Clock size={16} />
               <span className="text-sm font-medium">Subscriptions</span>
+            </button>
+            <button
+              onClick={() => navigate('/copcca-admin/sms')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/sms' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
+            >
+              <MessageSquare size={16} />
+              <span className="text-sm font-medium">SMS Service</span>
             </button>
             <button
               onClick={() => navigate('/copcca-admin/system')}

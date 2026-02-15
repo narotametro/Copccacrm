@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 
 export interface Currency {
@@ -70,16 +70,6 @@ export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }
     loadSavedCurrency();
   }, [user?.id]);
 
-  // Clear currency preference when user logs out
-  useEffect(() => {
-    if (!user?.id) {
-      // User logged out, reset to default but don't clear localStorage
-      // This allows the preference to persist for when they log back in
-      console.log('User logged out, resetting to default currency');
-      setCurrencyState(currencies[0]);
-    }
-  }, [user?.id]);
-
   // Wrapper to save currency preference when changed
   const setCurrency = (newCurrency: Currency) => {
     console.log('Setting currency to:', newCurrency.code);
@@ -96,19 +86,19 @@ export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
-  const formatCurrency = (amount: number): string => {
+  const formatCurrency = useCallback((amount: number): string => {
     if (amount === null || amount === undefined || isNaN(amount)) {
       return `${currency.symbol}0`;
     }
     return `${currency.symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  };
+  }, [currency.symbol]);
 
-  const convertAmount = (amount: number, fromCode: string = 'USD'): number => {
+  const convertAmount = useCallback((amount: number, fromCode: string = 'USD'): number => {
     const fromCurrency = currencies.find(c => c.code === fromCode) || currencies[0];
     // Convert to USD first, then to target currency
     const amountInUSD = amount / fromCurrency.rate;
     return amountInUSD * currency.rate;
-  };
+  }, [currency.rate]);
 
   return (
     <CurrencyContext.Provider value={{ currency, setCurrency, formatCurrency, convertAmount }}>

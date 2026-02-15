@@ -17,7 +17,7 @@ import {
   Building,
   Shield,
   TrendingUp,
-  DollarSign,
+  Banknote,
   BarChart3,
   Settings,
   Package,
@@ -26,6 +26,8 @@ import {
   CheckCircle,
   PieChart,
   Activity,
+  AlertCircle,
+  Phone,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
@@ -37,13 +39,13 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', feature: 'dashboard' },
   { icon: Users, label: 'Customers 360', path: '/app/customers', feature: 'customers_basic' },
   { icon: FileText, label: 'Sales Hub', path: '/app/sales-hub', feature: 'pos_system' },
+  { icon: CheckCircle, label: 'After Sales', path: '/app/after-sales', feature: 'customer_health' },
   { icon: Activity, label: 'Sales', path: '/app/sales', feature: 'sales_pipeline' },
   { icon: Target, label: 'Pipeline', path: '/app/pipeline', feature: 'sales_pipeline' },
   { icon: PieChart, label: 'Kpi Center', path: '/app/kpi-tracking', feature: 'analytics' },
-  { icon: DollarSign, label: 'Debt Collection', path: '/app/debt-collection', feature: 'debt_collection' },
-  { icon: CheckCircle, label: 'After Sales', path: '/app/after-sales', feature: 'customer_health' },
-  { icon: Shield, label: 'Competitors', path: '/app/competitors', feature: 'marketing_campaigns' },
+  { icon: Banknote, label: 'Debt Collection', path: '/app/debt-collection', feature: 'debt_collection' },
   { icon: Package, label: 'Products', path: '/app/products', feature: 'products-management' },
+  { icon: Shield, label: 'Competitors', path: '/app/competitors', feature: 'marketing_campaigns' },
   { icon: TrendingUp, label: 'Marketing', path: '/app/marketing', feature: 'marketing' },
   { icon: BarChart3, label: 'Reports', path: '/app/reports', feature: 'reports_advanced' },
   { icon: Settings, label: 'Admin', path: '/app/users', feature: 'admin', requiresAdmin: true },
@@ -171,7 +173,10 @@ export const AppLayout: React.FC = () => {
         console.log('User query response:', { data: userData, error: userError });
 
         if (userError) {
-          console.error('Error fetching user data:', userError);
+          // Don't log AbortErrors - they're expected during navigation/remounts
+          if (!(userError instanceof DOMException && userError.name === 'AbortError')) {
+            console.error('Error fetching user data:', userError);
+          }
           return;
         }
 
@@ -182,7 +187,7 @@ export const AppLayout: React.FC = () => {
           // Fetch company data
           const { data: companyInfo, error: companyError } = await supabase
             .from('companies')
-            .select('name, show_company_name_in_navbar')
+            .select('*')
             .eq('id', companyId)
             .single();
 
@@ -194,11 +199,12 @@ export const AppLayout: React.FC = () => {
           // Set company name visibility
           if (companyInfo) {
             setCompanyName(companyInfo.name || '');
+            // Safely access show_company_name_in_navbar with fallback
             setShowCompanyNameInNavbar(companyInfo.show_company_name_in_navbar !== false); // Show by default if not explicitly set to false
             console.log('Company Display Settings:', {
-              show_company_name_in_navbar: companyInfo.show_company_name_in_navbar,
+              show_company_name_in_navbar: companyInfo.show_company_name_in_navbar ?? true,
               company_name: companyInfo.name,
-              will_show: companyInfo.show_company_name_in_navbar !== false && companyInfo.name
+              will_show: (companyInfo.show_company_name_in_navbar ?? true) && companyInfo.name
             });
           }
 

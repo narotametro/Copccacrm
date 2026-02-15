@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, Banknote, Award, Shield, Zap, Eye, Users, DollarSign } from 'lucide-react';
+import { Download, Calendar, Package, Target, Brain, TrendingUp, AlertTriangle, CheckCircle, Banknote, Award, Shield, Zap, Eye, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -7,6 +7,13 @@ import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 import { useSharedData } from '@/context/SharedDataContext';
+
+interface Product {
+  id: string;
+  name: string;
+  status: string;
+  total_sold: number;
+}
 
 export const Reports: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
@@ -118,7 +125,7 @@ export const Reports: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         type: 'Sales',
         color: 'from-green-600 to-emerald-600',
-        icon: DollarSign,
+        icon: Banknote,
         metrics: {
           totalRevenue: analytics.sales.totalRevenue,
           monthlyRevenue: analytics.sales.monthlyRevenue,

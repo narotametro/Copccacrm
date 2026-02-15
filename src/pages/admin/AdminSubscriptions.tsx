@@ -19,7 +19,7 @@ import {
   Unlock,
   TrendingUp,
   Calendar,
-  DollarSign,
+  Banknote,
   UserCheck,
   Settings,
   Edit,
@@ -466,7 +466,7 @@ export const AdminSubscriptions: React.FC = () => {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-green-600" />
+              <Banknote className="w-6 h-6 text-green-600" />
             </div>
             <div>
               <p className="text-sm text-slate-600">Monthly Revenue</p>

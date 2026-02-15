@@ -35,18 +35,12 @@ interface MarketingCampaignRow {
 export const CampaignPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
     import.meta.env.VITE_SUPABASE_ANON_KEY &&
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
-
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -55,7 +49,6 @@ export const CampaignPerformance: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -85,12 +78,15 @@ export const CampaignPerformance: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   return (
     <div className="space-y-6">
@@ -143,28 +139,28 @@ export const CampaignPerformance: React.FC = () => {
         <Card className="text-center">
           <Users className="text-blue-600 mx-auto mb-2" size={24} />
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : (campaigns.length * 25).toLocaleString()}
+            {(campaigns.length * 25).toLocaleString()}
           </div>
           <div className="text-sm text-slate-600">Total Leads</div>
         </Card>
         <Card className="text-center">
           <Target className="text-purple-600 mx-auto mb-2" size={24} />
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : campaigns.length > 0 ? `${Math.round((campaigns.length * 25 * 0.15) / campaigns.length)}%` : '0%'}
+            {campaigns.length > 0 ? `${Math.round((campaigns.length * 25 * 0.15) / campaigns.length)}%` : '0%'}
           </div>
           <div className="text-sm text-slate-600">Avg Conversion</div>
         </Card>
         <Card className="text-center">
           <Banknote className="text-green-600 mx-auto mb-2" size={24} />
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : formatCurrency(campaigns.length * 25 * 50000)}
+            {formatCurrency(campaigns.length * 25 * 50000)}
           </div>
           <div className="text-sm text-slate-600">Total Revenue</div>
         </Card>
         <Card className="text-center">
           <TrendingUp className="text-orange-600 mx-auto mb-2" size={24} />
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : campaigns.length > 0 ? `${(Math.round((campaigns.length * 25 * 50000) / campaigns.reduce((sum, c) => sum + (c.budget || 0), 0) * 100) / 100) || 0}x` : '0x'}
+            {campaigns.length > 0 ? `${(Math.round((campaigns.length * 25 * 50000) / campaigns.reduce((sum, c) => sum + (c.budget || 0), 0) * 100) / 100) || 0}x` : '0x'}
           </div>
           <div className="text-sm text-slate-600">Avg ROI</div>
         </Card>
@@ -173,9 +169,7 @@ export const CampaignPerformance: React.FC = () => {
       <Card>
         <h3 className="font-semibold text-slate-900 mb-4">Campaign Performance Breakdown</h3>
         <div className="space-y-4">
-          {loading ? (
-            <p className="text-center text-slate-500 py-8">Loading campaign performance...</p>
-          ) : campaigns.length === 0 ? (
+          {campaigns.length === 0 ? (
             <p className="text-center text-slate-500 py-8">No campaigns to analyze. Create your first campaign!</p>
           ) : (
             campaigns.map((campaign) => {

@@ -271,7 +271,11 @@ export const AfterSales: React.FC = () => {
 
       // Fetch linked options for task linking
       const [customersRes, dealsRes, competitorsRes] = await Promise.all([
-        supabase.from('companies').select('id, name').order('name'),
+        (async () => {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData?.user) return { data: [], error: null };
+          return supabase.from('companies').select('id, name').eq('created_by', userData.user.id).order('name');
+        })(),
         supabase.from('deals').select('id, title').order('title'),
         supabase.from('competitors').select('id, name').order('name'),
       ]);

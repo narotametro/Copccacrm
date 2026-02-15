@@ -4,7 +4,7 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { CashPaymentModal } from './CashPaymentModal';
 import { toast } from 'sonner';
-import { DollarSign, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
+import { Banknote, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
 
 interface CashPayment {
   id: string;
@@ -60,7 +60,7 @@ export const CashPaymentManager: React.FC = () => {
 
   const loadPayments = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       let query = supabase
         .from('cash_payments')
         .select(`
@@ -197,7 +197,7 @@ export const CashPaymentManager: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center">
-            <DollarSign className="text-blue-500" size={24} />
+            <Banknote className="text-blue-500" size={24} />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Total Amount</p>
               <p className="text-2xl font-bold text-gray-900">

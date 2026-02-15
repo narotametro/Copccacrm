@@ -23,18 +23,12 @@ interface MarketingCampaignRow {
 export const CampaignDashboard: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
     import.meta.env.VITE_SUPABASE_ANON_KEY &&
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
-
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -43,7 +37,6 @@ export const CampaignDashboard: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -73,12 +66,15 @@ export const CampaignDashboard: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   const kpiColorStyles: Record<string, { bg: string; icon: string }> = {
     green: { bg: 'bg-green-100', icon: 'text-green-600' },
@@ -136,9 +132,7 @@ export const CampaignDashboard: React.FC = () => {
           </Button>
         </div>
         <div className="space-y-3">
-          {loading ? (
-            <p className="text-center text-slate-500 py-8">Loading campaigns...</p>
-          ) : campaigns.length === 0 ? (
+          {campaigns.length === 0 ? (
             <p className="text-center text-slate-500 py-8">No campaigns yet. Create your first campaign!</p>
           ) : (
             campaigns.slice(0, 5).map((campaign) => (

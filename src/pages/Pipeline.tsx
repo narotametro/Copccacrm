@@ -97,20 +97,35 @@ export const Pipeline: React.FC = () => {
   // Fetch deals, companies, and users
   const fetchData = async () => {
     try {
-      // Fetch deals with company and user info
-      const { data: dealsData, error: dealsError } = await supabase
-        .from('deals')
-        .select(`
-          *,
-          companies:company_id(name),
-          profiles:assigned_to(full_name, email)
-        `)
-        .order('created_at', { ascending: false });
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
 
-      if (dealsError) throw dealsError;
+      // PARALLEL API CALLS - fetch all data simultaneously
+      const [dealsResult, companiesResult, usersResult] = await Promise.all([
+        supabase
+          .from('deals')
+          .select(`
+            *,
+            companies:company_id(name),
+            profiles:assigned_to(full_name, email)
+          `)
+          .eq('created_by', userData.user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('companies')
+          .select('id, name')
+          .eq('created_by', userData.user.id)
+          .order('name'),
+        supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .order('full_name')
+      ]);
+
+      if (dealsResult.error) throw dealsResult.error;
 
       // Transform the data
-      const transformedDeals = dealsData?.map((deal: DealWithJoins) => ({
+      const transformedDeals = dealsResult.data?.map((deal: DealWithJoins) => ({
         ...deal,
         company_name: deal.companies?.name || 'Unknown Company',
         assigned_user_name: deal.profiles?.full_name || deal.profiles?.email || 'Unassigned',
@@ -118,24 +133,12 @@ export const Pipeline: React.FC = () => {
 
       setDeals(transformedDeals);
 
-      // Fetch companies for the form
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, name')
-        .order('name');
-
-      if (!companiesError && companiesData) {
-        setCompanies(companiesData);
+      if (!companiesResult.error && companiesResult.data) {
+        setCompanies(companiesResult.data);
       }
 
-      // Fetch users for assignment
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .order('full_name');
-
-      if (!usersError && usersData) {
-        setUsers(usersData);
+      if (!usersResult.error && usersResult.data) {
+        setUsers(usersResult.data);
       }
 
     } catch (error) {
@@ -155,12 +158,12 @@ export const Pipeline: React.FC = () => {
       setForm({
         title: state.prefillDeal.title || '',
         company_id: state.prefillDeal.customer_id || '',
-        value: state.prefillDeal.value || '',
+        value: String(state.prefillDeal.value || ''),
         stage: 'lead',
         probability: '50',
         expected_close_date: state.prefillDeal.expected_close_date || '',
         assigned_to: '',
-        notes: state.prefillDeal.notes || '',
+        notes: '',
       });
       setModalMode('add');
       setShowDealModal(true);

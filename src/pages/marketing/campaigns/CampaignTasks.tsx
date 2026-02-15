@@ -33,7 +33,6 @@ interface CampaignTask {
 
 export const CampaignTasks: React.FC = () => {
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -51,11 +50,6 @@ export const CampaignTasks: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
   const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
@@ -63,7 +57,6 @@ export const CampaignTasks: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -93,12 +86,15 @@ export const CampaignTasks: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   // Generate tasks based on campaigns
   const tasks = React.useMemo(() => {
@@ -158,11 +154,7 @@ export const CampaignTasks: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {loading ? (
-          <div className="text-center py-8">
-            <p className="text-slate-500">Loading campaign tasks...</p>
-          </div>
-        ) : tasks.length === 0 ? (
+        {tasks.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-slate-500">No tasks yet. Create campaigns to generate tasks!</p>
           </div>

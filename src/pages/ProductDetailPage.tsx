@@ -27,6 +27,14 @@ interface Competitor {
   name: string;
   industry: string;
   threat_level: 'critical' | 'high' | 'medium' | 'low';
+  price?: number;
+  market_share?: number;
+  product_quality?: number;
+  customer_satisfaction?: number;
+  market_position?: string;
+  strategy?: string;
+  pricing_strategy?: string;
+  key_features?: string[];
 }
 
 interface Product {
@@ -188,7 +196,7 @@ export const ProductDetailPage: React.FC = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
                       ? 'border-primary-500 text-primary-600'
@@ -311,29 +319,29 @@ export const ProductDetailPage: React.FC = () => {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
                         <div>
                           <span className="text-slate-600">Price:</span>
-                          <span className="ml-2 font-medium">{formatCurrency(competitor.price)}</span>
+                          <span className="ml-2 font-medium">{competitor.price ? formatCurrency(competitor.price) : 'N/A'}</span>
                         </div>
                         <div>
                           <span className="text-slate-600">Market Share:</span>
-                          <span className="ml-2 font-medium">{competitor.market_share}%</span>
+                          <span className="ml-2 font-medium">{competitor.market_share ?? 'N/A'}%</span>
                         </div>
                         <div>
                           <span className="text-slate-600">Quality:</span>
-                          <span className="ml-2 font-medium">{competitor.product_quality}/10</span>
+                          <span className="ml-2 font-medium">{competitor.product_quality ?? 'N/A'}/10</span>
                         </div>
                         <div>
                           <span className="text-slate-600">Satisfaction:</span>
-                          <span className="ml-2 font-medium">{competitor.customer_satisfaction}/10</span>
+                          <span className="ml-2 font-medium">{competitor.customer_satisfaction ?? 'N/A'}/10</span>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-slate-600">Position:</span>
-                          <span className="ml-2 font-medium capitalize">{competitor.market_position}</span>
+                          <span className="ml-2 font-medium capitalize">{competitor.market_position || 'Unknown'}</span>
                         </div>
                         <div>
                           <span className="text-slate-600">Strategy:</span>
-                          <span className="ml-2 font-medium capitalize">{competitor.pricing_strategy}</span>
+                          <span className="ml-2 font-medium capitalize">{competitor.pricing_strategy || 'Unknown'}</span>
                         </div>
                       </div>
                       {competitor.key_features && competitor.key_features.length > 0 && (

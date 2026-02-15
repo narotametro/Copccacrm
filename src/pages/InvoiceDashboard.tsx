@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
-  DollarSign,
+  Banknote,
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -118,7 +118,7 @@ const InvoiceDashboard: React.FC = () => {
     {
       title: 'Total Invoiced',
       value: formatCurrencyFn(stats.totalInvoiced),
-      icon: DollarSign,
+      icon: Banknote,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
@@ -159,14 +159,6 @@ const InvoiceDashboard: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <div className="max-w-7xl mx-auto p-6">
@@ -196,7 +188,21 @@ const InvoiceDashboard: React.FC = () => {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          {statCards.map((card, index) => (
+          {loading ? (
+            // Show skeleton loading cards
+            [1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2"></div>
+                    <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16"></div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            statCards.map((card, index) => (
             <Card key={index} className="p-4">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${card.bgColor}`}>
@@ -208,7 +214,8 @@ const InvoiceDashboard: React.FC = () => {
                 </div>
               </div>
             </Card>
-          ))}
+          ))
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

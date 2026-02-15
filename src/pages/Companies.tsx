@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Users, DollarSign, Edit2, Trash2, Plus, Search, FileText } from 'lucide-react';
+import { Building, Users, Banknote, Edit2, Trash2, Plus, Search, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -27,6 +27,7 @@ interface Company {
   user_count?: number;
   jtbd?: string | null;
   sentiment?: 'positive' | 'neutral' | 'negative' | null;
+  show_payment_popup?: boolean;
 }
 
 export const Companies: React.FC = () => {
@@ -59,7 +60,7 @@ export const Companies: React.FC = () => {
 
   const fetchCompanies = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
 
       // Fetch companies with user count
       const { data: companiesData, error } = await supabase
@@ -70,7 +71,7 @@ export const Companies: React.FC = () => {
       if (error) throw error;
 
       if (companiesData) {
-        // Get user counts for each company
+        // Get user counts for each company - already using Promise.all (parallel)
         const companiesWithCounts = await Promise.all(
           companiesData.map(async (company: Database['public']['Tables']['companies']['Row']) => {
             const { count } = await supabase
@@ -235,17 +236,6 @@ export const Companies: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading companies...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -277,7 +267,11 @@ export const Companies: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Total Businesses</p>
-              <p className="text-2xl font-bold text-slate-900">{companies.length}</p>
+              {loading ? (
+                <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1"></div>
+              ) : (
+                <p className="text-2xl font-bold text-slate-900">{companies.length}</p>
+              )}
             </div>
           </div>
         </Card>
@@ -288,9 +282,13 @@ export const Companies: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Active Companies</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {companies.filter(c => c.status === 'active').length}
-              </p>
+              {loading ? (
+                <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1"></div>
+              ) : (
+                <p className="text-2xl font-bold text-slate-900">
+                  {companies.filter(c => c.status === 'active').length}
+                </p>
+              )}
             </div>
           </div>
           {/* JTBD and Sentiment fields */}
@@ -327,13 +325,17 @@ export const Companies: React.FC = () => {
         <Card>
           <div className="flex items-center gap-3">
             <div className="p-3 bg-purple-100 rounded-lg">
-              <DollarSign className="text-purple-600" size={24} />
+              <Banknote className="text-purple-600" size={24} />
             </div>
             <div>
               <p className="text-sm text-slate-600">Total Users</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {companies.reduce((sum, c) => sum + (c.user_count || 0), 0)}
-              </p>
+              {loading ? (
+                <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1"></div>
+              ) : (
+                <p className="text-2xl font-bold text-slate-900">
+                  {companies.reduce((sum, c) => sum + (c.user_count || 0), 0)}
+                </p>
+              )}
             </div>
           </div>
         </Card>
@@ -369,7 +371,39 @@ export const Companies: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredCompanies.map((company) => (
+              {loading ? (
+                // Show skeleton loading rows
+                [1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="p-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-2 animate-pulse"></div>
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                        <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                filteredCompanies.map((company) => (
                 <tr key={company.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-3">
                     <div>
@@ -426,11 +460,12 @@ export const Companies: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
 
-          {filteredCompanies.length === 0 && (
+          {!loading && filteredCompanies.length === 0 && (
             <div className="text-center py-12">
               <Building className="mx-auto text-slate-400 mb-4" size={48} />
               <p className="text-slate-600">No companies found</p>

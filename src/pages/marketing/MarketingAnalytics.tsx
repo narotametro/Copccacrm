@@ -32,6 +32,11 @@ interface MarketingCampaignRow {
   end_date?: string;
   notes?: string;
   created_at?: string;
+  // Computed/optional fields
+  leads_generated?: number;
+  conversions?: number;
+  spent?: number;
+  status?: 'draft' | 'active' | 'paused' | 'completed';
 }
 
 interface MarketingBudgetRow {
@@ -49,7 +54,6 @@ export const MarketingAnalytics: React.FC = () => {
     Array<{ id: string; channel: string; monthly_budget: number; target_leads: number; target_roi: number }>
   >([]);
   const [form, setForm] = useState({ channel: '', monthly_budget: '', target_leads: '', target_roi: '' });
-  const [loading, setLoading] = useState(false);
 
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
@@ -58,11 +62,6 @@ export const MarketingAnalytics: React.FC = () => {
   );
 
   const user = useAuthStore((state) => state.user);
-
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -248,11 +247,6 @@ export const MarketingAnalytics: React.FC = () => {
     };
   }, [campaigns, totalBudget]);
 
-  // Load budgets on component mount
-  useEffect(() => {
-    loadBudgets();
-  }, [supabaseReady, user, loadBudgets]);
-
   const loadBudgets = useCallback(async () => {
     if (!supabaseReady || !user) return;
 
@@ -285,6 +279,11 @@ export const MarketingAnalytics: React.FC = () => {
     }
   }, [supabaseReady, user]);
 
+  // Load campaigns and budgets on mount
+  useEffect(() => {
+    loadCampaigns();
+    loadBudgets();
+  }, [loadCampaigns, loadBudgets]);
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.channel.trim()) {
@@ -292,7 +291,7 @@ export const MarketingAnalytics: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    // Removed setLoading(true) - keep UI responsive during save
 
     if (supabaseReady && user) {
       try {
@@ -343,7 +342,6 @@ export const MarketingAnalytics: React.FC = () => {
     }
 
     setForm({ channel: '', monthly_budget: '', target_leads: '', target_roi: '' });
-    setLoading(false);
   };
 
   return (
@@ -427,8 +425,8 @@ export const MarketingAnalytics: React.FC = () => {
             placeholder="4.0"
           />
           <div className="flex items-end justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save target'}
+            <Button type="submit">
+              Save target
             </Button>
           </div>
         </form>

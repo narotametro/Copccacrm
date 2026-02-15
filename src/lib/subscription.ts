@@ -5,10 +5,11 @@ export interface SubscriptionPlan {
   name: string;
   display_name: string;
   features: string[];
-  max_users: number;
-  max_products: number;
-  max_invoices_monthly: number;
-  max_pos_locations: number;
+  max_users?: number;
+  max_products?: number;
+  max_invoices_monthly?: number;
+  max_pos_locations?: number;
+  max_inventory_locations?: number;
 }
 
 export interface UserSubscription {
@@ -69,11 +70,11 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
           max_users,
           max_products,
           max_invoices_monthly,
-          max_pos_locations
+          max_pos_locations,
+          max_inventory_locations
         )
       `)
       .eq('user_id', user.id)
-      .eq('status', 'active')
       .or('status.eq.trial,status.eq.active')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -81,17 +82,26 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 
     if (error || !data) return null;
 
+    // Type assertion since Supabase returns nested objects correctly
+    const subscriptionData = data as any;
+    const planData = Array.isArray(subscriptionData.subscription_plans) 
+      ? subscriptionData.subscription_plans[0] 
+      : subscriptionData.subscription_plans;
+
     return {
-      id: data.id,
-      user_id: data.user_id,
-      plan_id: data.plan_id,
-      status: data.status,
-      trial_end_date: data.trial_end_date,
-      current_period_end: data.current_period_end,
-      plan: data.subscription_plans,
+      id: subscriptionData.id,
+      user_id: subscriptionData.user_id,
+      plan_id: subscriptionData.plan_id,
+      status: subscriptionData.status,
+      trial_end_date: subscriptionData.trial_end_date,
+      current_period_end: subscriptionData.current_period_end,
+      plan: planData as SubscriptionPlan,
     };
   } catch (error) {
-    console.error('Error fetching user subscription:', error);
+    // Don't log AbortErrors - they're expected during navigation/remounts
+    if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      console.error('Error fetching user subscription:', error);
+    }
     return null;
   }
 }
@@ -99,6 +109,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 /**
  * Automatically convert expired trial to past_due status (requires payment)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function convertExpiredTrialToPastDue(): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -196,14 +207,20 @@ export async function hasFeatureAccess(feature: string): Promise<boolean> {
       });
 
     if (error) {
-      console.error('Error checking feature access:', error);
+      // Don't log AbortErrors - they're expected during navigation/remounts
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('Error checking feature access:', error);
+      }
       // Fallback to basic logic if RPC fails
       return await hasFeatureAccessBasic(feature);
     }
 
     return data || false;
   } catch (error) {
-    console.error('Error checking feature access:', error);
+    // Don't log AbortErrors - they're expected during navigation/remounts
+    if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      console.error('Error checking feature access:', error);
+    }
     return false;
   }
 }
@@ -352,7 +369,10 @@ export async function getTrialStatus(): Promise<{
       .rpc('get_trial_status');
 
     if (error) {
-      console.error('Error getting trial status:', error);
+      // Don't log AbortErrors - they're expected during navigation/remounts
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('Error getting trial status:', error);
+      }
       return null;
     }
 
@@ -365,7 +385,10 @@ export async function getTrialStatus(): Promise<{
       message: data.isTrial ? `${data.daysLeft} days left in trial` : 'Active subscription'
     };
   } catch (error) {
-    console.error('Error getting trial status:', error);
+    // Don't log AbortErrors - they're expected during navigation/remounts
+    if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      console.error('Error getting trial status:', error);
+    }
     return null;
   }
 }
@@ -387,13 +410,34 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
     let current = 0;
     let limit = 0;
 
+    // Get limit from plan (default to generous limits if not set)
+    const plan = subscription.plan;
+    switch (limitType) {
+      case 'users':
+        limit = plan.max_users || 10;
+        break;
+      case 'products':
+        limit = plan.max_products || 1000;
+        break;
+      case 'invoices':
+        limit = plan.max_invoices_monthly || 500;
+        break;
+      case 'locations':
+        limit = plan.max_pos_locations || 5;
+        break;
+    }
+
+    // -1 means unlimited
+    if (limit === -1) {
+      limit = 999999; // High number for UI display
+    }
+
     // Get current usage from database
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { current: 0, limit: 0, canAdd: false };
+    if (!user) return { current: 0, limit, canAdd: true };
 
     switch (limitType) {
       case 'users': {
-        limit = subscription.plan.max_users;
         // Count users in the same company
         const { count: userCount } = await supabase
           .from('users')
@@ -403,7 +447,6 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
         break;
       }
       case 'products': {
-        limit = subscription.plan.max_products;
         const { count: productCount } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
@@ -412,7 +455,6 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
         break;
       }
       case 'invoices': {
-        limit = subscription.plan.max_invoices_monthly;
         // Count invoices for current month
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
@@ -427,7 +469,6 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
         break;
       }
       case 'locations': {
-        limit = subscription.plan.max_pos_locations;
         // TODO: Implement POS location tracking
         current = 0;
         break;
@@ -441,7 +482,7 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
     };
   } catch (error) {
     console.error('Error checking usage limit:', error);
-    return { current: 0, limit: 0, canAdd: false };
+    return { current: 0, limit: 999, canAdd: true };
   }
 }
 
@@ -758,39 +799,30 @@ export async function changeSubscriptionPlan(newPlanId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Get current subscription
-    const { data: currentSub, error: fetchError } = await supabase
-      .from('user_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
+    // Get the plan name from plan ID
+    const { data: planData, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('name')
+      .eq('id', newPlanId)
       .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+    if (planError) throw planError;
 
-    if (currentSub) {
-      // Update existing subscription
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .update({
-          plan_id: newPlanId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentSub.id);
+    // Call the database function to handle the upgrade properly
+    const { data: result, error: upgradeError } = await supabase
+      .rpc('upgrade_user_subscription', {
+        p_user_id: user.id,
+        p_new_plan_name: planData.name,
+        p_billing_cycle: 'monthly'
+      });
 
-      if (error) throw error;
-    } else {
-      // Create new subscription (shouldn't happen in normal flow)
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .insert({
-          user_id: user.id,
-          plan_id: newPlanId,
-          status: 'active',
-        });
+    if (upgradeError) throw upgradeError;
 
-      if (error) throw error;
+    if (!result?.success) {
+      throw new Error(result?.error || 'Failed to upgrade subscription');
     }
+
+    console.log('Subscription upgraded:', result);
 
     // Record the plan change
     await recordUsage('users', 0); // Trigger usage update

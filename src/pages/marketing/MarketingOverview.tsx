@@ -152,7 +152,6 @@ export const MarketingOverview: React.FC = () => {
   const [kpiForm, setKpiForm] = useState({ label: '', value: '', change: '', trend: 'up', color: 'blue' });
   const [filterForm, setFilterForm] = useState({ channel: '', minConversion: '' });
   const maxLeads = channelPerformance.length ? Math.max(...channelPerformance.map((c) => c.leads)) : 1;
-  const [loading, setLoading] = useState(false);
 
   // Real data state
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
@@ -249,7 +248,7 @@ export const MarketingOverview: React.FC = () => {
   useEffect(() => {
     const loadKpis = async () => {
       if (!supabaseReady || !user) return;
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       const { data, error } = await supabase
         .from('marketing_kpis')
         .select('*')
@@ -259,13 +258,11 @@ export const MarketingOverview: React.FC = () => {
       if (error) {
         console.warn('Failed to load KPIs, using defaults:', error.message);
         setKpis(initialKpis);
-        setLoading(false);
         return;
       }
 
       const mapped = (data || []).map(mapRowToKpi);
       setKpis(mapped.length ? mapped : initialKpis);
-      setLoading(false);
     };
 
     const loadChannelPerformance = async () => {
@@ -296,7 +293,7 @@ export const MarketingOverview: React.FC = () => {
                 }
                 channelStats[channel].leads += campaign.leads_generated || 0;
                 channelStats[channel].conversions += campaign.conversions || 0;
-                channelStats[channel].spent += campaign.spent || 0;
+                channelStats[channel].spent += campaign.budget || 0;
                 channelStats[channel].campaigns += 1;
               });
             }
@@ -423,10 +420,6 @@ export const MarketingOverview: React.FC = () => {
         </Button>
         <Button icon={Filter} variant="outline" onClick={() => setShowFilterModal(true)}>Filter Data</Button>
       </div>
-
-      {supabaseReady && loading && (
-        <p className="text-xs text-slate-500">Loading KPIs from database...</p>
-      )}
 
       {/* AI Insight Strip */}
       <Card className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-none">

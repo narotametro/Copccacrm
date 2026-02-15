@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, DollarSign, Activity, CheckCircle, AlertTriangle, Clock, CreditCard, Banknote, TrendingUp } from 'lucide-react';
+import { Users, Activity, CheckCircle, AlertTriangle, Clock, CreditCard, Banknote, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -56,7 +57,7 @@ export const AdminDashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
 
       // Fetch subscription statistics
       const { data: subscriptionStats, error: subError } = await supabase
@@ -190,9 +191,10 @@ export const AdminDashboard: React.FC = () => {
 
       recentSubs?.forEach(sub => {
         const timeAgo = getTimeAgo(new Date(sub.updated_at));
+        const userData = Array.isArray(sub.users) ? sub.users[0] : sub.users;
         activities.push({
           id: `sub-${sub.id}`,
-          company: sub.users?.full_name || sub.users?.email || 'Unknown User',
+          company: userData?.full_name || userData?.email || 'Unknown User',
           action: `Subscription ${sub.status}`,
           time: timeAgo,
           status: sub.status === 'active' ? 'success' : sub.status === 'trial' ? 'info' : 'warning',
@@ -202,9 +204,11 @@ export const AdminDashboard: React.FC = () => {
 
       recentPayments?.forEach(payment => {
         const timeAgo = getTimeAgo(new Date(payment.created_at));
+        const subData = Array.isArray(payment.user_subscriptions) ? payment.user_subscriptions[0] : payment.user_subscriptions;
+        const userData = subData?.users ? (Array.isArray(subData.users) ? subData.users[0] : subData.users) : null;
         activities.push({
           id: `pay-${payment.id}`,
-          company: payment.user_subscriptions?.users?.full_name || 'Unknown User',
+          company: userData?.full_name || 'Unknown User',
           action: `Cash payment ${payment.status} - ${formatCurrency(convertAmount(payment.amount))}`,
           time: timeAgo,
           status: payment.status === 'verified' ? 'success' : payment.status === 'pending' ? 'warning' : 'error',
@@ -310,7 +314,7 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-purple-200 text-xs mt-1">Avg: {formatCurrency(convertAmount(stats.avgRevenuePerCompany))}</p>
             </div>
             <div className="p-3 bg-yellow-500/20 rounded-lg">
-              <DollarSign className="text-yellow-400" size={24} />
+              <Banknote className="text-yellow-400" size={24} />
             </div>
           </div>
         </Card>

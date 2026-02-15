@@ -5,7 +5,7 @@ import {
   Package,
   Users,
   Shield,
-  DollarSign,
+  Banknote,
   Link as LinkIcon,
   ChevronRight,
 } from 'lucide-react';
@@ -31,7 +31,7 @@ const strategyCards = [
   { id: 'four-ps', label: '4Ps Strategy', icon: Package, description: 'Product, Price, Place, Promotion', color: 'bg-blue-500' },
   { id: 'personas', label: 'Target Personas', icon: Users, description: 'Know your ideal customers', color: 'bg-green-500' },
   { id: 'positioning', label: 'Competitive Positioning', icon: Shield, description: 'Stand out from competitors', color: 'bg-red-500' },
-  { id: 'budget', label: 'Budget Allocation', icon: DollarSign, description: 'Allocate marketing spend', color: 'bg-purple-500' },
+  { id: 'budget', label: 'Budget Allocation', icon: Banknote, description: 'Allocate marketing spend', color: 'bg-purple-500' },
   { id: 'mapping', label: 'Strategy → Campaign Mapping', icon: LinkIcon, description: 'Link strategy to campaigns', color: 'bg-indigo-500' },
 ];
 

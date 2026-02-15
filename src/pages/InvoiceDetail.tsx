@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -59,35 +59,36 @@ const InvoiceDetail: React.FC = () => {
 
   const loadInvoice = useCallback(async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
 
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          companies (
-            name,
-            email,
-            phone,
-            address
-          )
-        `)
-        .eq('id', id)
-        .single();
+      // PARALLEL API CALLS - fetch invoice and items simultaneously
+      const [invoiceResult, itemsResult] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select(`
+            *,
+            companies (
+              name,
+              email,
+              phone,
+              address
+            )
+          `)
+          .eq('id', id)
+          .single(),
+        supabase
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', id)
+          .order('created_at', { ascending: true })
+      ]);
 
-      if (error) throw error;
+      if (invoiceResult.error) throw invoiceResult.error;
 
-      setInvoice(data);
+      setInvoice(invoiceResult.data);
 
-      // Load invoice items if they exist
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', id)
-        .order('created_at', { ascending: true });
-
-      if (!itemsError && itemsData) {
-        setItems(itemsData);
+      if (!itemsResult.error && itemsResult.data) {
+        setItems(itemsResult.data);
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
@@ -165,8 +166,44 @@ const InvoiceDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="max-w-4xl mx-auto animate-pulse" style={{ marginLeft: '-12px', marginRight: '-12px' }}>
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div className="h-8 w-40 bg-slate-200 dark:bg-slate-700 rounded"></div>
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div className="h-10 w-28 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div className="h-10 w-20 bg-slate-200 dark:bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        
+        {/* Invoice content skeleton */}
+        <Card className="p-6 mb-6">
+          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-48 mb-4"></div>
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div>
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-2"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-40 mb-1"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-36 mb-1"></div>
+            </div>
+            <div>
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-2"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-1"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-1"></div>
+            </div>
+          </div>
+        </Card>
+        
+        {/* Items skeleton */}
+        <Card className="p-6">
+          <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-4"></div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-slate-200 dark:bg-slate-700 rounded mb-3"></div>
+          ))}
+        </Card>
       </div>
     );
   }
@@ -362,7 +399,7 @@ const InvoiceDetail: React.FC = () => {
       </div>
 
       {/* Print Styles */}
-      <style jsx>{`
+      <style>{`
         @media print {
           @page {
             size: A4;

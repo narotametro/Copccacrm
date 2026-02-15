@@ -1,5 +1,5 @@
 
-import { TrendingUp, Users, Banknote, Target, BarChart3, Activity, Globe, ShoppingCart, Calendar, Brain, ChevronUp, ChevronDown, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Banknote, Target, BarChart3, Activity, Globe, ShoppingCart, Calendar, ChevronUp, ChevronDown, Sparkles, ArrowUp, ArrowDown, ArrowRight, Minus, Equal } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,8 @@ const Dashboard = () => {
   
   // Real data state
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
+  const [filteredRevenue, setFilteredRevenue] = useState<number>(0);
+  const [revenuePeriod, setRevenuePeriod] = useState<string>('all');
   const [activeCustomers, setActiveCustomers] = useState<number>(0);
   const [dealsWon, setDealsWon] = useState<number>(0);
   const [growthRate, setGrowthRate] = useState<number>(0);
@@ -33,60 +35,98 @@ const Dashboard = () => {
     time: string;
     color: string;
   }>>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedDateSales, setSelectedDateSales] = useState<number>(0);
+  const [selectedDateExpenses, setSelectedDateExpenses] = useState<number>(0);
+  const [selectedDateNetProfit, setSelectedDateNetProfit] = useState<number>(0);
   const [selectedDateGrowth, setSelectedDateGrowth] = useState<number>(0);
-  const [dateLoading, setDateLoading] = useState<boolean>(false);
+  const [selectedDateExpensesGrowth, setSelectedDateExpensesGrowth] = useState<number>(0);
+  const [selectedDateNetProfitGrowth, setSelectedDateNetProfitGrowth] = useState<number>(0);
   
   // Floating button state
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  
+  // Sales pipeline state
+  const [pipelineData, setPipelineData] = useState<Array<{
+    stage: string;
+    count: number;
+    color: string;
+  }>>([]);
   
   // Removed useIntegratedKPIData hook as we're fetching data directly
   
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        setLoading(true);
+        // Get current user first
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
         
-        // Fetch total revenue from invoices
-        const { data: invoices, error: invoicesError } = await supabase
-          .from('invoices')
-          .select('total_amount, status')
-          .eq('status', 'paid');
+        // PARALLEL API CALLS - much faster!
+        const [
+          invoicesResult,
+          salesHubOrdersResult,
+          companiesResult,
+          dealsResult,
+          allDealsResult,
+          recentDealsResult,
+          recentCompaniesResult
+        ] = await Promise.all([
+          supabase.from('invoices').select('total_amount, status').eq('status', 'paid').eq('created_by', userData.user.id),
+          supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id),
+          supabase.from('companies').select('id, status').eq('status', 'active').eq('created_by', userData.user.id),
+          supabase.from('deals').select('id, stage').eq('stage', 'won').eq('created_by', userData.user.id),
+          supabase.from('deals').select('stage').eq('created_by', userData.user.id),
+          supabase.from('deals').select('title, created_at, stage').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(3),
+          supabase.from('companies').select('name, created_at').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(2)
+        ]);
         
-        if (!invoicesError && invoices) {
-          const revenue = invoices.reduce((sum: number, invoice: InvoiceRow) => sum + (invoice.total_amount || 0), 0);
-          setTotalRevenue(revenue);
+        // Process revenue from both invoices AND sales hub orders
+        let totalRev = 0;
+        if (!invoicesResult.error && invoicesResult.data) {
+          totalRev += invoicesResult.data.reduce((sum: number, invoice: InvoiceRow) => sum + (invoice.total_amount || 0), 0);
+        }
+        if (!salesHubOrdersResult.error && salesHubOrdersResult.data) {
+          totalRev += salesHubOrdersResult.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+        }
+        setTotalRevenue(totalRev);
+        setFilteredRevenue(totalRev); // Initialize filtered revenue
+        
+        // Process active customers
+        if (!companiesResult.error && companiesResult.data) {
+          setActiveCustomers(companiesResult.data.length);
         }
         
-        // Fetch active customers from companies
-        const { data: companies, error: companiesError } = await supabase
-          .from('companies')
-          .select('id, status')
-          .eq('status', 'active');
-        
-        if (!companiesError && companies) {
-          setActiveCustomers(companies.length);
+        // Process deals won
+        if (!dealsResult.error && dealsResult.data) {
+          setDealsWon(dealsResult.data.length);
         }
         
-        // Fetch deals won
-        const { data: deals, error: dealsError } = await supabase
-          .from('deals')
-          .select('id, stage')
-          .eq('stage', 'won');
-        
-        if (!dealsError && deals) {
-          setDealsWon(deals.length);
-        }
-        
-        // Calculate growth rate (simplified - compare current vs previous month)
-        // For now, use a static value or calculate from available data
+        // Static growth rate
         setGrowthRate(12.5);
         
-        // Fetch recent activities
+        // Process pipeline data
+        if (!allDealsResult.error && allDealsResult.data) {
+          const stages = [
+            { stage: 'lead', label: 'Lead', color: 'bg-slate-500' },
+            { stage: 'qualified', label: 'Qualified', color: 'bg-blue-500' },
+            { stage: 'proposal', label: 'Proposal', color: 'bg-yellow-500' },
+            { stage: 'negotiation', label: 'Negotiation', color: 'bg-orange-500' },
+            { stage: 'won', label: 'Won', color: 'bg-green-500' }
+          ];
+          
+          const pipeline = stages.map(s => ({
+            stage: s.label,
+            count: allDealsResult.data.filter((d: any) => d.stage === s.stage).length,
+            color: s.color
+          }));
+          
+          setPipelineData(pipeline);
+        }
+        
+        // Build recent activities
         const activities: Array<{
           type: string;
           title: string;
@@ -95,15 +135,8 @@ const Dashboard = () => {
           color: string;
         }> = [];
         
-        // Recent deals
-        const { data: recentDeals, error: recentDealsError } = await supabase
-          .from('deals')
-          .select('title, created_at, stage')
-          .order('created_at', { ascending: false })
-          .limit(3);
-        
-        if (!recentDealsError && recentDeals) {
-          recentDeals.forEach((deal: DealRow) => {
+        if (!recentDealsResult.error && recentDealsResult.data) {
+          recentDealsResult.data.forEach((deal: DealRow) => {
             activities.push({
               type: deal.stage === 'won' ? 'deal_won' : 'deal_created',
               title: deal.stage === 'won' ? 'New deal closed' : 'New deal created',
@@ -114,15 +147,8 @@ const Dashboard = () => {
           });
         }
         
-        // Recent companies
-        const { data: recentCompanies, error: recentCompaniesError } = await supabase
-          .from('companies')
-          .select('name, created_at')
-          .order('created_at', { ascending: false })
-          .limit(2);
-        
-        if (!recentCompaniesError && recentCompanies) {
-          recentCompanies.forEach((company: CompanyRow) => {
+        if (!recentCompaniesResult.error && recentCompaniesResult.data) {
+          recentCompaniesResult.data.forEach((company: CompanyRow) => {
             activities.push({
               type: 'company_added',
               title: 'Customer added',
@@ -133,30 +159,179 @@ const Dashboard = () => {
           });
         }
         
-        // Sort activities by time (most recent first) and take top 3
         activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
         setRecentActivities(activities.slice(0, 3));
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Set empty/default values when data fetch fails
-        setTotalRevenue(0);
-        setActiveCustomers(0);
-        setDealsWon(0);
-        setGrowthRate(0);
-        setRecentActivities([]);
-      } finally {
-        setLoading(false);
       }
     };
     
     fetchDashboardData();
   }, []);
 
+  // Filter revenue based on selected period
+  useEffect(() => {
+    const filterRevenueByPeriod = async () => {
+      if (revenuePeriod === 'all') {
+        setFilteredRevenue(totalRevenue);
+        return;
+      }
+
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const now = new Date();
+        let startDate: Date;
+
+        switch (revenuePeriod) {
+          case 'january':
+          case 'february':
+          case 'march':
+          case 'april':
+          case 'may':
+          case 'june':
+          case 'july':
+          case 'august':
+          case 'september':
+          case 'october':
+          case 'november':
+          case 'december':
+            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+            const monthIndex = monthNames.indexOf(revenuePeriod);
+            startDate = new Date(now.getFullYear(), monthIndex, 1);
+            const endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
+            
+            const [monthInvoices, monthOrders] = await Promise.all([
+              supabase
+                .from('invoices')
+                .select('total_amount')
+                .eq('status', 'paid')
+                .eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString()),
+              supabase
+                .from('sales_hub_orders')
+                .select('total_amount')
+                .eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString())
+            ]);
+            
+            const monthRevenue = (monthInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+                                  (monthOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0);
+            setFilteredRevenue(monthRevenue);
+            break;
+
+          case 'q1':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            const endQ1 = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
+            const [q1Invoices, q1Orders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ1.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ1.toISOString())
+            ]);
+            setFilteredRevenue(
+              (q1Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (q1Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          case 'q2':
+            startDate = new Date(now.getFullYear(), 3, 1);
+            const endQ2 = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
+            const [q2Invoices, q2Orders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ2.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ2.toISOString())
+            ]);
+            setFilteredRevenue(
+              (q2Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (q2Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          case 'q3':
+            startDate = new Date(now.getFullYear(), 6, 1);
+            const endQ3 = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
+            const [q3Invoices, q3Orders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ3.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ3.toISOString())
+            ]);
+            setFilteredRevenue(
+              (q3Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (q3Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          case 'q4':
+            startDate = new Date(now.getFullYear(), 9, 1);
+            const endQ4 = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+            const [q4Invoices, q4Orders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ4.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endQ4.toISOString())
+            ]);
+            setFilteredRevenue(
+              (q4Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (q4Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          case '6months':
+            startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+            const [sixMonthInvoices, sixMonthOrders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', now.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', now.toISOString())
+            ]);
+            setFilteredRevenue(
+              (sixMonthInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (sixMonthOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          case 'annual':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            const endYear = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+            const [annualInvoices, annualOrders] = await Promise.all([
+              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endYear.toISOString()),
+              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
+                .gte('created_at', startDate.toISOString()).lte('created_at', endYear.toISOString())
+            ]);
+            setFilteredRevenue(
+              (annualInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
+              (annualOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
+            );
+            break;
+
+          default:
+            setFilteredRevenue(totalRevenue);
+        }
+      } catch (error) {
+        console.error('Error filtering revenue:', error);
+        setFilteredRevenue(totalRevenue);
+      }
+    };
+
+    filterRevenueByPeriod();
+  }, [revenuePeriod, totalRevenue]);
+
   const fetchSalesForDate = async (date: string) => {
     try {
-      setDateLoading(true);
-      
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        return;
+      }
+
       // Create date range for the selected date (start of day to end of day)
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -164,50 +339,96 @@ const Dashboard = () => {
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
       
-      // Fetch sales for the selected date
-      const { data: dateInvoices, error: dateInvoicesError } = await supabase
-        .from('invoices')
-        .select('total_amount, status, created_at')
-        .eq('status', 'paid')
+      // Fetch sales for the selected date from sales_hub_orders
+      const { data: dateOrders, error: dateOrdersError } = await supabase
+        .from('sales_hub_orders')
+        .select('total_amount, created_at')
+        .eq('created_by', userData.user.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
       
-      if (!dateInvoicesError && dateInvoices) {
-        const sales = dateInvoices.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
+      if (!dateOrdersError && dateOrders) {
+        const sales = dateOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         setSelectedDateSales(sales);
+        
+        // Fetch expenses from the expenses table for the selected date
+        const { data: dateExpenses, error: expensesError } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('expense_date', date);
+        
+        const expenses = !expensesError && dateExpenses
+          ? dateExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
+          : 0;
+        setSelectedDateExpenses(expenses);
+        
+        // Calculate net profit
+        const netProfit = sales - expenses;
+        setSelectedDateNetProfit(netProfit);
         
         // Calculate growth compared to previous day
         const prevDay = new Date(date);
         prevDay.setDate(prevDay.getDate() - 1);
+        const prevDayStr = prevDay.toISOString().split('T')[0];
         const prevStart = new Date(prevDay);
         prevStart.setHours(0, 0, 0, 0);
         const prevEnd = new Date(prevDay);
         prevEnd.setHours(23, 59, 59, 999);
         
-        const { data: prevInvoices, error: prevError } = await supabase
-          .from('invoices')
-          .select('total_amount, status')
-          .eq('status', 'paid')
+        const { data: prevOrders, error: prevError } = await supabase
+          .from('sales_hub_orders')
+          .select('total_amount')
+          .eq('created_by', userData.user.id)
           .gte('created_at', prevStart.toISOString())
           .lte('created_at', prevEnd.toISOString());
         
-        if (!prevError && prevInvoices) {
-          const prevSales = prevInvoices.reduce((sum: number, invoice: any) => sum + (invoice.total_amount || 0), 0);
+        // Fetch previous day expenses
+        const { data: prevExpensesData, error: prevExpensesError } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('created_by', userData.user.id)
+          .eq('expense_date', prevDayStr);
+        
+        const prevExpenses = !prevExpensesError && prevExpensesData
+          ? prevExpensesData.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
+          : 0;
+        
+        if (!prevError && prevOrders) {
+          const prevSales = prevOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+          const prevNetProfit = prevSales - prevExpenses;
+          
+          // Sales growth
           const growth = prevSales > 0 ? ((sales - prevSales) / prevSales) * 100 : 0;
           setSelectedDateGrowth(growth);
+          
+          // Expenses growth
+          const expensesGrowth = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : 0;
+          setSelectedDateExpensesGrowth(expensesGrowth);
+          
+          // Net profit growth
+          const netProfitGrowth = prevNetProfit !== 0 ? ((netProfit - prevNetProfit) / Math.abs(prevNetProfit)) * 100 : 0;
+          setSelectedDateNetProfitGrowth(netProfitGrowth);
         } else {
           setSelectedDateGrowth(0);
+          setSelectedDateExpensesGrowth(0);
+          setSelectedDateNetProfitGrowth(0);
         }
       } else {
         setSelectedDateSales(0);
+        setSelectedDateExpenses(0);
+        setSelectedDateNetProfit(0);
         setSelectedDateGrowth(0);
+        setSelectedDateExpensesGrowth(0);
+        setSelectedDateNetProfitGrowth(0);
       }
     } catch (error) {
       console.error('Error fetching sales for date:', error);
       setSelectedDateSales(0);
+      setSelectedDateExpenses(0);
+      setSelectedDateNetProfit(0);
       setSelectedDateGrowth(0);
-    } finally {
-      setDateLoading(false);
+      setSelectedDateExpensesGrowth(0);
+      setSelectedDateNetProfitGrowth(0);
     }
   };
 
@@ -306,14 +527,49 @@ const Dashboard = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Banknote className="text-green-600" size={24} />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Banknote className="text-green-600" size={24} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-600">Total Revenue</p>
+                  <p className="text-lg font-bold text-slate-900 break-words">{formatCurrency(filteredRevenue)}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-slate-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : formatCurrency(totalRevenue)}</p>
-            </div>
+            <select
+              value={revenuePeriod}
+              onChange={(e) => setRevenuePeriod(e.target.value)}
+              className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">All Time</option>
+              <optgroup label="Monthly">
+                <option value="january">January</option>
+                <option value="february">February</option>
+                <option value="march">March</option>
+                <option value="april">April</option>
+                <option value="may">May</option>
+                <option value="june">June</option>
+                <option value="july">July</option>
+                <option value="august">August</option>
+                <option value="september">September</option>
+                <option value="october">October</option>
+                <option value="november">November</option>
+                <option value="december">December</option>
+              </optgroup>
+              <optgroup label="Quarterly">
+                <option value="q1">Q1 (Jan-Mar)</option>
+                <option value="q2">Q2 (Apr-Jun)</option>
+                <option value="q3">Q3 (Jul-Sep)</option>
+                <option value="q4">Q4 (Oct-Dec)</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="6months">Last 6 Months</option>
+                <option value="annual">Annual (This Year)</option>
+              </optgroup>
+            </select>
           </div>
         </Card>
 
@@ -324,7 +580,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Active Customers</p>
-              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : activeCustomers.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-slate-900">{activeCustomers.toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -336,7 +592,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Deals Won</p>
-              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : dealsWon}</p>
+              <p className="text-2xl font-bold text-slate-900">{dealsWon}</p>
             </div>
           </div>
         </Card>
@@ -348,47 +604,171 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-600">Growth Rate</p>
-              <p className="text-2xl font-bold text-slate-900">{loading ? '...' : `+${growthRate}%`}</p>
+              <p className="text-2xl font-bold text-slate-900">{`+${growthRate}%`}</p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* AI Command Center */}
+      {/* Quick Track Money Flow */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center gap-3 mb-4">
-          <Brain className="text-yellow-300" size={28} />
+        <div className="mb-4">
           <div>
-            <h3 className="text-xl font-bold">🧠 AI Command Center</h3>
-            <p className="text-blue-100">Smart insights to boost your sales today</p>
+            <h3 className="text-xl font-bold">Quick Track Money Flow</h3>
+            <p className="text-blue-100">Real-time financial overview</p>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Sales Today */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-blue-100">Sales Today</span>
-              <span className={`text-sm font-medium ${selectedDateGrowth >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                {dateLoading ? '...' : `${selectedDateGrowth >= 0 ? '+' : ''}${selectedDateGrowth.toFixed(1)}%`}
-              </span>
-            </div>
-            <p className="text-2xl font-bold">{dateLoading ? '...' : formatCurrency(selectedDateSales)}</p>
+        {/* Date Selector */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 mb-4">
+          <label className="block text-sm text-blue-100 mb-2">Check Previous Days</label>
+          <div className="flex items-center gap-2">
+            <Calendar className="text-blue-200" size={18} />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="flex-1 bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            />
           </div>
-          
-          {/* Date Selector */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <label className="block text-sm text-blue-100 mb-2">Check Previous Days</label>
-            <div className="flex items-center gap-2">
-              <Calendar className="text-blue-200" size={18} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="bg-white/20 border border-white/30 rounded px-3 py-1 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
+        </div>
+        
+        {/* Money Flow Cards */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 mb-4">
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
+            {/* Money IN (Sales) */}
+            <div className="flex-1 max-w-[200px]">
+              <div className="bg-white rounded-xl p-4 shadow-md border-2 border-green-300 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1">
+                    <div className="p-1.5 bg-green-100 rounded-lg">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Money IN</p>
+                      <p className="text-[9px] text-slate-500">Sales</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
+                    selectedDateGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {selectedDateGrowth >= 0 ? (
+                      <ArrowUp className="h-2.5 w-2.5" />
+                    ) : (
+                      <ArrowDown className="h-2.5 w-2.5" />
+                    )}
+                    <span className="text-[10px] font-bold">{selectedDateGrowth >= 0 ? '+' : ''}{selectedDateGrowth.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-green-700">
+                  {formatCurrency(selectedDateSales)}
+                </p>
+              </div>
             </div>
+
+            {/* Minus Arrow */}
+            <div className="flex flex-col items-center gap-1">
+              <ArrowRight className="h-5 w-5 text-blue-200 hidden md:block" />
+              <ArrowDown className="h-5 w-5 text-blue-200 md:hidden" />
+              <Minus className="h-5 w-5 text-white font-bold" />
+            </div>
+
+            {/* Money OUT (Expenses) */}
+            <div className="flex-1 max-w-[200px]">
+              <div className="bg-white rounded-xl p-4 shadow-md border-2 border-red-300 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1">
+                    <div className="p-1.5 bg-red-100 rounded-lg">
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Money OUT</p>
+                      <p className="text-[9px] text-slate-500">Expenses</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
+                    selectedDateExpensesGrowth >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {selectedDateExpensesGrowth >= 0 ? (
+                      <ArrowUp className="h-2.5 w-2.5" />
+                    ) : (
+                      <ArrowDown className="h-2.5 w-2.5" />
+                    )}
+                    <span className="text-[10px] font-bold">{selectedDateExpensesGrowth >= 0 ? '+' : ''}{selectedDateExpensesGrowth.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-red-700">
+                  {formatCurrency(selectedDateExpenses)}
+                </p>
+              </div>
+            </div>
+
+            {/* Equals Arrow */}
+            <div className="flex flex-col items-center gap-1">
+              <ArrowRight className="h-5 w-5 text-blue-200 hidden md:block" />
+              <ArrowDown className="h-5 w-5 text-blue-200 md:hidden" />
+              <Equal className="h-5 w-5 text-white font-bold" />
+            </div>
+
+            {/* NET PROFIT */}
+            <div className="flex-1 max-w-[200px]">
+              <div className={`bg-white rounded-xl p-4 shadow-md border-2 ${
+                selectedDateNetProfit >= 0 
+                  ? 'border-emerald-400 hover:border-emerald-500' 
+                  : 'border-orange-400 hover:border-orange-500'
+              } hover:shadow-lg transition-all`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1">
+                    <div className={`p-1.5 rounded-lg ${
+                      selectedDateNetProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'
+                    }`}>
+                      <Banknote className={`h-4 w-4 ${
+                        selectedDateNetProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${
+                        selectedDateNetProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
+                      }`}>Net {selectedDateNetProfit >= 0 ? 'PROFIT' : 'LOSS'}</p>
+                      <p className="text-[9px] text-slate-500">Bottom Line</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
+                    selectedDateNetProfitGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {selectedDateNetProfitGrowth >= 0 ? (
+                      <ArrowUp className="h-2.5 w-2.5" />
+                    ) : (
+                      <ArrowDown className="h-2.5 w-2.5" />
+                    )}
+                    <span className="text-[10px] font-bold">{selectedDateNetProfitGrowth >= 0 ? '+' : ''}{selectedDateNetProfitGrowth.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <p className={`text-xl font-bold ${
+                  selectedDateNetProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
+                }`}>
+                  {formatCurrency(selectedDateNetProfit)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Summary */}
+          <div className="mt-3 pt-3 border-t border-white/20 text-center">
+            <p className="text-sm text-blue-100">
+              <span className="font-semibold">Financial Health:</span> 
+              {selectedDateNetProfit >= 0 ? (
+                <span className="text-green-300 font-bold ml-2">
+                  Profitable ({selectedDateSales > 0 ? ((selectedDateNetProfit / selectedDateSales) * 100).toFixed(1) : '0'}% margin)
+                </span>
+              ) : (
+                <span className="text-orange-300 font-bold ml-2">
+                  Operating at Loss
+                </span>
+              )}
+            </p>
           </div>
         </div>
       </div>
@@ -400,8 +780,34 @@ const Dashboard = () => {
             <BarChart3 className="text-primary-600" size={24} />
             <h3 className="text-xl font-bold text-slate-900">Sales Pipeline</h3>
           </div>
-          <div className="h-64 flex items-center justify-center text-slate-500">
-            Chart will be implemented here
+          <div className="h-64 flex flex-col justify-end gap-2">
+            {pipelineData.length > 0 ? (
+              <div className="flex items-end justify-around h-full gap-2 px-4">
+                {pipelineData.map((item, index) => {
+                  const maxCount = Math.max(...pipelineData.map(d => d.count), 1);
+                  const heightPercent = (item.count / maxCount) * 100;
+                  
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                      <div className="text-sm font-bold text-slate-700">{item.count}</div>
+                      <div 
+                        className={`w-full ${item.color} rounded-t-lg transition-all duration-500 hover:opacity-80 cursor-pointer`}
+                        style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                        title={`${item.stage}: ${item.count} deals`}
+                      ></div>
+                      <div className="text-xs text-slate-600 text-center font-medium">{item.stage}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400">
+                <div className="text-center">
+                  <BarChart3 className="mx-auto mb-2 opacity-50" size={32} />
+                  <p>No pipeline data yet</p>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -411,9 +817,7 @@ const Dashboard = () => {
             <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>
           </div>
           <div className="space-y-3">
-            {loading ? (
-              <div className="text-center text-slate-500 py-4">Loading activities...</div>
-            ) : recentActivities.length > 0 ? (
+            {recentActivities.length > 0 ? (
               recentActivities.map((activity, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                   <div className={`w-2 h-2 bg-${activity.color}-500 rounded-full`}></div>

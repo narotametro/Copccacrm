@@ -54,11 +54,11 @@ interface GeneratedAsset {
   color: string;
   bg: string;
   uses?: number;
+  campaign?: string;
 }
 
 export const ContentAssets: React.FC = () => {
   const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
@@ -71,11 +71,6 @@ export const ContentAssets: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  // Load campaigns on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
   const loadCampaigns = useCallback(async () => {
     try {
       // Load from localStorage first
@@ -83,7 +78,6 @@ export const ContentAssets: React.FC = () => {
       if (saved) {
         const localCampaigns = JSON.parse(saved);
         setCampaigns(localCampaigns);
-        setLoading(false);
       }
 
       // Load from Supabase if available
@@ -114,12 +108,15 @@ export const ContentAssets: React.FC = () => {
           localStorage.setItem('copcca-campaigns', JSON.stringify(supabaseCampaigns));
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Load error:', error);
-      setLoading(false);
     }
   }, [supabaseReady]);
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   // Generate assets based on campaigns
   const assets = React.useMemo(() => {
@@ -193,11 +190,7 @@ export const ContentAssets: React.FC = () => {
       </Card>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          <div className="col-span-full text-center py-8">
-            <p className="text-slate-500">Loading content assets...</p>
-          </div>
-        ) : assets.length === 0 ? (
+        {assets.length === 0 ? (
           <div className="col-span-full text-center py-8">
             <p className="text-slate-500">No content assets yet. Create campaigns to generate content!</p>
           </div>
@@ -208,7 +201,7 @@ export const ContentAssets: React.FC = () => {
               <Card key={asset.id} className="hover:shadow-lg transition-all cursor-pointer">
                 <div className="flex flex-col items-center text-center">
                   <div className={`p-3 ${asset.bg} rounded-lg mb-3`}>
-                    <Icon className={asset.color} size={28} />
+                    <Icon className={asset.color} />
                   </div>
                   <div className="font-medium text-slate-900 mb-1">{asset.name}</div>
                   <div className="text-xs text-slate-600 mb-2">{asset.type}</div>

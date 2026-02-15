@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Bell, Globe, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building, CreditCard, Crown, Settings as SettingsIcon } from 'lucide-react';
+import { Bell, Globe, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building, CreditCard, Crown, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
@@ -7,17 +7,19 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { BillingHistory } from '@/components/ui/BillingHistory';
 import { SubscriptionManagement } from '@/components/ui/SubscriptionManagement';
+import { SMSSettings } from '@/components/settings/SMSSettings';
 
 export const Settings: React.FC = () => {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'general' | 'billing' | 'subscription' | 'locations'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'billing' | 'subscription' | 'locations' | 'sms'>('general');
   const [companyInfo, setCompanyInfo] = useState({
     name: '',
-    industry: '',
-    size: '',
-    website: '',
     phone: '',
+    email: '',
+    tin: '',
     address: '',
+    city: '',
+    country: ''
   });
   const [paymentInfo, setPaymentInfo] = useState({
     m_pesa: {
@@ -66,7 +68,6 @@ export const Settings: React.FC = () => {
     city?: string;
     status: 'active' | 'inactive';
   }>>([]);
-  const [loadingLocations, setLoadingLocations] = useState(false);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -96,20 +97,21 @@ export const Settings: React.FC = () => {
             if (userData.company_id) {
               const { data: companyData } = await supabase
                 .from('companies')
-                .select('*, show_company_name_in_navbar, payment_info')
+                .select('*')
                 .eq('id', userData.company_id)
                 .single();
 
               if (companyData) {
                 setCompanyInfo({
                   name: companyData.name || '',
-                  industry: companyData.industry || '',
-                  size: companyData.size || '',
-                  website: companyData.website || '',
                   phone: companyData.phone || '',
+                  email: companyData.email || '',
+                  tin: companyData.tin || '',
                   address: companyData.address || '',
+                  city: companyData.city || '',
+                  country: companyData.country || '',
                 });
-                setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar || false);
+              setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar ?? true);
                 setPaymentInfo(companyData.payment_info || {
                   m_pesa: { paybill: '', account: '' },
                   bank_transfer: { account: '', bank: '' },
@@ -157,11 +159,12 @@ export const Settings: React.FC = () => {
               // Load the newly created company
               setCompanyInfo({
                 name: newCompany.name || '',
-                industry: newCompany.industry || '',
-                size: newCompany.size || '',
-                website: newCompany.website || '',
                 phone: newCompany.phone || '',
+                email: newCompany.email || '',
+                tin: newCompany.tin || '',
                 address: newCompany.address || '',
+                city: newCompany.city || '',
+                country: newCompany.country || ''
               });
 
               toast.success('Business profile created! Please update your business information.');
@@ -170,20 +173,21 @@ export const Settings: React.FC = () => {
             // Load existing company information
             const { data: companyData } = await supabase
               .from('companies')
-              .select('*, show_company_name_in_navbar, payment_info')
+              .select('*')
               .eq('id', userData.company_id)
               .single();
 
             if (companyData) {
               setCompanyInfo({
                 name: companyData.name || '',
-                industry: companyData.industry || '',
-                size: companyData.size || '',
-                website: companyData.website || '',
                 phone: companyData.phone || '',
+                email: companyData.email || '',
+                tin: companyData.tin || '',
                 address: companyData.address || '',
+                city: companyData.city || '',
+                country: companyData.country || ''
               });
-              setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar || false);
+              setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar ?? true);
               setPaymentInfo(companyData.payment_info || {
                 m_pesa: { paybill: '', account: '' },
                 bank_transfer: { account: '', bank: '' },
@@ -200,32 +204,86 @@ export const Settings: React.FC = () => {
     loadCompanyData();
   }, [user]);
 
-  // Load locations when locations tab is active
+  // Load user preferences and notification settings
   useEffect(() => {
-    if (activeTab === 'locations') {
-      loadLocations();
-    }
-  }, [activeTab, user]);
+    const loadUserSettings = async () => {
+      if (!user) return;
+
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('preferences, notification_settings')
+          .eq('id', user.id)
+          .single();
+
+        if (userData) {
+          // Load preferences if they exist
+          if (userData.preferences) {
+            setPreferences({
+              language: userData.preferences.language || 'en',
+              timezone: userData.preferences.timezone || 'UTC+1',
+              currency: userData.preferences.currency || 'NGN',
+              dateFormat: userData.preferences.dateFormat || 'DD/MM/YYYY'
+            });
+          }
+
+          // Load notification settings if they exist
+          if (userData.notification_settings) {
+            setNotifications({
+              email: userData.notification_settings.email ?? true,
+              push: userData.notification_settings.push ?? true,
+              sms: userData.notification_settings.sms ?? false,
+              deals: userData.notification_settings.deals ?? true,
+              tasks: userData.notification_settings.tasks ?? true,
+              reports: userData.notification_settings.reports ?? true
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user settings:', error);
+      }
+    };
+
+    loadUserSettings();
+  }, [user]);
+
+  // Preload locations on mount for instant tab switching
+  useEffect(() => {
+    loadLocations();
+  }, [user]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('New passwords do not match');
       return;
     }
+    
     if (passwordData.newPassword.length < 8) {
       toast.error('Password must be at least 8 characters');
       return;
     }
-    // Simulate password update (replace with real API call)
-    toast.success('Password updated successfully');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+    try {
+      // Update password using Supabase Auth
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) throw error;
+
+      toast.success('Password updated successfully');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      toast.error(error.message || 'Failed to update password');
+    }
   };
 
   const loadLocations = async () => {
     if (!user) return;
     
-    setLoadingLocations(true);
     try {
       // Get user's company_id
       const { data: userData } = await supabase
@@ -291,8 +349,6 @@ export const Settings: React.FC = () => {
     } catch (error) {
       console.error('Error loading locations:', error);
       toast.error('Failed to load locations');
-    } finally {
-      setLoadingLocations(false);
     }
   };
 
@@ -417,11 +473,12 @@ export const Settings: React.FC = () => {
         .from('companies')
         .update({
           name: companyInfo.name,
-          industry: companyInfo.industry,
-          size: companyInfo.size,
-          website: companyInfo.website,
           phone: companyInfo.phone,
+          email: companyInfo.email,
+          tin: companyInfo.tin,
           address: companyInfo.address,
+          city: companyInfo.city,
+          country: companyInfo.country,
           show_company_name_in_navbar: showCompanyNameInNavbar,
           payment_info: paymentInfo,
           updated_at: new Date().toISOString(),
@@ -437,24 +494,126 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handlePreferencesSave = () => {
-    toast.success('Preferences saved');
+  const handlePreferencesSave = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          preferences: {
+            language: preferences.language,
+            timezone: preferences.timezone,
+            currency: preferences.currency,
+            dateFormat: preferences.dateFormat
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Preferences saved successfully');
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      toast.error('Failed to save preferences');
+    }
   };
 
-  const handleDownloadData = () => {
-    // Simulate export (replace with real logic)
-    toast.success('Export ready. Download started.');
+  const handleDownloadData = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch user data including preferences and notifications
+      const { data: userData } = await supabase
+        .from('users')
+        .select('email, full_name, role, preferences, notification_settings')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData) {
+        toast.error('Failed to fetch user data');
+        return;
+      }
+
+      // Create export data object
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        user: {
+          email: userData.email,
+          fullName: userData.full_name,
+          role: userData.role
+        },
+        preferences: userData.preferences || preferences,
+        notificationSettings: userData.notification_settings || notifications
+      };
+
+      // Create blob and download
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `copcca-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Settings exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export settings');
+    }
   };
 
   const handleDeleteData = () => {
-    const confirmed = confirm('This will delete cached settings data on this device. Continue?');
+    const confirmed = confirm('This will clear all locally cached data including saved preferences. Your account data on the server will not be affected. Continue?');
     if (!confirmed) return;
-    // Simulate clear (replace with real logic)
-    toast.success('Local settings data removed');
+
+    try {
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+
+      toast.success('Local data cleared successfully. Refresh the page to reload from server.');
+    } catch (error) {
+      console.error('Clear data error:', error);
+      toast.error('Failed to clear local data');
+    }
   };
 
-  const toggleNotification = (key: keyof typeof notifications) => {
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleNotification = async (key: keyof typeof notifications) => {
+    const newValue = !notifications[key];
+    
+    // Update state immediately for better UX
+    setNotifications((prev) => ({ ...prev, [key]: newValue }));
+
+    // Save to database
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          notification_settings: {
+            ...notifications,
+            [key]: newValue
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      toast.success('Notification settings updated');
+    } catch (error) {
+      console.error('Failed to update notification settings:', error);
+      toast.error('Failed to update notification settings');
+      // Revert state on error
+      setNotifications((prev) => ({ ...prev, [key]: !newValue }));
+    }
   };
 
   const renderToggle = (label: string, description: string, key: keyof typeof notifications) => (
@@ -484,20 +643,20 @@ export const Settings: React.FC = () => {
     placeholder: string
   ) => (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
       <div className="relative">
         <input
           type={visible ? 'text' : 'password'}
           value={value}
           onChange={(e) => setter(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+          className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
           required
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
-          className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
+          className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
         >
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
@@ -519,11 +678,12 @@ export const Settings: React.FC = () => {
             { id: 'general', label: 'General', icon: SettingsIcon },
             { id: 'billing', label: 'Billing', icon: CreditCard },
             { id: 'subscription', label: 'Subscription', icon: Crown },
+            { id: 'sms', label: 'SMS / Automation', icon: MessageSquare },
             { id: 'locations', label: 'Locations', icon: Building }
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(tab.id as 'general' | 'billing' | 'subscription' | 'locations' | 'sms')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600 dark:text-primary-400'
@@ -571,61 +731,67 @@ export const Settings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Industry</label>
-                  <input
-                    type="text"
-                    value={companyInfo.industry}
-                    onChange={(e) => setCompanyInfo({ ...companyInfo, industry: e.target.value })}
-                    placeholder="Technology, Retail, etc."
-                    disabled={!isCompanyOwner}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Size</label>
-                  <select
-                    value={companyInfo.size}
-                    onChange={(e) => setCompanyInfo({ ...companyInfo, size: e.target.value })}
-                    disabled={!isCompanyOwner}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Select size</option>
-                    <option value="1-10">1-10 employees</option>
-                    <option value="11-50">11-50 employees</option>
-                    <option value="51-200">51-200 employees</option>
-                    <option value="201-500">201-500 employees</option>
-                    <option value="500+">500+ employees</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Website</label>
-                  <input
-                    type="url"
-                    value={companyInfo.website}
-                    onChange={(e) => setCompanyInfo({ ...companyInfo, website: e.target.value })}
-                    placeholder="https://example.com"
-                    disabled={!isCompanyOwner}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
                   <input
                     type="tel"
                     value={companyInfo.phone}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
-                    placeholder="+234 800 000 0000"
+                    placeholder="+255 XXX XXX XXX"
                     disabled={!isCompanyOwner}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={companyInfo.email}
+                    onChange={(e) => setCompanyInfo({ ...companyInfo, email: e.target.value })}
+                    placeholder="admin@company.com"
+                    disabled={!isCompanyOwner}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">TIN</label>
+                  <input
+                    type="text"
+                    value={companyInfo.tin}
+                    onChange={(e) => setCompanyInfo({ ...companyInfo, tin: e.target.value })}
+                    placeholder="123456789"
+                    disabled={!isCompanyOwner}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Business Address</label>
                   <input
                     type="text"
                     value={companyInfo.address}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
-                    placeholder="123 Business Ave, Lagos"
+                    placeholder="123 Business Ave, District"
+                    disabled={!isCompanyOwner}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={companyInfo.city}
+                    onChange={(e) => setCompanyInfo({ ...companyInfo, city: e.target.value })}
+                    placeholder="Dar es Salaam"
+                    disabled={!isCompanyOwner}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Country</label>
+                  <input
+                    type="text"
+                    value={companyInfo.country}
+                    onChange={(e) => setCompanyInfo({ ...companyInfo, country: e.target.value })}
+                    placeholder="Tanzania"
                     disabled={!isCompanyOwner}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
@@ -855,37 +1021,67 @@ export const Settings: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Timezone</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Timezone</label>
                   <select
                     value={preferences.timezone}
                     onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                   >
+                    <option value="UTC-12">UTC-12</option>
+                    <option value="UTC-11">UTC-11</option>
+                    <option value="UTC-10">UTC-10</option>
+                    <option value="UTC-9">UTC-9</option>
+                    <option value="UTC-8">UTC-8 (PST)</option>
+                    <option value="UTC-7">UTC-7 (MST)</option>
+                    <option value="UTC-6">UTC-6 (CST)</option>
+                    <option value="UTC-5">UTC-5 (EST)</option>
+                    <option value="UTC-4">UTC-4</option>
+                    <option value="UTC-3">UTC-3</option>
+                    <option value="UTC-2">UTC-2</option>
                     <option value="UTC-1">UTC-1</option>
-                    <option value="UTC">UTC</option>
-                    <option value="UTC+1">UTC+1</option>
-                    <option value="UTC+2">UTC+2</option>
+                    <option value="UTC">UTC (GMT)</option>
+                    <option value="UTC+1">UTC+1 (WAT - West Africa)</option>
+                    <option value="UTC+2">UTC+2 (CAT - Central Africa)</option>
+                    <option value="UTC+3">UTC+3 (EAT - East Africa)</option>
+                    <option value="UTC+4">UTC+4</option>
+                    <option value="UTC+5">UTC+5</option>
+                    <option value="UTC+5:30">UTC+5:30 (IST)</option>
+                    <option value="UTC+6">UTC+6</option>
+                    <option value="UTC+7">UTC+7</option>
+                    <option value="UTC+8">UTC+8 (China, Singapore)</option>
+                    <option value="UTC+9">UTC+9 (Japan, Korea)</option>
+                    <option value="UTC+10">UTC+10</option>
+                    <option value="UTC+11">UTC+11</option>
+                    <option value="UTC+12">UTC+12</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Currency</label>
                   <select
                     value={preferences.currency}
                     onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                   >
                     <option value="NGN">NGN - Nigerian Naira</option>
+                    <option value="TZS">TZS - Tanzanian Shilling</option>
+                    <option value="KES">KES - Kenyan Shilling</option>
+                    <option value="UGX">UGX - Ugandan Shilling</option>
+                    <option value="ZAR">ZAR - South African Rand</option>
+                    <option value="GHS">GHS - Ghanaian Cedi</option>
                     <option value="USD">USD - US Dollar</option>
-                    <option value="GBP">GBP - British Pound</option>
                     <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="CNY">CNY - Chinese Yuan</option>
+                    <option value="INR">INR - Indian Rupee</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Date format</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date format</label>
                   <select
                     value={preferences.dateFormat}
                     onChange={(e) => setPreferences({ ...preferences, dateFormat: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                   >
                     <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                     <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -910,8 +1106,8 @@ export const Settings: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <div className="flex items-center gap-2 mb-4">
-                <Lock className="text-primary-600" size={20} />
-                <h2 className="text-xl font-bold text-slate-900">Security</h2>
+                <Lock className="text-primary-600 dark:text-primary-400" size={20} />
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Security</h2>
               </div>
               <form className="space-y-4" onSubmit={handlePasswordChange}>
                 {renderPasswordField(
@@ -956,10 +1152,10 @@ export const Settings: React.FC = () => {
 
           <Card>
             <div className="flex items-center gap-2 mb-3">
-              <Database className="text-primary-600" size={20} />
-              <h2 className="text-xl font-bold text-slate-900">Data & privacy</h2>
+              <Database className="text-primary-600 dark:text-primary-400" size={20} />
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Data & privacy</h2>
             </div>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
               Export your settings for backup or clear locally cached preferences.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -982,10 +1178,14 @@ export const Settings: React.FC = () => {
         <SubscriptionManagement />
       )}
 
+      {activeTab === 'sms' && (
+        <SMSSettings />
+      )}
+
       {activeTab === 'locations' && (
         <LocationsManagement 
           locations={locations}
-          loading={loadingLocations}
+          loading={false}
           onSave={saveLocation}
           onUpdate={updateLocation}
           onDelete={deleteLocation}
@@ -1073,22 +1273,27 @@ const LocationsManagement: React.FC<{
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+        <div className="grid gap-4">
+          {/* Show skeleton loading cards instead of spinner */}
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="p-4 animate-pulse">
+              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-2"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+            </Card>
+          ))}
         </div>
+      ) : locations.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Building className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No locations yet</h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">Add your first location to start managing inventory and POS operations.</p>
+          {canAddMore && (
+            <Button onClick={() => setShowAddModal(true)}>Add Your First Location</Button>
+          )}
+        </Card>
       ) : (
         <div className="grid gap-4">
-          {locations.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Building className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No locations yet</h3>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">Add your first location to start managing inventory and POS operations.</p>
-              {canAddMore && (
-                <Button onClick={() => setShowAddModal(true)}>Add Your First Location</Button>
-              )}
-            </Card>
-          ) : (
-            locations.map((location) => (
+          {locations.map((location) => (
               <Card key={location.id} className="p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -1136,10 +1341,10 @@ const LocationsManagement: React.FC<{
                   </div>
                 </div>
               </Card>
-            ))
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        )
+      }
 
       {/* Add Location Modal */}
       {showAddModal && (

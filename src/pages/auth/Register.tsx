@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, UserPlus, Eye, EyeOff, Building, Check, Crown, Zap, TrendingUp, Users, LucideIcon } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Eye, EyeOff, Building, Check, Zap, TrendingUp, Users, LucideIcon } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
@@ -116,7 +116,6 @@ export const Register: React.FC = () => {
       const signUpResult = await signUp(email, password, fullName, {
         companyName,
         phone,
-        selectedPlan,
       });
 
       // Create subscription record

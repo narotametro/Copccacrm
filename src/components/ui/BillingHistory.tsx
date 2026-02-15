@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  CreditCard,
   Download,
   Receipt,
   Calendar,
-  DollarSign,
+  Banknote,
   CheckCircle,
   XCircle,
   Clock,
   RefreshCw,
-  TrendingUp,
   BarChart3,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -42,7 +40,7 @@ export const BillingHistory: React.FC = () => {
 
   const fetchBillingData = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       const [billingHistory, currentUsage, userSubscription] = await Promise.all([
         getBillingHistory(),
         getCurrentUsage(),
@@ -219,7 +217,7 @@ export const BillingHistory: React.FC = () => {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="w-5 h-5 text-green-600" />
+              <Banknote className="w-5 h-5 text-green-600" />
             </div>
             <div>
               <p className="text-sm text-slate-600">Total Paid</p>

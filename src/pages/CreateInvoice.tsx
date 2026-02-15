@@ -112,11 +112,15 @@ const CreateInvoice: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
       // Load companies for invoice customers
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, email, phone, industry, status')
         .eq('status', 'active')
+        .eq('created_by', userData.user.id)
         .order('name');
 
       if (error) throw error;
@@ -285,7 +289,7 @@ const CreateInvoice: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    // Removed setLoading(true) - keep UI responsive during save
     try {
       // Generate invoice number
       const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
@@ -433,11 +437,6 @@ const CreateInvoice: React.FC = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <Building className="text-slate-600" size={16} />
                       <span className="font-medium">{selectedCompanyData.name}</span>
-                      {selectedCompanyData.industry && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                          {selectedCompanyData.industry}
-                        </span>
-                      )}
                     </div>
                     <div className="text-sm text-slate-600 space-y-1">
                       {selectedCompanyData.email && (
@@ -445,9 +444,6 @@ const CreateInvoice: React.FC = () => {
                       )}
                       {selectedCompanyData.phone && (
                         <div>Phone: {selectedCompanyData.phone}</div>
-                      )}
-                      {selectedCompanyData.website && (
-                        <div>Website: {selectedCompanyData.website}</div>
                       )}
                     </div>
                   </div>

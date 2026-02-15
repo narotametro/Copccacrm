@@ -54,7 +54,7 @@ export const CashPaymentModal: React.FC<CashPaymentModalProps> = ({
 
   const loadSubscriptions = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       let query = supabase
         .from('user_subscriptions')
         .select(`
@@ -82,15 +82,31 @@ export const CashPaymentModal: React.FC<CashPaymentModalProps> = ({
 
       if (error) throw error;
 
-      setSubscriptions(data || []);
+      // Transform data to match Subscription interface
+      const transformedData = (data || []).map(item => ({
+        id: item.id,
+        user_id: item.user_id,
+        plan_id: item.plan_id,
+        status: item.status,
+        subscription_plans: Array.isArray(item.subscription_plans) 
+          ? item.subscription_plans[0] 
+          : item.subscription_plans,
+        users: Array.isArray(item.users) 
+          ? item.users[0] 
+          : item.users
+      })) as Subscription[];
+
+      setSubscriptions(transformedData);
 
       // Auto-select if subscriptionId is provided
       if (subscriptionId) {
         setSelectedSubscription(subscriptionId);
-        const sub = data?.find(s => s.id === subscriptionId);
+        const sub = transformedData?.find(s => s.id === subscriptionId);
         if (sub) {
-          setAmount(sub.subscription_plans.price_monthly.toString());
-          setCustomerName(sub.users.full_name);
+          const planData = Array.isArray(sub.subscription_plans) ? sub.subscription_plans[0] : sub.subscription_plans;
+          const userData = Array.isArray(sub.users) ? sub.users[0] : sub.users;
+          setAmount(planData?.price_monthly?.toString() || '');
+          setCustomerName(userData?.full_name || '');
         }
       }
     } catch (error) {
@@ -113,7 +129,7 @@ export const CashPaymentModal: React.FC<CashPaymentModalProps> = ({
 
     try {
       // Record cash payment
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('record_cash_payment', {
           p_subscription_id: selectedSubscription,
           p_amount: parseFloat(amount),

@@ -2,6 +2,9 @@ import { create } from 'zustand';
 // // import { persist } from 'zustand/middleware';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import { rateLimiter, RateLimitError } from '@/lib/security/rateLimiter';
+import { logLogin, logLogout, getBrowserInfo } from '@/lib/security/auditLogger';
+import { generateDeviceFingerprint, storeSessionFingerprint, checkConcurrentSessionLimit } from '@/lib/security/sessionFingerprint';
 
 interface AuthState {
   user: User | null;
@@ -38,7 +41,7 @@ export interface UserProfile {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   profile: null,
-  loading: true,
+  loading: false, // Start false for instant rendering!
 
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
@@ -48,14 +51,71 @@ export const useAuthStore = create<AuthState>((set) => ({
       throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
     }
 
+    const browserInfo = getBrowserInfo();
+
+    // Check rate limit for this email
+    if (!rateLimiter.checkLimit(email)) {
+      const retryAfter = rateLimiter.getBlockedTimeRemaining(email);
+      throw new RateLimitError(
+        `Too many login attempts. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+        retryAfter
+      );
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      // Record failed attempt
+      rateLimiter.recordFailedAttempt(email);
+      
+      // Log failed login attempt
+      await logLogin(
+        '', // No user ID yet
+        false,
+        browserInfo.ipAddress,
+        browserInfo.userAgent,
+        error.message
+      );
+      
+      throw error;
+    }
 
     if (data.user) {
+      // Reset rate limit on successful login
+      rateLimiter.reset(email);
+
+      // Log successful login
+      await logLogin(
+        data.user.id,
+        true,
+        browserInfo.ipAddress,
+        browserInfo.userAgent
+      );
+
+      // Check concurrent session limit
+      const sessionLimit = await checkConcurrentSessionLimit(data.user.id, 3);
+      if (!sessionLimit.allowed) {
+        console.warn(`User has ${sessionLimit.activeCount} active sessions (limit: 3)`);
+        // You can choose to block or just warn
+      }
+
+      // Generate and store session fingerprint
+      const fingerprint = generateDeviceFingerprint();
+      const sessionToken = data.session?.access_token || '';
+      const expiresAt = data.session?.expires_at
+        ? new Date(data.session.expires_at * 1000)
+        : new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours default
+
+      await storeSessionFingerprint(
+        data.user.id,
+        sessionToken,
+        fingerprint,
+        expiresAt
+      );
+
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
@@ -63,7 +123,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         .maybeSingle();
 
       if (profileError) {
-        console.warn('Error fetching profile on sign in:', profileError);
+        // Don't log AbortErrors - they're expected during navigation/remounts
+        if (!(profileError instanceof DOMException && profileError.name === 'AbortError')) {
+          console.warn('Error fetching profile on sign in:', profileError);
+        }
         // Use auth metadata as fallback
         const fallbackProfile: UserProfile = {
           id: data.user.id,
@@ -204,6 +267,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
 
+    const { user } = useAuthStore.getState();
+    const browserInfo = getBrowserInfo();
+
+    // Log logout
+    if (user) {
+      await logLogout(user.id, browserInfo.ipAddress, browserInfo.userAgent);
+    }
+
     await supabase.auth.signOut();
     set({ user: null, profile: null });
   },
@@ -221,36 +292,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initialize: async () => {
-    // Set a shorter timeout for faster loading
-    const timeoutId = setTimeout(() => {
-      console.warn('Auth initialization timeout, setting loading to false');
-      set({ loading: false });
-    }, 1000); // Reduced from 2000ms to 1000ms
-
     try {
       // Check if Supabase is properly configured
       if (!isSupabaseConfigured) {
-        console.warn('Supabase not configured, skipping auth initialization');
-        clearTimeout(timeoutId);
-        set({ loading: false });
-        return;
+        return; // Silent fail, app still works
       }
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('Session error:', sessionError);
-        clearTimeout(timeoutId);
-        set({ loading: false });
+        // Don't log AbortErrors - they're expected during navigation/remounts
+        if (!(sessionError instanceof DOMException && sessionError.name === 'AbortError')) {
+          console.error('Session error:', sessionError);
+        }
         return;
       }
 
       if (session?.user) {
-        // Set user immediately, fetch profile in background
-        set({ user: session.user, loading: false });
-        clearTimeout(timeoutId);
+        // Set user immediately
+        set({ user: session.user });
         
-        // Fetch profile without blocking (only once)
+        // Fetch profile in background (non-blocking)
         const fetchProfile = async () => {
           try {
             const { data: profile, error: profileError } = await supabase
@@ -260,7 +322,12 @@ export const useAuthStore = create<AuthState>((set) => ({
               .maybeSingle();
             
             if (profileError) {
-              console.warn('Profile fetch error:', profileError.message, profileError.code);
+              // Don't log AbortErrors - they're expected during navigation/remounts
+              if (profileError.code === 'PGRST301' || (profileError instanceof DOMException && profileError.name === 'AbortError')) {
+                // Silently ignore AbortErrors
+              } else {
+                console.warn('Profile fetch error:', profileError.message, profileError.code);
+              }
               // Create a default profile from auth metadata if DB profile doesn't exist
               const defaultProfile: UserProfile = {
                 id: session.user.id,
@@ -277,7 +344,10 @@ export const useAuthStore = create<AuthState>((set) => ({
               set({ profile: profile || null });
             }
           } catch (profileErr) {
-            console.warn('Error fetching profile:', profileErr);
+            // Don't log AbortErrors - they're expected during navigation/remounts
+            if (!(profileErr instanceof DOMException && profileErr.name === 'AbortError')) {
+              console.warn('Error fetching profile:', profileErr);
+            }
             // Use fallback profile from auth metadata
             const fallbackProfile: UserProfile = {
               id: session.user.id,
@@ -293,18 +363,11 @@ export const useAuthStore = create<AuthState>((set) => ({
           }
         };
         fetchProfile();
-      } else {
-        clearTimeout(timeoutId);
-        set({ loading: false });
       }
     } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        // Suppress AbortError, just set loading to false
-        set({ loading: false });
-      } else {
+      // Don't log AbortErrors - they're expected during navigation/remounts
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
         console.error('Auth initialization error:', error);
-        set({ loading: false });
       }
     }
   },

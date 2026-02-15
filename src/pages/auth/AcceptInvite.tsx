@@ -25,6 +25,9 @@ export const AcceptInvite: React.FC = () => {
   const emailParam = params.get('email');
 
   const [invite, setInvite] = useState<InviteRow | null>(null);
+  const [companyName, setCompanyName] = useState<string>('');
+  const [adminName, setAdminName] = useState<string>('');
+  const [planName, setPlanName] = useState<string>('');
   const [status, setStatus] = useState<InvitationStatus>('validating');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
@@ -64,6 +67,35 @@ export const AcceptInvite: React.FC = () => {
       }
 
       setInvite(data);
+
+      // Fetch inviter's company and plan information
+      const { data: inviterData } = await supabase
+        .from('users')
+        .select('company_id, full_name, companies(name)')
+        .eq('id', data.created_by)
+        .single();
+
+      if (inviterData) {
+        setAdminName(inviterData.full_name || 'Admin');
+        const companyInfo = inviterData.companies as any;
+        setCompanyName(companyInfo?.name || 'the company');
+
+        // Get inviter's subscription plan
+        const { data: subscriptionData } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_plans(display_name)')
+          .eq('user_id', data.created_by)
+          .in('status', ['trial', 'active'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (subscriptionData) {
+          const planInfo = subscriptionData.subscription_plans as any;
+          setPlanName(planInfo?.display_name || 'START');
+        }
+      }
+
       setStatus('ready');
     };
 
@@ -235,6 +267,20 @@ export const AcceptInvite: React.FC = () => {
 
         {status === 'ready' && invite && (
           <form className="space-y-4" onSubmit={handleAccept}>
+            {/* Company Info Banner */}
+            <div className="p-4 bg-gradient-to-r from-primary-50 to-purple-50 border-2 border-primary-200 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary-600" />
+                <h3 className="font-bold text-lg text-slate-900">Join {companyName}</h3>
+              </div>
+              <div className="text-sm text-slate-700 space-y-1">
+                <p>✓ Invited by: <span className="font-semibold">{adminName}</span></p>
+                <p>✓ Your role: <span className="font-semibold">{invite.role.toUpperCase()}</span></p>
+                {planName && <p>✓ Subscription: <span className="font-semibold">{planName} Plan</span></p>}
+                {invite.department && <p>✓ Department: <span className="font-semibold">{invite.department}</span></p>}
+              </div>
+            </div>
+
             <Input label="Email" value={invite.email} icon={Mail} disabled />
             <Input
               label="Full name"
@@ -264,13 +310,9 @@ export const AcceptInvite: React.FC = () => {
               required
               minLength={8}
             />
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700">
-              <p className="font-semibold">You will join as: {invite.role.toUpperCase()}</p>
-              <p>Expires: {new Date(invite.expires_at).toLocaleString()}</p>
-            </div>
             <div className="flex gap-3">
               <Button type="submit" disabled={loading} icon={CheckCircle}>
-                {loading ? 'Creating account...' : 'Accept invitation'}
+                {loading ? 'Creating account...' : `Join ${companyName}`}
               </Button>
               <Button variant="secondary" type="button" onClick={() => navigate('/login')}>
                 Cancel

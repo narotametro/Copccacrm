@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Activity, Lock, Eye, EyeOff, UserPlus, Save, RefreshCw, AlertTriangle, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { Database, Activity, Lock, Eye, EyeOff, UserPlus, Save, RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';

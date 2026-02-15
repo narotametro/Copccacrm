@@ -35,11 +35,6 @@ export const StrategyCampaignMapping: React.FC = () => {
     budget: '',
   });
 
-  // Load data on component mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
   const loadCampaigns = useCallback(() => {
     try {
       const saved = localStorage.getItem('copcca-campaigns');
@@ -50,6 +45,11 @@ export const StrategyCampaignMapping: React.FC = () => {
       console.error('Failed to load campaigns:', error);
     }
   }, []);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
   const generateMappings = (campaignData: Campaign[]) => {
     // Group campaigns by channel/type as strategy

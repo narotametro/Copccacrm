@@ -50,12 +50,6 @@ export const BudgetAllocation: React.FC = () => {
     expectedIncrease: 450000,
   });
 
-  // Load campaigns and budgets on mount
-  useEffect(() => {
-    loadCampaigns();
-    loadBudgets();
-  }, [loadCampaigns, loadBudgets]);
-
   // Load campaigns from localStorage
   const loadCampaigns = useCallback(() => {
     try {
@@ -66,23 +60,6 @@ export const BudgetAllocation: React.FC = () => {
       console.error('Failed to load campaigns:', error);
     }
   }, []);
-
-  // Load budgets from localStorage
-  const loadBudgets = useCallback(() => {
-    try {
-      const saved = localStorage.getItem('copcca-budget-allocations');
-      if (saved) {
-        const budgetData = JSON.parse(saved);
-        setBudgets(budgetData);
-      } else {
-        // Generate initial budgets from campaigns if no saved budgets
-        generateBudgetsFromCampaigns();
-      }
-    } catch (error) {
-      console.error('Failed to load budgets:', error);
-      generateBudgetsFromCampaigns();
-    }
-  }, [generateBudgetsFromCampaigns]);
 
   // Generate budget allocations from campaign data
   const generateBudgetsFromCampaigns = useCallback(() => {
@@ -125,6 +102,29 @@ export const BudgetAllocation: React.FC = () => {
 
     setBudgets(generatedBudgets);
   }, [campaigns]);
+
+  // Load budgets from localStorage
+  const loadBudgets = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('copcca-budget-allocations');
+      if (saved) {
+        const budgetData = JSON.parse(saved);
+        setBudgets(budgetData);
+      } else {
+        // Generate initial budgets from campaigns if no saved budgets
+        generateBudgetsFromCampaigns();
+      }
+    } catch (error) {
+      console.error('Failed to load budgets:', error);
+      generateBudgetsFromCampaigns();
+    }
+  }, [generateBudgetsFromCampaigns]);
+
+  // Load campaigns and budgets on mount
+  useEffect(() => {
+    loadCampaigns();
+    loadBudgets();
+  }, [loadCampaigns, loadBudgets]);
 
   // Regenerate budgets when campaigns change
   useEffect(() => {

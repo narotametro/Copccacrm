@@ -181,6 +181,9 @@ export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children
       }
 
       try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
         const { data, error } = await supabase
           .from('invoices')
           .select(`
@@ -197,9 +200,14 @@ export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children
               line_total
             )
           `)
+          .eq('created_by', userData.user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
+          // Don't log AbortErrors - they're expected during navigation/remounts
+          if (error.code === 'PGRST301' || (error instanceof DOMException && error.name === 'AbortError')) {
+            return; // Silently ignore AbortErrors
+          }
           console.error('Error loading invoices:', error);
           return;
         }
@@ -208,11 +216,83 @@ export const SharedDataProvider: React.FC<{ children: ReactNode }> = ({ children
           setInvoices(data);
         }
       } catch (error) {
+        // Don't log AbortErrors - they're expected during navigation/remounts
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return; // Silently ignore AbortErrors
+        }
         console.error('Error loading invoices:', error);
       }
     };
 
     loadInvoices();
+  }, []);
+
+  // Load real deals data from Supabase
+  useEffect(() => {
+    const loadDeals = async () => {
+      if (!isSupabaseConfigured) {
+        console.warn('Supabase not configured, skipping deals data load');
+        return;
+      }
+
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const { data, error } = await supabase
+          .from('deals')
+          .select(`
+            *,
+            companies (
+              id,
+              name
+            ),
+            profiles:assigned_to (
+              full_name,
+              email
+            )
+          `)
+          .eq('created_by', userData.user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          // Don't log AbortErrors - they're expected during navigation/remounts
+          if (error.code === 'PGRST301' || (error instanceof DOMException && error.name === 'AbortError')) {
+            return; // Silently ignore AbortErrors
+          }
+          console.error('Error loading deals:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Transform to match Deal interface
+          const transformedDeals = data.map(deal => ({
+            id: deal.id,
+            title: deal.title,
+            customer_id: deal.company_id, // Map company_id to customer_id
+            customer_name: deal.companies?.name || 'Unknown',
+            value: deal.value,
+            stage: deal.stage,
+            probability: deal.probability || 50,
+            products: [], // Not in DB, default to empty array
+            expected_close_date: deal.expected_close_date || '',
+            sales_rep: deal.profiles?.full_name || deal.profiles?.email || 'Unassigned',
+            lead_source: '', // Not in DB, default to empty
+            competitors: [], // Not in DB, default to empty array
+            created_date: deal.created_at,
+          }));
+          setDeals(transformedDeals);
+        }
+      } catch (error) {
+        // Don't log AbortErrors - they're expected during navigation/remounts
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return; // Silently ignore AbortErrors
+        }
+        console.error('Error loading deals:', error);
+      }
+    };
+
+    loadDeals();
   }, []);
 
   const getCustomerById = (id: string) => customers.find(c => c.id === id);

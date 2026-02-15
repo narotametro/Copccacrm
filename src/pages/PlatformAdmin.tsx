@@ -87,16 +87,16 @@ export const PlatformAdmin: React.FC = () => {
 
   const fetchRealData = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - show UI immediately
       
-      // Fetch user profiles and companies
-      const { data: profiles, error: profilesError } = await supabase
-        .from('users')
-        .select('*');
+      // PARALLEL API CALLS - fetch profiles and companies simultaneously
+      const [profilesResult, companiesResult] = await Promise.all([
+        supabase.from('users').select('*'),
+        supabase.from('companies').select('*')
+      ]);
 
-      const { data: companies } = await supabase
-        .from('companies')
-        .select('*');
+      const { data: profiles, error: profilesError } = profilesResult;
+      const { data: companies } = companiesResult;
 
       if (profilesError) {
         console.error('Profiles error:', profilesError);
@@ -206,18 +206,6 @@ export const PlatformAdmin: React.FC = () => {
     suspendedAccounts: subscriptions.filter(s => s.status === 'suspended').length,
     pastDueAccounts: subscriptions.filter(s => s.status === 'past_due').length,
   };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <RefreshCw className="animate-spin mx-auto mb-4 text-purple-600" size={48} />
-          <p className="text-white text-lg">Loading real data from database...</p>
-        </div>
-      </div>
-    );
-  }
 
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesSearch = sub.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -435,7 +423,19 @@ export const PlatformAdmin: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-blue-500 bg-white/5 backdrop-blur-sm">
+        {loading ? (
+          // Show skeleton loading cards
+          [1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-l-4 border-slate-700 bg-white/5 backdrop-blur-sm animate-pulse">
+              <div className="h-6 w-6 bg-slate-700 rounded mb-2"></div>
+              <div className="h-4 bg-slate-700 rounded w-24 mb-2"></div>
+              <div className="h-8 bg-slate-700 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-slate-700 rounded w-20"></div>
+            </Card>
+          ))
+        ) : (
+          <>
+            <Card className="border-l-4 border-blue-500 bg-white/5 backdrop-blur-sm">
           <Users className="text-blue-400 mb-2" size={24} />
           <p className="text-sm text-white/70">Total Companies</p>
           <p className="text-3xl font-bold text-white">{stats.totalCompanies}</p>
@@ -459,6 +459,8 @@ export const PlatformAdmin: React.FC = () => {
           <p className="text-2xl font-bold text-white break-words">₦{(stats.monthlyRevenue / 1000).toFixed(0)}K</p>
           <p className="text-xs text-white/70 mt-1 break-words">Avg: ₦{(stats.monthlyRevenue / stats.activeSubscriptions / 1000).toFixed(0)}K</p>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Secondary Stats */}

@@ -31,6 +31,8 @@ interface PrintableInvoiceProps {
   businessInfo?: {
     name: string;
     address?: string;
+    city?: string;
+    country?: string;
     phone?: string;
     email?: string;
     tin?: string;
@@ -42,7 +44,9 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
   items = [],
   businessInfo = {
     name: 'COPCCA CRM',
-    address: 'Business Address\nCity, Country',
+    address: 'Business Address',
+    city: 'City',
+    country: 'Country',
     phone: '+255 XXX XXX XXX',
     email: 'info@copcca.com',
     tin: '123456789'
@@ -57,7 +61,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
 
   return (
     <div className="printable-invoice">
-      <style jsx>{`
+      <style>{`
         .printable-invoice {
           font-family: Arial, Helvetica, sans-serif;
           background: #f4f4f4;
@@ -233,7 +237,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({
         <div className="top">
           <div className="business">
             <strong>{businessInfo.name}</strong><br />
-            {businessInfo.address}<br />
+            {businessInfo.address && `${businessInfo.address}`}<br />
+            {(businessInfo.city || businessInfo.country) && `${businessInfo.city || ''}${businessInfo.city && businessInfo.country ? ', ' : ''}${businessInfo.country || ''}`}<br />
             Phone: {businessInfo.phone}<br />
             Email: {businessInfo.email}<br />
             {businessInfo.tin && `TIN: ${businessInfo.tin}`}
