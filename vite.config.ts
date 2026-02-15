@@ -10,44 +10,27 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Vendor chunks
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-vendor';
-            }
-            if (id.includes('lucide-react') || id.includes('@supabase') || id.includes('zustand')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('date-fns') || id.includes('xlsx') || id.includes('jspdf')) {
-              return 'utils-vendor';
-            }
-            return 'vendor';
+          // Only split critical React libs to prevent useState issues
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor';
           }
-
-          // Feature-based chunks for instant loading
-          if (id.includes('/pages/')) {
-            if (id.includes('/auth/')) return 'auth-pages';
-            if (id.includes('/admin/')) return 'admin-pages';
-            if (id.includes('Dashboard') || id.includes('Customers') || id.includes('SalesHub')) {
-              return 'core-pages';
-            }
-            return 'feature-pages';
+          if (id.includes('node_modules/react-router')) {
+            return 'react-router-vendor';
           }
-
-          // Component chunks
-          if (id.includes('/components/ui/')) return 'ui-components';
-          if (id.includes('/components/layout/')) return 'layout-components';
-
-          // Keep critical app code together
-          if (id.includes('App.tsx') || id.includes('main.tsx')) return 'app-core';
+          // Everything else in default chunks (let Vite decide)
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js'
       }
     },
-    // Optimize chunk size
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1500,
+    sourcemap: false,
+    // Ensure proper module resolution
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
+    }
   },
   plugins: [
     react(),
