@@ -209,21 +209,23 @@ export const AppLayout: React.FC = () => {
           }
 
           // Load team members for filter
-          const { data: companyUsers } = await supabase
-            .from('users')
-            .select('id, full_name, role')
-            .eq('company_id', companyId)
-            .order('full_name');
+          if (companyId && companyId !== 'undefined') {
+            const { data: companyUsers } = await supabase
+              .from('users')
+              .select('id, full_name, role')
+              .eq('company_id', companyId)
+              .order('full_name');
 
-          if (companyUsers) {
-            setTeamMembers([
-              { id: 'all', name: 'All Users', role: '' },
-              ...companyUsers.map((u: Database['public']['Tables']['users']['Row']) => ({
-                id: u.id,
-                name: u.full_name,
-                role: u.role,
-              })),
-            ]);
+            if (companyUsers) {
+              setTeamMembers([
+                { id: 'all', name: 'All Users', role: '' },
+                ...companyUsers.map((u: Database['public']['Tables']['users']['Row']) => ({
+                  id: u.id,
+                  name: u.full_name,
+                  role: u.role,
+                })),
+              ]);
+            }
           }
         }
       } catch (error) {
