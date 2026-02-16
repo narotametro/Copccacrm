@@ -370,9 +370,11 @@ export async function getTrialStatus(): Promise<{
 
     if (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        console.error('Error getting trial status:', error);
+      if (error.message?.includes('AbortError') || error.message?.includes('aborted') || 
+          (error instanceof DOMException && error.name === 'AbortError')) {
+        return null;
       }
+      console.error('Error getting trial status:', error);
       return null;
     }
 
@@ -384,11 +386,13 @@ export async function getTrialStatus(): Promise<{
       canAccessFeatures: data.canAccessFeatures,
       message: data.isTrial ? `${data.daysLeft} days left in trial` : 'Active subscription'
     };
-  } catch (error) {
+  } catch (error: any) {
     // Don't log AbortErrors - they're expected during navigation/remounts
-    if (!(error instanceof DOMException && error.name === 'AbortError')) {
-      console.error('Error getting trial status:', error);
+    if (error?.message?.includes('AbortError') || error?.message?.includes('aborted') || 
+        (error instanceof DOMException && error.name === 'AbortError')) {
+      return null;
     }
+    console.error('Error getting trial status:', error);
     return null;
   }
 }
