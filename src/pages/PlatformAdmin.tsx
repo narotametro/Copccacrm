@@ -148,7 +148,7 @@ export const PlatformAdmin: React.FC = () => {
         }
 
         return {
-          id: adminUser.id,
+          id: company?.id || adminUser.id, // Use company ID if available
           companyName: company?.name || `${domain.split('.')[0].toUpperCase()} Company`,
           adminEmail: adminUser.email || '',
           adminName: adminUser.full_name || adminUser.email?.split('@')[0] || 'Unknown',
@@ -162,7 +162,7 @@ export const PlatformAdmin: React.FC = () => {
           lastPayment: isTrial ? 'N/A' : createdDate.toISOString().split('T')[0],
           totalRevenue: isTrial ? 0 : monthlyFee * Math.ceil(daysSinceCreation / 30),
           trialDaysLeft: isTrial ? Math.max(0, 7 - daysSinceCreation) : undefined,
-          showPaymentPopup: false,
+          showPaymentPopup: company?.show_payment_popup || false, // Read from database
           users: users.map(u => ({
             id: u.id,
             name: u.full_name || u.email?.split('@')[0] || 'Unknown',
@@ -264,13 +264,34 @@ export const PlatformAdmin: React.FC = () => {
     }
   };
 
-  const handleTogglePaymentPopup = (id: string) => {
-    setSubscriptions(subscriptions.map(sub =>
-      sub.id === id ? { ...sub, showPaymentPopup: !sub.showPaymentPopup } : sub
-    ));
-    const sub = subscriptions.find(s => s.id === id);
-    if (sub) {
-      toast.success(sub.showPaymentPopup ? 'Payment popup will be removed' : 'Payment popup will be shown');
+  const handleTogglePaymentPopup = async (id: string) => {
+    try {
+      const sub = subscriptions.find(s => s.id === id);
+      if (!sub) return;
+
+      const newShowPaymentPopup = !sub.showPaymentPopup;
+
+      // Update in database - companies table has show_payment_popup column
+      const { error } = await supabase
+        .from('companies')
+        .update({ show_payment_popup: newShowPaymentPopup })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error toggling payment popup:', error);
+        toast.error('Failed to update payment popup setting');
+        return;
+      }
+
+      // Update local state
+      setSubscriptions(subscriptions.map(s =>
+        s.id === id ? { ...s, showPaymentPopup: newShowPaymentPopup } : s
+      ));
+
+      toast.success(newShowPaymentPopup ? 'Payment popup activated - users will see payment prompt' : 'Payment popup deactivated');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to update payment popup');
     }
   };
 

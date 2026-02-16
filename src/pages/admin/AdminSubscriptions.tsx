@@ -300,6 +300,72 @@ export const AdminSubscriptions: React.FC = () => {
     }
   };
 
+  const handleExtendTrial = async (subscriptionId: string, daysToExtend: number = 7) => {
+    try {
+      const subscription = subscriptions.find(s => s.id === subscriptionId);
+      if (!subscription) return;
+
+      const currentTrialEnd = subscription.trial_end_date 
+        ? new Date(subscription.trial_end_date)
+        : new Date();
+      
+      const newTrialEnd = new Date(currentTrialEnd.getTime() + daysToExtend * 24 * 60 * 60 * 1000);
+
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({
+          trial_end_date: newTrialEnd.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+
+      if (error) throw error;
+
+      toast.success(`Trial extended by ${daysToExtend} days`);
+      fetchSubscriptions();
+    } catch (error) {
+      console.error('Error extending trial:', error);
+      toast.error('Failed to extend trial');
+    }
+  };
+
+  const handleTogglePaymentPopup = async (userId: string) => {
+    try {
+      const subscription = subscriptions.find(s => s.user_id === userId);
+      if (!subscription?.user.company_id) {
+        toast.error('No company associated with this subscription');
+        return;
+      }
+
+      // Get current value from companies table
+      const { data: company, error: fetchError } = await supabase
+        .from('companies')
+        .select('show_payment_popup')
+        .eq('id', subscription.user.company_id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newShowPaymentPopup = !company?.show_payment_popup;
+
+      // Update in database
+      const { error } = await supabase
+        .from('companies')
+        .update({ show_payment_popup: newShowPaymentPopup })
+        .eq('id', subscription.user.company_id);
+
+      if (error) throw error;
+
+      toast.success(newShowPaymentPopup 
+        ? 'Payment popup activated - users will see payment prompt' 
+        : 'Payment popup deactivated');
+      fetchSubscriptions();
+    } catch (error) {
+      console.error('Error toggling payment popup:', error);
+      toast.error('Failed to update payment popup setting');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'text-green-600 bg-green-100';
@@ -628,6 +694,7 @@ export const AdminSubscriptions: React.FC = () => {
                             setSelectedSubscription(subscription);
                             setShowDetailsModal(true);
                           }}
+                          title="View Details"
                         >
                           <Settings className="w-4 h-4" />
                         </Button>
@@ -638,8 +705,27 @@ export const AdminSubscriptions: React.FC = () => {
                             setSelectedSubscription(subscription);
                             setShowUpgradeModal(true);
                           }}
+                          title="Change Plan"
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        {subscription.status === 'trial' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleExtendTrial(subscription.id, 7)}
+                            title="Extend Trial by 7 Days"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTogglePaymentPopup(subscription.user_id)}
+                          title="Toggle Payment Popup"
+                        >
+                          <Banknote className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
