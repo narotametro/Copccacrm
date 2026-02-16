@@ -67,26 +67,17 @@ export const DebtCollection: React.FC = () => {
     loadDebts();
   }, []);
 
-  // Load customers from companies table
+  // Load customers from companies table (customer companies, not the user's company)
   const loadCustomers = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
 
-      // Get user's company_id
-      const { data: userProfile } = await supabase
-        .from('users')
-        .select('company_id')
-        .eq('id', userData.user.id)
-        .single();
-
-      if (!userProfile?.company_id) return;
-
-      // Load customers from companies table
+      // Load all customer companies accessible to this user
+      // RLS policies will automatically filter to show only accessible companies
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('company_id', userProfile.company_id)
         .order('name');
 
       if (error) {
