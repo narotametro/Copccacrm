@@ -34,6 +34,7 @@ type Debt = {
 export const DebtCollection: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
   const { customers: contextCustomers } = useSharedData();
+  const [customers, setCustomers] = useState<Customer[]>(contextCustomers);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [automationEnabled, setAutomationEnabled] = useState(() => {
@@ -56,10 +57,64 @@ export const DebtCollection: React.FC = () => {
     risk_score: 'medium' as 'low' | 'medium' | 'high',
   });
 
+  // Load customers from database
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
   // Load debts from database on component mount
   useEffect(() => {
     loadDebts();
   }, []);
+
+  // Load customers from companies table
+  const loadCustomers = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
+      // Get user's company_id
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', userData.user.id)
+        .single();
+
+      if (!userProfile?.company_id) return;
+
+      // Load customers from companies table
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('company_id', userProfile.company_id)
+        .order('name');
+
+      if (error) {
+        console.error('Failed to load customers:', error);
+        return;
+      }
+
+      // Transform to Customer format
+      const transformedCustomers: Customer[] = (data || []).map(company => ({
+        id: company.id,
+        name: company.name || '',
+        company: company.name || '',
+        email: company.email || '',
+        phone: company.phone || '',
+        status: 'active' as const,
+        segment: company.industry || '',
+        lifetime_value: 0,
+        outstanding_balance: 0,
+        created_date: company.created_at || new Date().toISOString(),
+        last_contact: company.created_at || new Date().toISOString(),
+        tags: []
+      }));
+
+      setCustomers(transformedCustomers);
+    } catch (error) {
+      console.error('Failed to load customers:', error);
+    }
+  };
 
   // Load debts from Supabase
   const loadDebts = async () => {
@@ -738,20 +793,20 @@ export const DebtCollection: React.FC = () => {
               value={selectedCustomer?.id || ''}
               onChange={(e) => {
                 const customerId = e.target.value;
-                const customer = contextCustomers.find((c: Customer) => c.id === customerId);
+                const customer = customers.find((c: Customer) => c.id === customerId);
                 setSelectedCustomer(customer || null);
               }}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               required
             >
               <option value="">Select a customer...</option>
-              {contextCustomers.map((customer: Customer) => (
+              {customers.map((customer: Customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name} - {customer.email} (Lifetime Value: {formatCurrency(customer.lifetime_value)})
                 </option>
               ))}
             </select>
-            {contextCustomers.length === 0 && (
+            {customers.length === 0 && (
               <p className="text-sm text-slate-500 mt-1">No customers available. Add customers in the Customers section first.</p>
             )}
           </div>
