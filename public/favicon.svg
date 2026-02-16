@@ -1,0 +1,36 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="binocularGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="url(#binocularGradient)"/>
+  
+  <!-- Binocular Icon - centered and scaled -->
+  <g transform="translate(32, 32)">
+    <!-- Left lens -->
+    <circle cx="-9" cy="0" r="10" fill="#ffffff" opacity="0.95"/>
+    <circle cx="-9" cy="0" r="7" fill="#334155" opacity="0.7"/>
+    <circle cx="-9" cy="0" r="4" fill="#1e293b" opacity="0.9"/>
+    
+    <!-- Right lens -->
+    <circle cx="9" cy="0" r="10" fill="#ffffff" opacity="0.95"/>
+    <circle cx="9" cy="0" r="7" fill="#334155" opacity="0.7"/>
+    <circle cx="9" cy="0" r="4" fill="#1e293b" opacity="0.9"/>
+    
+    <!-- Bridge connecting the lenses -->
+    <rect x="-4" y="-2.5" width="8" height="5" rx="2" fill="#ffffff" opacity="0.9"/>
+    
+    <!-- Top adjustment knobs -->
+    <circle cx="-9" cy="-12" r="3" fill="#ffffff" opacity="0.8"/>
+    <circle cx="9" cy="-12" r="3" fill="#ffffff" opacity="0.8"/>
+    
+    <!-- Lens highlight reflections -->
+    <circle cx="-11" cy="-3" r="2.5" fill="#ffffff" opacity="0.7"/>
+    <circle cx="7" cy="-3" r="2.5" fill="#ffffff" opacity="0.7"/>
+  </g>
+</svg>
