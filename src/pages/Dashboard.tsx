@@ -104,8 +104,70 @@ const Dashboard = () => {
           setDealsWon(dealsResult.data.length);
         }
         
-        // Static growth rate
-        setGrowthRate(12.5);
+        // Calculate growth rate based on revenue comparison
+        // Compare current month vs previous month
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        
+        // Fetch current month revenue
+        const [currentMonthInvoices, currentMonthOrders] = await Promise.all([
+          supabase
+            .from('invoices')
+            .select('total_amount')
+            .eq('status', 'paid')
+            .eq('created_by', userData.user.id)
+            .gte('created_at', currentMonthStart.toISOString()),
+          supabase
+            .from('sales_hub_orders')
+            .select('total_amount')
+            .eq('created_by', userData.user.id)
+            .gte('created_at', currentMonthStart.toISOString())
+        ]);
+        
+        let currentMonthRevenue = 0;
+        if (!currentMonthInvoices.error && currentMonthInvoices.data) {
+          currentMonthRevenue += currentMonthInvoices.data.reduce((sum: number, inv: any) => sum + (inv.total_amount || 0), 0);
+        }
+        if (!currentMonthOrders.error && currentMonthOrders.data) {
+          currentMonthRevenue += currentMonthOrders.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+        }
+        
+        // Fetch last month revenue
+        const [lastMonthInvoices, lastMonthOrders] = await Promise.all([
+          supabase
+            .from('invoices')
+            .select('total_amount')
+            .eq('status', 'paid')
+            .eq('created_by', userData.user.id)
+            .gte('created_at', lastMonthStart.toISOString())
+            .lte('created_at', lastMonthEnd.toISOString()),
+          supabase
+            .from('sales_hub_orders')
+            .select('total_amount')
+            .eq('created_by', userData.user.id)
+            .gte('created_at', lastMonthStart.toISOString())
+            .lte('created_at', lastMonthEnd.toISOString())
+        ]);
+        
+        let lastMonthRevenue = 0;
+        if (!lastMonthInvoices.error && lastMonthInvoices.data) {
+          lastMonthRevenue += lastMonthInvoices.data.reduce((sum: number, inv: any) => sum + (inv.total_amount || 0), 0);
+        }
+        if (!lastMonthOrders.error && lastMonthOrders.data) {
+          lastMonthRevenue += lastMonthOrders.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+        }
+        
+        // Calculate percentage growth
+        if (lastMonthRevenue > 0) {
+          const growth = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+          setGrowthRate(Math.round(growth * 10) / 10); // Round to 1 decimal place
+        } else if (currentMonthRevenue > 0) {
+          setGrowthRate(100); // 100% growth if we had no revenue last month but have some now
+        } else {
+          setGrowthRate(0); // 0% growth if no revenue in either month
+        }
         
         // Process pipeline data
         if (!allDealsResult.error && allDealsResult.data) {
