@@ -19,7 +19,15 @@ import {
   Users,
   CheckCircle,
   AlertCircle,
-  Activity
+  Activity,
+  ExternalLink,
+  Phone,
+  Key,
+  Smartphone,
+  Zap,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface TwilioConfig {
@@ -62,6 +70,8 @@ export const SMSAdminPanel: React.FC = () => {
     revenue_today: 0
   });
   const [testPhone, setTestPhone] = useState('');
+  const [showSetupWizard, setShowSetupWizard] = useState(true);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
   useEffect(() => {
     checkAdminAccess();
@@ -331,6 +341,243 @@ export const SMSAdminPanel: React.FC = () => {
         </Card>
       </div>
 
+      {/* Setup Wizard - Show only if not configured */}
+      {!isConfigured && showSetupWizard && (
+        <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-600 rounded-lg">
+                  <Zap className="text-white" size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Get Started with Twilio SMS</h2>
+                  <p className="text-slate-600 mt-1">Follow these steps to integrate SMS into COPCCA-CRM</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSetupWizard(false)}
+              >
+                {showSetupWizard ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </Button>
+            </div>
+
+            {/* Setup Steps */}
+            <div className="space-y-4">
+              {/* Step 1: Create Twilio Account */}
+              <div className="bg-white rounded-lg p-5 border-2 border-slate-200">
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    completedSteps.includes(1) ? 'bg-green-500' : 'bg-blue-500'
+                  }`}>
+                    {completedSteps.includes(1) ? (
+                      <CheckCircle className="text-white" size={20} />
+                    ) : (
+                      <span className="text-white font-bold">1</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-slate-900 mb-2">Create a Twilio Account</h3>
+                    <p className="text-slate-600 mb-3">
+                      Sign up for a free Twilio trial account. You'll get <strong>$15.50 in free credits</strong> (approximately 150-200 SMS).
+                    </p>
+                    <a
+                      href="https://www.twilio.com/try-twilio"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ExternalLink size={16} />
+                      Sign Up for Twilio
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCompletedSteps([...completedSteps, 1])}
+                      className="ml-3"
+                    >
+                      Mark as Complete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Get Trial Phone Number */}
+              <div className="bg-white rounded-lg p-5 border-2 border-slate-200">
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    completedSteps.includes(2) ? 'bg-green-500' : 'bg-blue-500'
+                  }`}>
+                    {completedSteps.includes(2) ? (
+                      <CheckCircle className="text-white" size={20} />
+                    ) : (
+                      <span className="text-white font-bold">2</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-slate-900 mb-2 flex items-center gap-2">
+                      <Phone size={20} className="text-blue-600" />
+                      Get Your Trial Phone Number
+                    </h3>
+                    <p className="text-slate-600 mb-3">
+                      In your Twilio Console, click <strong>"Get trial phone number"</strong> button. Accept the suggested number or search for a specific area code.
+                    </p>
+                    <div className="bg-slate-50 p-3 rounded border border-slate-200 mb-3">
+                      <p className="text-sm font-mono text-slate-700">
+                        Example: <strong>+1 234 567 8900</strong>
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        💡 Tip: Copy this number - you'll need it in Step 4
+                      </p>
+                    </div>
+                    <a
+                      href="https://console.twilio.com/us1/develop/phone-numbers/manage/incoming"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ExternalLink size={16} />
+                      Go to Phone Numbers
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCompletedSteps([...completedSteps, 2])}
+                      className="ml-3"
+                    >
+                      Mark as Complete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Get API Credentials */}
+              <div className="bg-white rounded-lg p-5 border-2 border-slate-200">
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    completedSteps.includes(3) ? 'bg-green-500' : 'bg-blue-500'
+                  }`}>
+                    {completedSteps.includes(3) ? (
+                      <CheckCircle className="text-white" size={20} />
+                    ) : (
+                      <span className="text-white font-bold">3</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-slate-900 mb-2 flex items-center gap-2">
+                      <Key size={20} className="text-blue-600" />
+                      Copy Your API Credentials
+                    </h3>
+                    <p className="text-slate-600 mb-3">
+                      From your Twilio Console Dashboard, copy these two values:
+                    </p>
+                    <div className="space-y-3 mb-3">
+                      <div className="bg-slate-50 p-3 rounded border border-slate-200">
+                        <p className="text-sm font-semibold text-slate-700 mb-1">Account SID</p>
+                        <p className="text-xs font-mono text-slate-600">ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          🔍 Found in "Account Info" section of Console Home
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded border border-slate-200">
+                        <p className="text-sm font-semibold text-slate-700 mb-1">Auth Token</p>
+                        <p className="text-xs font-mono text-slate-600">••••••••••••••••••••••••••••••••</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          👁️ Click the eye icon in Console to reveal the token
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="https://console.twilio.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ExternalLink size={16} />
+                      Open Twilio Console
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCompletedSteps([...completedSteps, 3])}
+                      className="ml-3"
+                    >
+                      Mark as Complete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4: Configure COPCCA-CRM */}
+              <div className="bg-white rounded-lg p-5 border-2 border-blue-400">
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    completedSteps.includes(4) ? 'bg-green-500' : 'bg-blue-600 animate-pulse'
+                  }`}>
+                    {completedSteps.includes(4) ? (
+                      <CheckCircle className="text-white" size={20} />
+                    ) : (
+                      <span className="text-white font-bold">4</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-slate-900 mb-2 flex items-center gap-2">
+                      <Smartphone size={20} className="text-blue-600" />
+                      Configure COPCCA-CRM (Below ⬇️)
+                    </h3>
+                    <p className="text-slate-600 mb-3">
+                      Scroll down and paste your credentials into the "Twilio Configuration" section below. Then click <strong>"Test Connection"</strong> to verify everything works.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <ArrowRight className="text-blue-600" size={20} />
+                      <p className="text-sm font-semibold text-blue-600">
+                        Complete the form in the "Twilio Configuration" section below
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <h3 className="font-semibold text-slate-900 mb-3">📚 Helpful Resources</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <a
+                  href="https://www.twilio.com/docs/sms/quickstart"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-400 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <ExternalLink size={14} className="text-blue-600" />
+                  <span>Twilio SMS Quickstart</span>
+                </a>
+                <a
+                  href="https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-400 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <ExternalLink size={14} className="text-blue-600" />
+                  <span>Using Trial Account</span>
+                </a>
+                <a
+                  href="https://support.twilio.com/hc/en-us"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-400 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <ExternalLink size={14} className="text-blue-600" />
+                  <span>Twilio Support</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Twilio Configuration */}
       <Card>
         <div className="p-6 border-b">
@@ -448,13 +695,35 @@ export const SMSAdminPanel: React.FC = () => {
           </div>
 
           <div className="p-6">
+            {/* Trial Account Warning */}
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-900 mb-1">⚠️ Twilio Trial Account Limitation</p>
+                  <p className="text-sm text-amber-800 mb-2">
+                    Trial accounts can only send SMS to <strong>verified phone numbers</strong>. To test:
+                  </p>
+                  <ol className="text-sm text-amber-700 space-y-1 ml-4 list-decimal">
+                    <li>Go to <a href="https://console.twilio.com/us1/develop/phone-numbers/manage/verified" target="_blank" rel="noopener" className="underline font-semibold">Verified Caller IDs</a></li>
+                    <li>Click "Add new caller ID" → Enter your phone number</li>
+                    <li>Receive verification code via SMS → Enter code → Verify</li>
+                    <li>Now you can send test SMS to that number</li>
+                  </ol>
+                  <p className="text-xs text-amber-600 mt-2">
+                    💡 To send to any number without verification, <a href="https://www.twilio.com/console/billing" target="_blank" rel="noopener" className="underline font-semibold">upgrade your Twilio account</a> (~$20/month).
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <div className="flex-1">
                 <Input
                   type="tel"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder="+255754123456"
+                  placeholder="+255754123456 (must be verified for trial)"
                   disabled={testing}
                 />
               </div>
