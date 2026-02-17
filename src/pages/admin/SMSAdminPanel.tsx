@@ -33,6 +33,8 @@ interface TwilioConfig {
   accountSid: string;
   authToken: string;
   phoneNumber: string;
+  brandedSenderId: string; // Alphanumeric sender ID (e.g., "COPCCA")
+  smsTagline: string; // Tagline appended to all messages
   enabled: boolean;
 }
 
@@ -55,6 +57,8 @@ export const SMSAdminPanel: React.FC = () => {
     accountSid: '',
     authToken: '',
     phoneNumber: '',
+    brandedSenderId: 'COPCCA',
+    smsTagline: 'Simamia biashara yako na COPCCA',
     enabled: false
   });
   const [stats, setStats] = useState<SMSStats>({
@@ -83,7 +87,7 @@ export const SMSAdminPanel: React.FC = () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('key, value')
-        .in('key', ['twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number', 'sms_enabled']);
+        .in('key', ['twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number', 'sms_branded_sender_id', 'sms_tagline', 'sms_enabled']);
 
       if (error) throw error;
 
@@ -92,6 +96,8 @@ export const SMSAdminPanel: React.FC = () => {
         accountSid: configMap.twilio_account_sid || '',
         authToken: configMap.twilio_auth_token || '',
         phoneNumber: configMap.twilio_phone_number || '',
+        brandedSenderId: configMap.sms_branded_sender_id || 'COPCCA',
+        smsTagline: configMap.sms_tagline || 'Simamia biashara yako na COPCCA',
         enabled: configMap.sms_enabled === 'true'
       });
     } catch (error) {
@@ -147,6 +153,8 @@ export const SMSAdminPanel: React.FC = () => {
         { key: 'twilio_account_sid', value: config.accountSid, description: 'Twilio Account SID' },
         { key: 'twilio_auth_token', value: config.authToken, description: 'Twilio Auth Token' },
         { key: 'twilio_phone_number', value: config.phoneNumber, description: 'Twilio Phone Number' },
+        { key: 'sms_branded_sender_id', value: config.brandedSenderId, description: 'Branded Alphanumeric Sender ID' },
+        { key: 'sms_tagline', value: config.smsTagline, description: 'SMS Tagline' },
         { key: 'sms_enabled', value: config.enabled ? 'true' : 'false', description: 'SMS Service Enabled' }
       ];
 
@@ -206,6 +214,8 @@ export const SMSAdminPanel: React.FC = () => {
         { key: 'twilio_account_sid', value: config.accountSid, category: 'sms', description: 'Twilio Account SID' },
         { key: 'twilio_auth_token', value: config.authToken, category: 'sms', description: 'Twilio Auth Token' },
         { key: 'twilio_phone_number', value: config.phoneNumber, category: 'sms', description: 'Twilio Phone Number' },
+        { key: 'sms_branded_sender_id', value: config.brandedSenderId, category: 'sms', description: 'Branded Alphanumeric Sender ID' },
+        { key: 'sms_tagline', value: config.smsTagline, category: 'sms', description: 'SMS Tagline' },
         { key: 'sms_enabled', value: 'true', category: 'sms', description: 'SMS Service Enabled' }
       ];
 
@@ -750,6 +760,39 @@ export const SMSAdminPanel: React.FC = () => {
               />
               <p className="text-xs text-slate-500 mt-1">
                 Use E.164 format. Recommended: Local number for your region (+255 for Tanzania)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Branded Sender ID (Optional)
+              </label>
+              <Input
+                type="text"
+                value={config.brandedSenderId}
+                onChange={(e) => setConfig({ ...config, brandedSenderId: e.target.value })}
+                placeholder="COPCCA"
+                disabled={saving}
+                maxLength={11}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Alphanumeric sender ID (max 11 chars). Shows as "COPCCA" instead of phone number. Works for international SMS, not US/Canada.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                SMS Tagline (Optional)
+              </label>
+              <Input
+                type="text"
+                value={config.smsTagline}
+                onChange={(e) => setConfig({ ...config, smsTagline: e.target.value })}
+                placeholder="Simamia biashara yako na COPCCA"
+                disabled={saving}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Automatically added to the end of every SMS message. Leave blank to disable.
               </p>
             </div>
 

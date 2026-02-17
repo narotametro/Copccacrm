@@ -32,6 +32,8 @@ export interface SMSConfig {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioPhoneNumber?: string;
+  brandedSenderId?: string; // Alphanumeric sender ID (e.g., "COPCCA")
+  smsTagline?: string; // Tagline appended to all messages
   enabled: boolean;
   language: 'en' | 'sw';
   reminderIntervalDays: number; // Days between automatic reminders
@@ -48,7 +50,9 @@ export async function loadSMSConfig(): Promise<SMSConfig> {
       .in('key', [
         'twilio_account_sid', 
         'twilio_auth_token', 
-        'twilio_phone_number', 
+        'twilio_phone_number',
+        'sms_branded_sender_id',
+        'sms_tagline',
         'sms_enabled',
         'sms_language',
         'sms_reminder_interval_days'
@@ -79,6 +83,12 @@ export async function loadSMSConfig(): Promise<SMSConfig> {
           break;
         case 'twilio_phone_number':
           config.twilioPhoneNumber = setting.value;
+          break;
+        case 'sms_branded_sender_id':
+          config.brandedSenderId = setting.value;
+          break;
+        case 'sms_tagline':
+          config.smsTagline = setting.value;
           break;
         case 'sms_enabled':
           config.enabled = setting.value === 'true';
@@ -137,6 +147,18 @@ async function sendViaTwilio(
       };
     }
 
+    // Determine sender based on destination
+    // Use branded sender ID for international (non-US/CA), phone number for US/CA
+    const isUSorCanada = to.startsWith('+1');
+    const sender = (config.brandedSenderId && !isUSorCanada) 
+      ? config.brandedSenderId 
+      : config.twilioPhoneNumber;
+
+    // Append tagline if configured
+    const messageBody = config.smsTagline 
+      ? `${body}\n\n- ${config.smsTagline}`
+      : body;
+
     // Call Twilio API
     const url = `https://api.twilio.com/2010-04-01/Accounts/${config.twilioAccountSid}/Messages.json`;
     const auth = btoa(`${config.twilioAccountSid}:${config.twilioAuthToken}`);
@@ -149,8 +171,8 @@ async function sendViaTwilio(
       },
       body: new URLSearchParams({
         To: to,
-        From: config.twilioPhoneNumber,
-        Body: body
+        From: sender,
+        Body: messageBody
       })
     });
 
