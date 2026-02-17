@@ -172,11 +172,83 @@ export const SMSAdminPanel: React.FC = () => {
         if (error) throw error;
       }
 
-      toast.success('Twilio configuration saved successfully!');
+      toast.success('✅ Configuration saved! SMS service ready to use.');
       loadConfig();
+      loadStats();
     } catch (error) {
       console.error('Failed to save config:', error);
       toast.error('Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testAndActivate = async () => {
+    // Validate inputs first
+    if (!config.accountSid || !config.authToken || !config.phoneNumber) {
+      toast.error('Please fill in all Twilio credentials');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Step 1: Test Twilio API connection
+      toast.info('Testing Twilio API connection...');
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
+      const auth = btoa(`${config.accountSid}:${config.authToken}`);
+
+      // Just verify credentials by making a simple API call
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}.json`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Invalid Twilio credentials');
+      }
+
+      toast.success('✅ Twilio credentials verified!');
+
+      // Step 2: Save configuration with SMS enabled
+      const settings = [
+        { key: 'twilio_account_sid', value: config.accountSid },
+        { key: 'twilio_auth_token', value: config.authToken },
+        { key: 'twilio_phone_number', value: config.phoneNumber },
+        { key: 'sms_enabled', value: 'true' } // Auto-enable on successful test
+      ];
+
+      for (const setting of settings) {
+        const { error } = await supabase
+          .from('system_settings')
+          .upsert({
+            key: setting.key,
+            value: setting.value,
+            category: 'sms',
+            description: `Twilio ${setting.key.replace('twilio_', '').replace('_', ' ')}`
+          }, { onConflict: 'key' });
+
+        if (error) throw error;
+      }
+
+      // Update local state
+      setConfig({ ...config, enabled: true });
+
+      toast.success('🎉 SMS Service Activated!', {
+        description: 'All companies can now send SMS messages through COPCCA'
+      });
+
+      // Reload to reflect changes
+      await loadConfig();
+      await loadStats();
+
+    } catch (error) {
+      console.error('Test and activate failed:', error);
+      toast.error('❌ Activation Failed', {
+        description: error instanceof Error ? error.message : 'Invalid credentials or network error'
+      });
     } finally {
       setSaving(false);
     }
@@ -630,6 +702,18 @@ export const SMSAdminPanel: React.FC = () => {
             </div>
           )}
 
+          {isConfigured && config.enabled && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="text-green-600" size={20} />
+                <p className="text-green-800 font-medium">✅ SMS Service Active</p>
+              </div>
+              <p className="text-sm text-green-700 mt-1">
+                All companies can send SMS through COPCCA's Twilio account. Users purchase credits from the platform.
+              </p>
+            </div>
+          )}
+
           {/* Configuration Form */}
           <div className="space-y-4">
             <div>
@@ -680,35 +764,43 @@ export const SMSAdminPanel: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="sms-enabled"
-                checked={config.enabled}
-                onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <label htmlFor="sms-enabled" className="text-sm font-medium text-slate-900 cursor-pointer">
-                Enable SMS service for all companies
-              </label>
-            </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button
-              onClick={saveConfig}
-              disabled={saving || !config.accountSid || !config.authToken || !config.phoneNumber}
-            >
-              {saving ? 'Saving...' : 'Save Configuration'}
-            </Button>
+            {!isConfigured || !config.enabled ? (
+              <Button
+                onClick={testAndActivate}
+                disabled={saving || !config.accountSid || !config.authToken || !config.phoneNumber}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <Activity className="animate-spin" size={16} />
+                    Testing & Activating...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Zap size={16} />
+                    Test & Activate Instantly
+                  </span>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={saveConfig}
+                disabled={saving}
+              >
+                {saving ? 'Updating...' : 'Update Configuration'}
+              </Button>
+            )}
 
-            {isConfigured && (
+            {isConfigured && config.enabled && (
               <Button
                 variant="secondary"
                 onClick={toggleSMSGlobally}
               >
-                {config.enabled ? 'Disable SMS Globally' : 'Enable SMS Globally'}
+                Disable SMS Service
               </Button>
             )}
           </div>
