@@ -28,7 +28,6 @@ import {
   Trash2,
   FileText,
   Wrench,
-  Package,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -502,6 +501,29 @@ export const Customers: React.FC = () => {
         </div>
       </div>
 
+      {/* Info Banner - Show only if there are incomplete profiles */}
+      {companies.some(c => !c.email || !c.phone || !c.contactPerson || c.contactPerson === 'N/A') && (
+        <Card className="bg-blue-50 border-blue-200">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900 mb-1">Complete Your Customer Profiles</h3>
+              <p className="text-sm text-blue-700 mb-2">
+                Some customer records are missing important information. Customers marked with an <AlertCircle className="w-3 h-3 inline text-amber-500" /> icon 
+                and a <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">Needs Info</span> badge 
+                need attention.
+              </p>
+              <p className="text-sm text-blue-700">
+                <strong>Quick Tip:</strong> Click "Edit" on any customer to add missing details like email, phone, or contact person. 
+                Complete profiles help you better track and manage customer relationships.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Search */}
       <Input
         placeholder="Search customers..."
@@ -510,9 +532,18 @@ export const Customers: React.FC = () => {
         icon={Search}
       />
 
-      {/* Customers Count */}
-      <div className="text-sm text-slate-600 mb-4">
-        Total Customers: {filteredCompanies.length}
+      {/* Customers Count with Completion Status */}
+      <div className="flex items-center gap-4 text-sm mb-4">
+        <span className="text-slate-600">
+          Total Customers: <strong className="text-slate-900">{filteredCompanies.length}</strong>
+        </span>
+        <span className="text-slate-400">|</span>
+        <span className="text-green-600">
+          Complete: <strong>{filteredCompanies.filter(c => c.email && c.phone && c.contactPerson && c.contactPerson !== 'N/A').length}</strong>
+        </span>
+        <span className="text-amber-600">
+          Needs Info: <strong>{filteredCompanies.filter(c => !c.email || !c.phone || !c.contactPerson || c.contactPerson === 'N/A').length}</strong>
+        </span>
       </div>
 
       {/* Filters */}
@@ -623,6 +654,13 @@ export const Customers: React.FC = () => {
             }
           };
 
+          // Check if customer profile is incomplete
+          const isIncomplete = !company.email || !company.phone || company.contactPerson === 'N/A' || !company.contactPerson;
+          const missingFields = [];
+          if (!company.email) missingFields.push('Email');
+          if (!company.phone) missingFields.push('Phone');
+          if (!company.contactPerson || company.contactPerson === 'N/A') missingFields.push('Contact Person');
+
           return (
             <Card 
               key={company.id} 
@@ -641,13 +679,32 @@ export const Customers: React.FC = () => {
                   <span className="text-white font-bold text-lg">{formatName(company.name).charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-slate-900 text-sm md:text-base truncate">{formatName(company.name)}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm md:text-base truncate">{formatName(company.name)}</h3>
+                    {isIncomplete && (
+                      <div className="group relative">
+                        <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <div className="absolute left-0 top-6 hidden group-hover:block z-10 w-48 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
+                          <p className="font-semibold mb-1">Incomplete Profile</p>
+                          <p className="text-slate-300">Missing: {missingFields.join(', ')}</p>
+                          <p className="text-slate-400 mt-1">Click Edit to add details</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs md:text-sm text-slate-600 truncate">{company.contactPerson || 'N/A'}</p>
                 </div>
               </div>
-              <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getCustomerTypeColor(company.customer_type)}`}>
-                {company.customer_type.toUpperCase()}
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold border flex-shrink-0 ${getCustomerTypeColor(company.customer_type)}`}>
+                  {company.customer_type.toUpperCase()}
+                </span>
+                {isIncomplete && (
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">
+                    Needs Info
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
