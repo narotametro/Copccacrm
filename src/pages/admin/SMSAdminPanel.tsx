@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
 import { 
   Settings, 
   DollarSign, 
@@ -49,7 +48,6 @@ interface SMSStats {
 }
 
 export const SMSAdminPanel: React.FC = () => {
-  const user = useAuthStore((state) => state.user);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -74,17 +72,10 @@ export const SMSAdminPanel: React.FC = () => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
   useEffect(() => {
-    checkAdminAccess();
+    // No need to check admin access - already protected by COPCCAProtectedRoute
     loadConfig();
     loadStats();
   }, []);
-
-  const checkAdminAccess = async () => {
-    if (user?.role !== 'admin') {
-      toast.error('Access denied. Admin only.');
-      window.location.href = '/app/dashboard';
-    }
-  };
 
   const loadConfig = async () => {
     try {
