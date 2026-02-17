@@ -351,8 +351,8 @@ export const SMSAdminPanel: React.FC = () => {
                   <Zap className="text-white" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Get Started with Twilio SMS</h2>
-                  <p className="text-slate-600 mt-1">Follow these steps to integrate SMS into COPCCA-CRM</p>
+                  <h2 className="text-2xl font-bold text-slate-900">COPCCA Admin: Twilio Setup</h2>
+                  <p className="text-slate-600 mt-1">One-time configuration for the entire COPCCA platform</p>
                 </div>
               </div>
               <Button
@@ -362,6 +362,27 @@ export const SMSAdminPanel: React.FC = () => {
               >
                 {showSetupWizard ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </Button>
+            </div>
+
+            {/* Important Notice */}
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={24} />
+                <div>
+                  <h3 className="font-bold text-blue-900 text-lg mb-2">🔒 COPCCA Admins Only</h3>
+                  <p className="text-blue-800 mb-2">
+                    This is <strong>one-time setup for the COPCCA platform</strong>. You're configuring a single Twilio account that ALL users will share.
+                  </p>
+                  <div className="bg-white p-3 rounded border border-blue-200 mt-3">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">How It Works:</p>
+                    <ul className="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                      <li><strong>COPCCA:</strong> You set up Twilio credentials here (once)</li>
+                      <li><strong>Users:</strong> Companies buy SMS credits and send messages - they never see Twilio</li>
+                      <li><strong>Profit:</strong> You buy SMS at wholesale ($0.0079), sell at retail (500 TZS+)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Setup Steps */}
@@ -379,9 +400,9 @@ export const SMSAdminPanel: React.FC = () => {
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-slate-900 mb-2">Create a Twilio Account</h3>
+                    <h3 className="font-semibold text-lg text-slate-900 mb-2">Create COPCCA's Twilio Account</h3>
                     <p className="text-slate-600 mb-3">
-                      Sign up for a free Twilio trial account. You'll get <strong>$15.50 in free credits</strong> (approximately 150-200 SMS).
+                      Sign up for a Twilio account for <strong>COPCCA platform</strong> (not individual users). Free trial gives <strong>$15.50 in credits</strong> to test the system.
                     </p>
                     <a
                       href="https://www.twilio.com/try-twilio"
@@ -390,7 +411,7 @@ export const SMSAdminPanel: React.FC = () => {
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <ExternalLink size={16} />
-                      Sign Up for Twilio
+                      Sign Up for Twilio (COPCCA Account)
                     </a>
                     <Button
                       variant="ghost"
@@ -419,17 +440,17 @@ export const SMSAdminPanel: React.FC = () => {
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-slate-900 mb-2 flex items-center gap-2">
                       <Phone size={20} className="text-blue-600" />
-                      Get Your Trial Phone Number
+                      Get Platform Phone Number
                     </h3>
                     <p className="text-slate-600 mb-3">
-                      In your Twilio Console, click <strong>"Get trial phone number"</strong> button. Accept the suggested number or search for a specific area code.
+                      Get a phone number for the <strong>COPCCA platform</strong>. All user SMS will be sent from this shared number.
                     </p>
                     <div className="bg-slate-50 p-3 rounded border border-slate-200 mb-3">
                       <p className="text-sm font-mono text-slate-700">
                         Example: <strong>+1 234 567 8900</strong>
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
-                        💡 Tip: Copy this number - you'll need it in Step 4
+                        💡 Tip: Choose a number in your target market (e.g., +255 for Tanzania)
                       </p>
                     </div>
                     <a
@@ -525,11 +546,19 @@ export const SMSAdminPanel: React.FC = () => {
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-slate-900 mb-2 flex items-center gap-2">
                       <Smartphone size={20} className="text-blue-600" />
-                      Configure COPCCA-CRM (Below ⬇️)
+                      Configure CRM Platform (Below ⬇️)
                     </h3>
                     <p className="text-slate-600 mb-3">
-                      Scroll down and paste your credentials into the "Twilio Configuration" section below. Then click <strong>"Test Connection"</strong> to verify everything works.
+                      Paste COPCCA's Twilio credentials below. Once saved, <strong>all users can send SMS</strong> by purchasing credits - they never need Twilio accounts.
                     </p>
+                    <div className="bg-green-50 p-3 rounded border border-green-200">
+                      <p className="text-sm font-semibold text-green-900 mb-1">✅ After Setup:</p>
+                      <ul className="text-sm text-green-800 space-y-1 ml-4 list-disc">
+                        <li>Users buy SMS credits from COPCCA</li>
+                        <li>They send SMS through the CRM interface</li>
+                        <li>COPCCA earns profit on each SMS sold</li>
+                      </ul>
+                    </div>
                     <div className="flex items-center gap-2">
                       <ArrowRight className="text-blue-600" size={20} />
                       <p className="text-sm font-semibold text-blue-600">
@@ -584,8 +613,8 @@ export const SMSAdminPanel: React.FC = () => {
           <div className="flex items-center gap-3">
             <Settings className="text-primary-600" size={24} />
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Twilio Configuration</h2>
-              <p className="text-sm text-slate-600">Centralized SMS credentials for all companies</p>
+              <h2 className="text-xl font-semibold text-slate-900">COPCCA Platform Twilio Configuration</h2>
+              <p className="text-sm text-slate-600">Centralized SMS credentials - users never see these, they just buy credits</p>
             </div>
           </div>
         </div>
@@ -594,9 +623,9 @@ export const SMSAdminPanel: React.FC = () => {
           {/* Status Banner */}
           {!isConfigured && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-yellow-800 font-medium">⚠️ Twilio Not Configured</p>
+              <p className="text-yellow-800 font-medium">⚠️ Platform SMS Not Configured</p>
               <p className="text-sm text-yellow-700 mt-1">
-                Add your Twilio credentials below to enable SMS for all users.
+                Configure COPCCA's Twilio account below to enable SMS for all users. Users will buy credits from COPCCA, not from Twilio directly.
               </p>
             </div>
           )}
