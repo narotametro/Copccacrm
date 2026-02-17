@@ -71,11 +71,11 @@ export const CashPaymentManager: React.FC = () => {
           users_verifier:verified_by (
             full_name
           ),
-          user_subscriptions (
-            subscription_plans (
+          user_subscriptions!subscription_id (
+            subscription_plans!plan_id (
               display_name
             ),
-            users (
+            users!user_id (
               full_name,
               email
             )

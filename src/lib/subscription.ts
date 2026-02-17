@@ -927,11 +927,11 @@ export async function getCashPayments(
         users_collector:collected_by (
           full_name
         ),
-        user_subscriptions (
-          subscription_plans (
+        user_subscriptions!subscription_id (
+          subscription_plans!plan_id (
             display_name
           ),
-          users (
+          users!user_id (
             full_name,
             email
           )

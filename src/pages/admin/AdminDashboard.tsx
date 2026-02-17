@@ -176,8 +176,8 @@ export const AdminDashboard: React.FC = () => {
           status,
           created_at,
           subscription_id,
-          user_subscriptions (
-            users (
+          user_subscriptions!subscription_id (
+            users!user_id (
               full_name,
               email
             )
