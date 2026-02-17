@@ -144,21 +144,19 @@ export const SMSAdminPanel: React.FC = () => {
     setSaving(true);
     try {
       const settings = [
-        { key: 'twilio_account_sid', value: config.accountSid },
-        { key: 'twilio_auth_token', value: config.authToken },
-        { key: 'twilio_phone_number', value: config.phoneNumber },
-        { key: 'sms_enabled', value: config.enabled ? 'true' : 'false' }
+        { key: 'twilio_account_sid', value: config.accountSid, description: 'Twilio Account SID' },
+        { key: 'twilio_auth_token', value: config.authToken, description: 'Twilio Auth Token' },
+        { key: 'twilio_phone_number', value: config.phoneNumber, description: 'Twilio Phone Number' },
+        { key: 'sms_enabled', value: config.enabled ? 'true' : 'false', description: 'SMS Service Enabled' }
       ];
 
       for (const setting of settings) {
-        const { error } = await supabase
-          .from('system_settings')
-          .upsert({
-            key: setting.key,
-            value: setting.value,
-            category: 'sms',
-            description: `Twilio ${setting.key.replace('twilio_', '').replace('_', ' ')}`
-          }, { onConflict: 'key' });
+        const { error } = await supabase.rpc('upsert_system_setting', {
+          p_key: setting.key,
+          p_value: setting.value,
+          p_category: 'sms',
+          p_description: setting.description
+        });
 
         if (error) throw error;
       }
@@ -203,23 +201,21 @@ export const SMSAdminPanel: React.FC = () => {
 
       toast.success('✅ Twilio credentials verified!');
 
-      // Step 2: Save configuration with SMS enabled
+      // Step 2: Save configuration with SMS enabled using RPC function
       const settings = [
-        { key: 'twilio_account_sid', value: config.accountSid },
-        { key: 'twilio_auth_token', value: config.authToken },
-        { key: 'twilio_phone_number', value: config.phoneNumber },
-        { key: 'sms_enabled', value: 'true' } // Auto-enable on successful test
+        { key: 'twilio_account_sid', value: config.accountSid, category: 'sms', description: 'Twilio Account SID' },
+        { key: 'twilio_auth_token', value: config.authToken, category: 'sms', description: 'Twilio Auth Token' },
+        { key: 'twilio_phone_number', value: config.phoneNumber, category: 'sms', description: 'Twilio Phone Number' },
+        { key: 'sms_enabled', value: 'true', category: 'sms', description: 'SMS Service Enabled' }
       ];
 
       for (const setting of settings) {
-        const { error } = await supabase
-          .from('system_settings')
-          .upsert({
-            key: setting.key,
-            value: setting.value,
-            category: 'sms',
-            description: `Twilio ${setting.key.replace('twilio_', '').replace('_', ' ')}`
-          }, { onConflict: 'key' });
+        const { error } = await supabase.rpc('upsert_system_setting', {
+          p_key: setting.key,
+          p_value: setting.value,
+          p_category: setting.category,
+          p_description: setting.description
+        });
 
         if (error) throw error;
       }
@@ -292,17 +288,19 @@ export const SMSAdminPanel: React.FC = () => {
   const toggleSMSGlobally = async () => {
     try {
       const newStatus = !config.enabled;
-      await supabase
-        .from('system_settings')
-        .upsert({
-          key: 'sms_enabled',
-          value: newStatus ? 'true' : 'false',
-          category: 'sms'
-        }, { onConflict: 'key' });
+      const { error } = await supabase.rpc('upsert_system_setting', {
+        p_key: 'sms_enabled',
+        p_value: newStatus ? 'true' : 'false',
+        p_category: 'sms',
+        p_description: 'SMS Service Enabled'
+      });
+
+      if (error) throw error;
 
       setConfig({ ...config, enabled: newStatus });
       toast.success(`SMS service ${newStatus ? 'enabled' : 'disabled'} for all companies`);
     } catch (error) {
+      console.error('Failed to toggle SMS:', error);
       toast.error('Failed to toggle SMS service');
     }
   };
