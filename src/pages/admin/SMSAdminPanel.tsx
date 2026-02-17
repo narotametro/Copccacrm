@@ -33,6 +33,7 @@ interface TwilioConfig {
   accountSid: string;
   authToken: string;
   phoneNumber: string;
+  messagingServiceSid: string; // Messaging Service SID for AlphaSender
   brandedSenderId: string; // Alphanumeric sender ID (e.g., "COPCCA")
   smsTagline: string; // Tagline appended to all messages
   enabled: boolean;
@@ -57,6 +58,7 @@ export const SMSAdminPanel: React.FC = () => {
     accountSid: '',
     authToken: '',
     phoneNumber: '',
+    messagingServiceSid: '',
     brandedSenderId: 'COPCCA',
     smsTagline: 'Simamia biashara yako na COPCCA',
     enabled: false
@@ -87,7 +89,7 @@ export const SMSAdminPanel: React.FC = () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('key, value')
-        .in('key', ['twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number', 'sms_branded_sender_id', 'sms_tagline', 'sms_enabled']);
+        .in('key', ['twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number', 'twilio_messaging_service_sid', 'sms_branded_sender_id', 'sms_tagline', 'sms_enabled']);
 
       if (error) throw error;
 
@@ -96,6 +98,7 @@ export const SMSAdminPanel: React.FC = () => {
         accountSid: configMap.twilio_account_sid || '',
         authToken: configMap.twilio_auth_token || '',
         phoneNumber: configMap.twilio_phone_number || '',
+        messagingServiceSid: configMap.twilio_messaging_service_sid || '',
         brandedSenderId: configMap.sms_branded_sender_id || 'COPCCA',
         smsTagline: configMap.sms_tagline || 'Simamia biashara yako na COPCCA',
         enabled: configMap.sms_enabled === 'true'
@@ -153,6 +156,7 @@ export const SMSAdminPanel: React.FC = () => {
         { key: 'twilio_account_sid', value: config.accountSid, description: 'Twilio Account SID' },
         { key: 'twilio_auth_token', value: config.authToken, description: 'Twilio Auth Token' },
         { key: 'twilio_phone_number', value: config.phoneNumber, description: 'Twilio Phone Number' },
+        { key: 'twilio_messaging_service_sid', value: config.messagingServiceSid, description: 'Twilio Messaging Service SID' },
         { key: 'sms_branded_sender_id', value: config.brandedSenderId, description: 'Branded Alphanumeric Sender ID' },
         { key: 'sms_tagline', value: config.smsTagline, description: 'SMS Tagline' },
         { key: 'sms_enabled', value: config.enabled ? 'true' : 'false', description: 'SMS Service Enabled' }
@@ -214,6 +218,7 @@ export const SMSAdminPanel: React.FC = () => {
         { key: 'twilio_account_sid', value: config.accountSid, category: 'sms', description: 'Twilio Account SID' },
         { key: 'twilio_auth_token', value: config.authToken, category: 'sms', description: 'Twilio Auth Token' },
         { key: 'twilio_phone_number', value: config.phoneNumber, category: 'sms', description: 'Twilio Phone Number' },
+        { key: 'twilio_messaging_service_sid', value: config.messagingServiceSid, category: 'sms', description: 'Twilio Messaging Service SID' },
         { key: 'sms_branded_sender_id', value: config.brandedSenderId, category: 'sms', description: 'Branded Alphanumeric Sender ID' },
         { key: 'sms_tagline', value: config.smsTagline, category: 'sms', description: 'SMS Tagline' },
         { key: 'sms_enabled', value: 'true', category: 'sms', description: 'SMS Service Enabled' }
@@ -765,6 +770,22 @@ export const SMSAdminPanel: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
+                Messaging Service SID (Optional - For Branded SMS)
+              </label>
+              <Input
+                type="text"
+                value={config.messagingServiceSid}
+                onChange={(e) => setConfig({ ...config, messagingServiceSid: e.target.value })}
+                placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                disabled={saving}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Required for AlphaSender. Create in <a href="https://console.twilio.com/us1/develop/sms/services" target="_blank" rel="noopener" className="text-blue-600 underline">Twilio Console → Messaging → Services</a>
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Branded Sender ID (Optional)
               </label>
               <Input
@@ -776,7 +797,7 @@ export const SMSAdminPanel: React.FC = () => {
                 maxLength={11}
               />
               <p className="text-xs text-slate-500 mt-1">
-                Alphanumeric sender ID (max 11 chars). Shows as "COPCCA" instead of phone number. Works for international SMS, not US/Canada.
+                Alphanumeric sender ID (max 11 chars). Add this to your Messaging Service as AlphaSender. Shows as "COPCCA" instead of phone number.
               </p>
             </div>
 

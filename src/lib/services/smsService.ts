@@ -32,6 +32,7 @@ export interface SMSConfig {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioPhoneNumber?: string;
+  messagingServiceSid?: string; // Messaging Service SID for AlphaSender
   brandedSenderId?: string; // Alphanumeric sender ID (e.g., "COPCCA")
   smsTagline?: string; // Tagline appended to all messages
   enabled: boolean;
@@ -51,6 +52,7 @@ export async function loadSMSConfig(): Promise<SMSConfig> {
         'twilio_account_sid', 
         'twilio_auth_token', 
         'twilio_phone_number',
+        'twilio_messaging_service_sid',
         'sms_branded_sender_id',
         'sms_tagline',
         'sms_enabled',
@@ -83,6 +85,9 @@ export async function loadSMSConfig(): Promise<SMSConfig> {
           break;
         case 'twilio_phone_number':
           config.twilioPhoneNumber = setting.value;
+          break;
+        case 'twilio_messaging_service_sid':
+          config.messagingServiceSid = setting.value;
           break;
         case 'sms_branded_sender_id':
           config.brandedSenderId = setting.value;
@@ -147,13 +152,6 @@ async function sendViaTwilio(
       };
     }
 
-    // Determine sender based on destination
-    // Use branded sender ID for international (non-US/CA), phone number for US/CA
-    const isUSorCanada = to.startsWith('+1');
-    const sender = (config.brandedSenderId && !isUSorCanada) 
-      ? config.brandedSenderId 
-      : config.twilioPhoneNumber;
-
     // Append tagline if configured
     const messageBody = config.smsTagline 
       ? `${body}\n\n- ${config.smsTagline}`
@@ -163,17 +161,32 @@ async function sendViaTwilio(
     const url = `https://api.twilio.com/2010-04-01/Accounts/${config.twilioAccountSid}/Messages.json`;
     const auth = btoa(`${config.twilioAccountSid}:${config.twilioAuthToken}`);
 
+    // Build request parameters
+    const params: Record<string, string> = {
+      To: to,
+      Body: messageBody
+    };
+
+    // Use Messaging Service if configured (proper method for AlphaSender)
+    // Otherwise fall back to From parameter
+    if (config.messagingServiceSid) {
+      params.MessagingServiceSid = config.messagingServiceSid;
+    } else {
+      // Legacy method: determine sender based on destination
+      const isUSorCanada = to.startsWith('+1');
+      const sender = (config.brandedSenderId && !isUSorCanada) 
+        ? config.brandedSenderId 
+        : config.twilioPhoneNumber;
+      params.From = sender;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${auth}`
       },
-      body: new URLSearchParams({
-        To: to,
-        From: sender,
-        Body: messageBody
-      })
+      body: new URLSearchParams(params)
     });
 
     const result = await response.json();
