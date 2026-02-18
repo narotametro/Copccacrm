@@ -183,11 +183,28 @@ export const Customers: React.FC = () => {
         const { data: userData } = await supabase.auth.getUser();
         if (!userData?.user) return;
 
-        const { data, error } = await supabase
+        // Get user's company_id to exclude it from customers list
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', userData.user.id)
+          .single();
+
+        const userCompanyId = userProfile?.company_id;
+
+        // Query companies, excluding user's own company
+        let query = supabase
           .from('companies')
           .select('*')
           .eq('created_by', userData.user.id)
           .order('created_at', { ascending: false });
+
+        // Exclude user's own company if they have one
+        if (userCompanyId) {
+          query = query.neq('id', userCompanyId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -501,28 +518,7 @@ export const Customers: React.FC = () => {
         </div>
       </div>
 
-      {/* Info Banner - Show only if there are incomplete profiles */}
-      {companies.some(c => !c.email || !c.phone || !c.contactPerson || c.contactPerson === 'N/A') && (
-        <Card className="bg-blue-50 border-blue-200">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 mb-1">Complete Your Customer Profiles</h3>
-              <p className="text-sm text-blue-700 mb-2">
-                Some customer records are missing important information. Customers marked with an <AlertCircle className="w-3 h-3 inline text-amber-500" /> icon 
-                and a <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300">Needs Info</span> badge 
-                need attention.
-              </p>
-              <p className="text-sm text-blue-700">
-                <strong>Quick Tip:</strong> Click "Edit" on any customer to add missing details like email, phone, or contact person. 
-                Complete profiles help you better track and manage customer relationships.
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Info Banner - Removed per user request */}
 
       {/* Search */}
       <Input
