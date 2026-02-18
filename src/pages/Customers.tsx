@@ -183,28 +183,14 @@ export const Customers: React.FC = () => {
         const { data: userData } = await supabase.auth.getUser();
         if (!userData?.user) return;
 
-        // Get user's company_id to exclude it from customers list
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('company_id')
-          .eq('id', userData.user.id)
-          .single();
-
-        const userCompanyId = userProfile?.company_id;
-
-        // Query companies, excluding user's own company
-        let query = supabase
+        // Query ONLY customer companies (exclude user's own company)
+        // is_own_company flag distinguishes between user's company and their customers
+        const { data, error } = await supabase
           .from('companies')
           .select('*')
           .eq('created_by', userData.user.id)
+          .eq('is_own_company', false)  // ← Only load customer companies, not user's own company
           .order('created_at', { ascending: false });
-
-        // Exclude user's own company if they have one
-        if (userCompanyId) {
-          query = query.neq('id', userCompanyId);
-        }
-
-        const { data, error } = await query;
 
         if (error) throw error;
 

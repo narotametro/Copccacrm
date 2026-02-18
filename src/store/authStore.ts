@@ -198,6 +198,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           subscription_plan: 'starter',
           subscription_status: 'trial',
           max_users: 10,
+          is_own_company: true,  // ← Mark this as user's own company (not a customer)
           created_by: data.user.id,
         })
         .select()
