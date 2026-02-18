@@ -134,7 +134,12 @@ export const AdminSubscriptions: React.FC = () => {
             id,
             email,
             full_name,
-            raw_user_meta_data
+            phone,
+            company_id,
+            companies (
+              id,
+              name
+            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -147,8 +152,8 @@ export const AdminSubscriptions: React.FC = () => {
           id: sub.users?.id || '',
           email: sub.users?.email || '',
           full_name: sub.users?.full_name || sub.users?.email?.split('@')[0] || 'Unknown',
-          company_name: sub.users?.raw_user_meta_data?.companyName || '',
-          phone: sub.users?.raw_user_meta_data?.phone || '',
+          company_name: sub.users?.companies?.name || 'No Company',
+          phone: sub.users?.phone || '',
           created_at: sub.users?.created_at || sub.created_at,
         }
       })) || [];
