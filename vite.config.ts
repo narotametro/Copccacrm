@@ -65,9 +65,29 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: null,
+        // Only cache essential static files (not JS chunks - they change every build)
+        globPatterns: ['**/*.{html,ico,png,svg,woff2}'],
+        // Add SPA fallback for React Router
+        navigateFallback: '/index.html',
+        navigateFallbackAllowlist: [/^(?!\/__).*/], // Allow all except special paths
         runtimeCaching: [
+          // JS/CSS chunks: Network-first to always get latest after deployment
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-css-cache',
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Supabase API: Network-first for fresh data
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: 'NetworkFirst',
@@ -77,8 +97,21 @@ export default defineConfig({
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 // 24 hours
               },
+              networkTimeoutSeconds: 10,
               cacheableResponse: {
                 statuses: [0, 200]
+              }
+            }
+          },
+          // Images: Cache-first (don't change often)
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               }
             }
           }
