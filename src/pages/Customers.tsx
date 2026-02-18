@@ -514,17 +514,10 @@ export const Customers: React.FC = () => {
         icon={Search}
       />
 
-      {/* Customers Count with Completion Status */}
+      {/* Customers Count */}
       <div className="flex items-center gap-4 text-sm mb-4">
         <span className="text-slate-600">
           Total Customers: <strong className="text-slate-900">{filteredCompanies.length}</strong>
-        </span>
-        <span className="text-slate-400">|</span>
-        <span className="text-green-600">
-          Complete: <strong>{filteredCompanies.filter(c => c.email && c.phone && c.contactPerson && c.contactPerson !== 'N/A').length}</strong>
-        </span>
-        <span className="text-amber-600">
-          Needs Info: <strong>{filteredCompanies.filter(c => !c.email || !c.phone || !c.contactPerson || c.contactPerson === 'N/A').length}</strong>
         </span>
       </div>
 
