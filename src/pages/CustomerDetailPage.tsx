@@ -580,62 +580,12 @@ export const CustomerDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Back Button and Quick Actions */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Back Button */}
+        <div className="flex items-center mb-6">
           <Button variant="ghost" onClick={() => navigate('/app/customers')}>
             <ArrowLeft className="mr-2" size={16} />
             Back to Customers
           </Button>
-
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              icon={Calendar} 
-              onClick={() => setShowAddTaskModal(true)}
-            >
-              Add Task
-            </Button>
-            <Button 
-              size="sm" 
-              icon={Send} 
-              onClick={() => {
-                // Email functionality
-                const subject = `Follow-up with ${customer.name}`;
-                const body = `Hi ${customer.contactPerson || 'there'},
-
-I hope this email finds you well. I wanted to follow up regarding our recent interactions.
-
-Best regards,
-[Your Name]`;
-                window.open(`mailto:${customer.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-              }}
-            >
-              Email
-            </Button>
-            <Button 
-              size="sm" 
-              icon={MessageSquare} 
-              onClick={() => {
-                // WhatsApp functionality
-                if (customer.phone) {
-                  const message = `Hi ${customer.contactPerson || 'there'}, I wanted to follow up regarding our recent interactions.`;
-                  window.open(`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
-                } else {
-                  alert('No phone number available for this customer');
-                }
-              }}
-            >
-              WhatsApp
-            </Button>
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              icon={Target} 
-              onClick={() => setShowCampaignModal(true)}
-            >
-              Campaign
-            </Button>
-          </div>
         </div>
 
         {/* Header */}
