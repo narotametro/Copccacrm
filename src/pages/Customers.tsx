@@ -93,42 +93,20 @@ interface Business {
 // Demo data
 // const demoCompanies: Company[] = [];
 
+// UUID validation helper
+const isValidUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
 export const Customers: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const { getCustomerFinancialMetrics, customers: contextCustomers, setSupportTickets, supportTickets } = useSharedData();
   const navigate = useNavigate();
 
-  // Load businesses from localStorage or use context customers or empty array
-  const [companies, setCompanies] = useState<Business[]>(() => {
-    const saved = localStorage.getItem('copcca-customers');
-    const parsed = saved ? JSON.parse(saved) : [];
-    return parsed.length > 0 ? parsed : contextCustomers.map(c => ({
-      id: c.id,
-      name: c.name,
-      contactPerson: c.name,
-      status: c.status,
-      customer_type: 'active' as const,
-      health_score: 80,
-      churn_risk: 20,
-      upsell_potential: 30,
-      email: c.email,
-      phone: c.phone,
-      website: '',
-      townCity: '',
-      others: [],
-      total_revenue: 0,
-      purchases: 0,
-      avg_order_value: 0,
-      last_purchase: new Date().toISOString().split('T')[0],
-      tier: 'bronze' as const,
-      sentiment: 'neutral' as const,
-      feedback_count: 0,
-      jtbd: '',
-      pain_points: [],
-      feedback_history: [],
-      priority_actions: []
-    }));
-  });
+  // IMPORTANT: Do NOT initialize from localStorage - it may contain corrupt data with Date.now() IDs
+  // Always load fresh from database
+  const [companies, setCompanies] = useState<Business[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [townCityFilter, setTownCityFilter] = useState('all');
@@ -180,6 +158,22 @@ export const Customers: React.FC = () => {
   useEffect(() => {
     const loadCompaniesFromDatabase = async () => {
       try {
+        // CRITICAL: Clear corrupt localStorage data from old versions
+        // Old versions used Date.now() for IDs, which breaks UUID queries
+        const saved = localStorage.getItem('copcca-customers');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const hasCorruptData = parsed.some((c: any) => c.id && !isValidUUID(c.id));
+            if (hasCorruptData) {
+              console.warn('Removing corrupt customer data from localStorage (contains non-UUID IDs)');
+              localStorage.removeItem('copcca-customers');
+            }
+          } catch (e) {
+            localStorage.removeItem('copcca-customers');
+          }
+        }
+
         const { data: userData } = await supabase.auth.getUser();
         if (!userData?.user) return;
 
@@ -670,7 +664,15 @@ export const Customers: React.FC = () => {
               key={company.id} 
               hover 
               className={`cursor-pointer border-2 ${getBorderColor()}`}
-              onClick={() => navigate(`/app/customers/${company.id}`)}
+              onClick={() => {
+                // Validate UUID before navigation to prevent errors
+                if (!isValidUUID(company.id)) {
+                  console.error('Invalid customer ID (not UUID):', company.id);
+                  toast.error('Cannot view customer: Invalid ID. Please refresh the page.');
+                  return;
+                }
+                navigate(`/app/customers/${company.id}`);
+              }}
             >
             <div className="flex items-start justify-between mb-3 md:mb-4">
               <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
@@ -747,6 +749,12 @@ export const Customers: React.FC = () => {
                   icon={Eye}
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Validate UUID before navigation
+                    if (!isValidUUID(company.id)) {
+                      console.error('Invalid customer ID (not UUID):', company.id);
+                      toast.error('Cannot view customer: Invalid ID. Please refresh the page.');
+                      return;
+                    }
                     navigate(`/app/customers/${company.id}`);
                   }}
                 >
