@@ -173,6 +173,120 @@ const calculateTier = (totalRevenue: number): 'bronze' | 'silver' | 'gold' | 'pl
   return 'bronze';
 };
 
+// AI Recommendation: Predict next purchase timeframe based on actual purchase patterns
+const predictNextPurchaseTimeframe = (purchases: number, lastPurchase: string, churnRisk: number): string => {
+  if (purchases === 0) return 'No purchase history';
+  if (!lastPurchase) return 'Unknown';
+  
+  const daysSinceLastPurchase = Math.floor((Date.now() - new Date(lastPurchase).getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Low churn risk customers purchase more frequently
+  if (churnRisk < 20) {
+    if (daysSinceLastPurchase <= 14) return 'Within 7 days';
+    return 'Within 14 days';
+  } else if (churnRisk < 40) {
+    if (daysSinceLastPurchase <= 30) return 'Within 21 days';
+    return 'Within 30 days';
+  } else if (churnRisk < 60) {
+    return 'Within 45 days';
+  } else {
+    return 'Within 60+ days (re-engagement needed)';
+  }
+};
+
+// AI Recommendation: Suggest next product based on tier and actual purchase behavior
+const suggestNextProduct = (tier: string, purchases: number, avgOrderValue: number, totalRevenue: number): string => {
+  if (purchases === 0) return 'Starter Package (initial purchase)';
+  
+  // Analyze spending capacity
+  const isHighSpender = avgOrderValue > 1000000; // Over 1M avg
+  const isMediumSpender = avgOrderValue > 500000; // Over 500K avg
+  
+  // Tier-based suggestions with spending consideration
+  if (tier === 'platinum') {
+    if (isHighSpender) return 'Enterprise Suite Expansion';
+    return 'Premium Module Add-on';
+  } else if (tier === 'gold') {
+    if (isHighSpender) return 'Platinum Tier Upgrade + Premium Features';
+    if (purchases >= 5) return 'Advanced Integration Package';
+    return 'Gold Plan Enhancement';
+  } else if (tier === 'silver') {
+    if (isMediumSpender && purchases >= 3) return 'Gold Tier Upgrade';
+    if (purchases >= 5) return 'Professional Services Bundle';
+    return 'Silver Plan Add-ons';
+  } else { // bronze
+    if (purchases >= 3 && avgOrderValue > 300000) return 'Silver Tier Upgrade';
+    if (purchases >= 2) return 'Additional User Licenses';
+    return 'Basic Support Package';
+  }
+};
+
+// AI Recommendation: Estimate next purchase value based on actual data
+const estimateNextPurchaseValue = (avgOrderValue: number, upsellPotential: number, purchases: number): number => {
+  if (purchases === 0) return 0;
+  
+  // Base estimate on average order value
+  let estimate = avgOrderValue;
+  
+  // Apply upsell multiplier (upsell_potential is 0-100)
+  const upsellMultiplier = 1 + (upsellPotential / 100) * 0.5; // Max 50% increase
+  estimate *= upsellMultiplier;
+  
+  // High-frequency customers tend to increase spend
+  if (purchases >= 10) {
+    estimate *= 1.15; // 15% increase for loyal customers
+  } else if (purchases >= 5) {
+    estimate *= 1.08; // 8% increase
+  }
+  
+  return Math.round(estimate);
+};
+
+// AI Recommendation: Cross-sell suggestion based on tier and purchase history
+const suggestCrossSell = (tier: string, purchases: number, healthScore: number, totalRevenue: number): string => {
+  if (purchases === 0) return 'Onboarding + Initial Training Session';
+  
+  // High-value customers get premium suggestions
+  if (totalRevenue >= 10000000) {
+    if (healthScore >= 80) return 'Dedicated Account Manager + Priority Support';
+    return 'Strategic Consulting Package';
+  }
+  
+  // Tier-based cross-sell
+  if (tier === 'platinum') {
+    if (purchases >= 10) return 'Custom Development + White-label Solution';
+    return 'Advanced Analytics + API Integration';
+  } else if (tier === 'gold') {
+    if (healthScore >= 70) return 'Premium Training Program + Certification';
+    return 'Advanced Reporting + Automation Tools';
+  } else if (tier === 'silver') {
+    if (purchases >= 3) return 'Professional Support Package + Extended SLA';
+    return 'Team Training + Best Practices Workshop';
+  } else { // bronze
+    if (purchases >= 2) return 'Standard Support Plan + Documentation Access';
+    return 'Getting Started Training + Email Support';
+  }
+};
+
+// AI Recommendation: Calculate acceptance probability based on real metrics
+const calculateAcceptanceProbability = (healthScore: number, upsellPotential: number, purchases: number): number => {
+  let probability = 0;
+  
+  // Health score contribution (0-50 points)
+  probability += (healthScore / 100) * 50;
+  
+  // Upsell potential contribution (0-30 points)
+  probability += (upsellPotential / 100) * 30;
+  
+  // Purchase history contribution (0-20 points)
+  if (purchases >= 10) probability += 20;
+  else if (purchases >= 5) probability += 15;
+  else if (purchases >= 3) probability += 10;
+  else if (purchases >= 1) probability += 5;
+  
+  return Math.max(10, Math.min(95, Math.round(probability))); // Cap between 10-95%
+};
+
 export const CustomerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -926,18 +1040,16 @@ Best regards,
                 <div className="bg-white p-4 rounded-lg border border-green-200">
                   <p className="text-sm font-medium text-slate-900 mb-2">Predicted Next Purchase</p>
                   <p className="text-slate-700">
-                    Within {(customer.churn_risk || 0) < 30 ? '14 days' : (customer.churn_risk || 0) < 60 ? '30 days' : '60 days'} •
-                    {(customer.tier || 'bronze') === 'bronze' ? 'Silver Plan Upgrade' : (customer.tier || 'bronze') === 'silver' ? 'Gold Plan Upgrade' : 'Premium Add-on'} •
-                    Est. ₦{Math.round((customer.avg_order_value || 0) * ((customer.upsell_potential || 0) / 100 + 1)).toLocaleString()}
+                    {predictNextPurchaseTimeframe(customer.purchases || 0, customer.last_purchase || '', customer.churn_risk || 0)} •
+                    {suggestNextProduct(customer.tier || 'bronze', customer.purchases || 0, customer.avg_order_value || 0, customer.total_revenue || 0)} •
+                    Est. {formatCurrency(estimateNextPurchaseValue(customer.avg_order_value || 0, customer.upsell_potential || 0, customer.purchases || 0))}
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-green-200">
                   <p className="text-sm font-medium text-slate-900 mb-2">Cross-Sell Suggestion</p>
                   <p className="text-slate-700">
-                    {customer.tier === 'bronze' ? 'Training Program + Support Package' :
-                     customer.tier === 'silver' ? 'Advanced Analytics + Custom Integration' :
-                     'Enterprise Consulting + White-label Solution'} •
-                    {Math.round(75 + (customer.health_score || 50) * 0.5)}% acceptance probability
+                    {suggestCrossSell(customer.tier || 'bronze', customer.purchases || 0, customer.health_score || 0, customer.total_revenue || 0)} •
+                    {calculateAcceptanceProbability(customer.health_score || 0, customer.upsell_potential || 0, customer.purchases || 0)}% acceptance probability
                   </p>
                 </div>
                 {customer.pain_points && customer.pain_points.length > 0 && (
