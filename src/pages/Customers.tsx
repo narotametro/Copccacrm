@@ -228,22 +228,18 @@ export const Customers: React.FC = () => {
         // Don't log AbortErrors - they're expected during navigation/remounts
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
           console.error('Error loading companies from database:', error);
+          toast.error('Failed to load customers. Please refresh the page.');
         }
-        // Fallback to localStorage if database fails
-        const saved = localStorage.getItem('copcca-customers');
-        if (saved) {
-          setCompanies(JSON.parse(saved));
-        }
+        // Do NOT fallback to localStorage - it may contain corrupt data with Date.now() IDs
+        // User should refresh or clear cache instead
       }
     };
 
     loadCompaniesFromDatabase();
   }, []);
 
-  // Save companies to localStorage whenever companies change
-  useEffect(() => {
-    localStorage.setItem('copcca-customers', JSON.stringify(companies));
-  }, [companies]);
+  // Removed localStorage sync - use database as single source of truth
+  // This prevents corrupt data (Date.now() IDs) from being cached
 
   // Save activeTab to localStorage whenever it changes
   useEffect(() => {
@@ -387,33 +383,66 @@ export const Customers: React.FC = () => {
     return <MessageSquare className="text-slate-600" size={16} />;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCompany: Business = {
-      id: Date.now().toString(),
-      ...formData,
-      status: 'prospect',
-      health_score: 75,
-      customer_type: 'lead',
-      churn_risk: 20,
-      upsell_potential: 50,
-      total_revenue: 0,
-      purchases: 0,
-      avg_order_value: 0,
-      last_purchase: new Date().toISOString(),
-      sentiment: 'neutral',
-      tier: 'bronze',
-      feedback_count: 0,
-      jtbd: 'New customer onboarding',
-      pain_points: [],
-      feedback_history: [],
-      priority_actions: ['Initial contact'],
-    };
-    setCompanies([newCompany, ...companies]);
-    toast.success('Customer added successfully');
-    setShowModal(false);
-    setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
-    setCurrentOther('');
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        toast.error('You must be logged in to add customers');
+        return;
+      }
+
+      // Insert customer into database (Supabase will generate UUID)
+      const { data: newCompany, error } = await supabase
+        .from('companies')
+        .insert([{
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          website: formData.website,
+          status: 'prospect',
+          created_by: userData.user.id,
+          is_own_company: false,  // This is a customer, not user's own company
+          jtbd: 'New customer onboarding',
+          sentiment: 'neutral',
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to local state with proper formatting
+      const formattedCompany: Business = {
+        id: newCompany.id,
+        ...formData,
+        status: 'prospect',
+        health_score: 75,
+        customer_type: 'lead',
+        churn_risk: 20,
+        upsell_potential: 50,
+        total_revenue: 0,
+        purchases: 0,
+        avg_order_value: 0,
+        last_purchase: new Date().toISOString(),
+        sentiment: 'neutral',
+        tier: 'bronze',
+        feedback_count: 0,
+        jtbd: 'New customer onboarding',
+        pain_points: [],
+        feedback_history: [],
+        priority_actions: ['Initial contact'],
+      };
+      
+      setCompanies([formattedCompany, ...companies]);
+      toast.success('Customer added successfully');
+      setShowModal(false);
+      setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
+      setCurrentOther('');
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      toast.error('Failed to add customer');
+    }
   };
 
   const handleDeleteCustomer = (customerId: string) => {
