@@ -198,13 +198,17 @@ WITH CHECK (
 -- =====================================================
 
 -- Fix: customer_feedback DELETE policy (too permissive)
+-- Note: customer_feedback table has no created_by column, only company_id
+-- Restrict to users from the same company OR admins
 DROP POLICY IF EXISTS "authenticated_users_delete_feedback" ON customer_feedback;
 
 CREATE POLICY "authenticated_users_delete_feedback" ON customer_feedback
 FOR DELETE 
 TO authenticated
 USING (
-  created_by = auth.uid() OR
+  company_id IN (
+    SELECT company_id FROM users WHERE id = auth.uid()
+  ) OR
   EXISTS (
     SELECT 1 FROM users 
     WHERE id = auth.uid() AND role = 'admin'
@@ -212,20 +216,25 @@ USING (
 );
 
 -- Fix: customer_feedback UPDATE policy (too permissive)
+-- Restrict to users from the same company OR admins
 DROP POLICY IF EXISTS "authenticated_users_update_feedback" ON customer_feedback;
 
 CREATE POLICY "authenticated_users_update_feedback" ON customer_feedback
 FOR UPDATE 
 TO authenticated
 USING (
-  created_by = auth.uid() OR
+  company_id IN (
+    SELECT company_id FROM users WHERE id = auth.uid()
+  ) OR
   EXISTS (
     SELECT 1 FROM users 
     WHERE id = auth.uid() AND role = 'admin'
   )
 )
 WITH CHECK (
-  created_by = auth.uid() OR
+  company_id IN (
+    SELECT company_id FROM users WHERE id = auth.uid()
+  ) OR
   EXISTS (
     SELECT 1 FROM users 
     WHERE id = auth.uid() AND role = 'admin'
