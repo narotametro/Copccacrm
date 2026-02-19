@@ -311,6 +311,9 @@ export const CustomerDetailPage: React.FC = () => {
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showJTBDModal, setShowJTBDModal] = useState(false);
   const [showSentimentModal, setShowSentimentModal] = useState(false);
+  const [showQuickNoteModal, setShowQuickNoteModal] = useState(false);  // Quick Note modal
+  const [quickNoteText, setQuickNoteText] = useState('');  // Quick Note input
+  const [customerNotes, setCustomerNotes] = useState<Array<{id: string; note_text: string; created_at: string}>>([]);  // Customer notes from DB
   const [selectedAction, setSelectedAction] = useState('');
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
@@ -494,10 +497,11 @@ export const CustomerDetailPage: React.FC = () => {
         // Removed setLoading(true) - show UI immediately
         setError(null);
 
-        // PARALLEL API CALLS - fetch company and feedback data
-        const [companyResult, feedbackResult] = await Promise.all([
+        // PARALLEL API CALLS - fetch company, feedback data, and customer notes
+        const [companyResult, feedbackResult, notesResult] = await Promise.all([
           supabase.from('companies').select('*').eq('id', id).single(),
-          supabase.from('customer_feedback').select('id, type, rating, feedback_text, created_at').eq('company_id', id).order('created_at', { ascending: false })
+          supabase.from('customer_feedback').select('id, type, rating, feedback_text, created_at').eq('company_id', id).order('created_at', { ascending: false }),
+          supabase.from('customer_notes').select('id, note_text, created_at').eq('company_id', id).order('created_at', { ascending: false }).limit(10)
         ]);
 
         if (companyResult.error) {
@@ -513,6 +517,10 @@ export const CustomerDetailPage: React.FC = () => {
 
         const company = companyResult.data;
         const feedbackData = feedbackResult.error ? [] : (feedbackResult.data || []);
+        const notesData = notesResult.error ? [] : (notesResult.data || []);
+        
+        // Set customer notes
+        setCustomerNotes(notesData);
         
         // Try to find matching sales hub customer by name/email
         // Note: companies and sales_hub_customers are separate entities with no direct FK relationship
@@ -959,6 +967,39 @@ Best regards,
                   <Wrench className="mr-2" size={16} />
                   Create Support Ticket
                 </Button>
+              </div>
+            </Card>
+
+            {/* Quick Notes */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Quick Notes</h3>
+                <Button 
+                  size="sm" 
+                  onClick={() => setShowQuickNoteModal(true)}
+                >
+                  + Add Note
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {customerNotes.length > 0 ? (
+                  customerNotes.map((note) => (
+                    <div key={note.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <p className="text-sm text-slate-700 mb-2">{note.note_text}</p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(note.created_at).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 text-center py-4">No notes yet. Add your first note!</p>
+                )}
               </div>
             </Card>
           </div>
@@ -1567,6 +1608,78 @@ Best regards,
           <div className="flex gap-3">
             <Button type="button" variant="secondary" onClick={() => setShowAddFeedbackModal(false)}>Cancel</Button>
             <Button type="submit">Add Feedback</Button>
+          </div>
+        </form>
+      </Modal>
+    )}
+
+    {/* Quick Note Modal */}
+    {showQuickNoteModal && (
+      <Modal
+        isOpen={showQuickNoteModal}
+        onClose={() => {
+          setShowQuickNoteModal(false);
+          setQuickNoteText('');
+        }}
+        title="Add Quick Note"
+      >
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          if (customer && supabaseReady && quickNoteText.trim()) {
+            try {
+              const { data: userData } = await supabase.auth.getUser();
+              if (!userData?.user) {
+                toast.error('You must be logged in');
+                return;
+              }
+
+              // Save note to database
+              const { data: newNote, error } = await supabase
+                .from('customer_notes')
+                .insert({
+                  company_id: customer.id,
+                  note_text: quickNoteText.trim(),
+                  created_by: userData.user.id
+                })
+                .select()
+                .single();
+
+              if (error) {
+                console.error('Error saving note:', error);
+                toast.error('Failed to save note');
+                return;
+              }
+
+              // Update local state
+              setCustomerNotes([newNote, ...customerNotes]);
+              toast.success('Note added successfully!');
+              setShowQuickNoteModal(false);
+              setQuickNoteText('');
+            } catch (err) {
+              console.error('Error adding note:', err);
+              toast.error('Failed to add note');
+            }
+          }
+        }} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Note</label>
+            <textarea
+              value={quickNoteText}
+              onChange={(e) => setQuickNoteText(e.target.value)}
+              placeholder="Enter your note about this customer..."
+              rows={4}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+              required
+              autoFocus
+            />
+            <p className="text-xs text-slate-500 mt-1">Timestamp will be added automatically</p>
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" variant="secondary" onClick={() => {
+              setShowQuickNoteModal(false);
+              setQuickNoteText('');
+            }}>Cancel</Button>
+            <Button type="submit">Add Note</Button>
           </div>
         </form>
       </Modal>
