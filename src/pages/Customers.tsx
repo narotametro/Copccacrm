@@ -193,7 +193,7 @@ export const Customers: React.FC = () => {
           const formattedCompanies: Business[] = data.map((c: Database['public']['Tables']['companies']['Row']) => ({
             id: c.id,
             name: c.name,
-            contactPerson: '',
+            contactPerson: c.address || '',  // Contact person stored in address field
             status: c.status,
             customer_type: 'active' as const,
             health_score: c.health_score || 80,
@@ -202,7 +202,7 @@ export const Customers: React.FC = () => {
             email: c.email,
             phone: c.phone,
             website: c.website || '',
-            townCity: '',
+            townCity: c.city || '',  // Town/city from city field
             others: [],
             total_revenue: 0,
             purchases: 0,
@@ -392,9 +392,11 @@ export const Customers: React.FC = () => {
         .from('companies')
         .insert([{
           name: formData.name,
-          email: formData.email,
+          email: formData.email.toLowerCase(),  // Auto-lowercase email
           phone: formData.phone,
           website: formData.website,
+          address: formData.contactPerson,  // Store contact person in address field
+          city: formData.townCity,  // Store town/city in city field
           status: 'prospect',
           created_by: userData.user.id,
           is_own_company: false,  // This is a customer, not user's own company
