@@ -484,11 +484,13 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
         <div className="flex-1 space-y-2">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-semibold text-slate-900 text-lg">{product.name}</h4>
+              <h4 className="font-semibold text-slate-900 text-lg">
+                {product.brands?.name && product.brands.name !== '0' && product.brands.name !== 0 && (
+                  <span className="text-green-600 mr-2">{product.brands.name}</span>
+                )}
+                {product.name}
+              </h4>
               {product.sku && <p className="text-sm text-slate-600">SKU: {product.sku}</p>}
-              {product.brands?.name && product.brands.name !== '0' && product.brands.name !== 0 && (
-                <p className="text-sm text-slate-500">Brand: {product.brands.name}</p>
-              )}
             </div>
             <div className="flex items-center gap-2">
               {onEdit && (
@@ -2233,6 +2235,7 @@ const SalesHub: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [brandFilter, setBrandFilter] = useState('all');
 
   // Use persistent store for cart and customer data - OPTIMIZED with shallow comparison
   const {
@@ -3530,13 +3533,15 @@ const SalesHub: React.FC = () => {
                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const productCategoryId = product.category_id || (product.categories?.id);
     const matchesCategory = categoryFilter === 'all' || productCategoryId === categoryFilter;
+    const productBrandId = product.brand_id || (product.brands?.id);
+    const matchesBrand = brandFilter === 'all' || productBrandId === brandFilter;
     const stockStatus = getStockStatus(product);
     const matchesStock = stockFilter === 'all' ||
                         (stockFilter === 'in-stock' && stockStatus.status === 'healthy') ||
                         (stockFilter === 'low-stock' && stockStatus.status === 'low') ||
                         (stockFilter === 'out-of-stock' && stockStatus.status === 'out');
 
-    return matchesSearch && matchesCategory && matchesStock;
+    return matchesSearch && matchesCategory && matchesBrand && matchesStock;
   });
 
   const addToCartWithQuantity = (product: Product, quantity: number, customPrice: number) => {
@@ -5649,6 +5654,19 @@ const CustomerBuyingPatternsSection = () => {
             <option value="in-stock">🟢 In Stock</option>
             <option value="low-stock">🟡 Low Stock</option>
             <option value="out-of-stock">🔴 Out of Stock</option>
+          </select>
+
+          <select
+            value={brandFilter}
+            onChange={(e) => setBrandFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">🏷️ All Brands</option>
+            {brands.map(brand => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
           </select>
 
           <Button
