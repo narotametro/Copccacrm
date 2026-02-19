@@ -922,62 +922,6 @@ export const CustomerDetailPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Quick Actions */}
-            <Card>
-              <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="space-y-2">
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => {
-                    // Email functionality
-                    const subject = `Follow-up with ${customer.name}`;
-                    const body = `Hi ${customer.contactPerson || 'there'},
-
-I hope this email finds you well. I wanted to follow up regarding our recent interactions.
-
-Best regards,
-[Your Name]`;
-                    window.open(`mailto:${customer.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                  }}
-                >
-                  <Mail className="mr-2" size={16} />
-                  Send Email
-                </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => {
-                    // Call functionality
-                    if (customer.phone) {
-                      window.open(`tel:${customer.phone}`);
-                    } else {
-                      alert('No phone number available for this customer');
-                    }
-                  }}
-                >
-                  <Phone className="mr-2" size={16} />
-                  Call Customer
-                </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => setShowCreateDealModal(true)}
-                >
-                  <FileText className="mr-2" size={16} />
-                  Create Deal
-                </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => setShowCreateTicketModal(true)}
-                >
-                  <Wrench className="mr-2" size={16} />
-                  Create Support Ticket
-                </Button>
-              </div>
-            </Card>
-
             {/* Quick Notes */}
             <Card>
               <div className="flex items-center justify-between mb-4">
