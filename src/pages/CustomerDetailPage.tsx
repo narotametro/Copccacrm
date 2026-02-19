@@ -53,6 +53,7 @@ interface Business {
   phone?: string;
   email?: string;
   address?: string;
+  city?: string;  // Town/City
   status: string;
   health_score?: number;
   annual_revenue?: number;
@@ -577,6 +578,7 @@ export const CustomerDetailPage: React.FC = () => {
           phone: company.phone,
           email: company.email,
           address: company.address,
+          city: company.city,  // Town/City from database
           status: company.status,
           health_score: healthScore, // Calculated from Sales Hub data
           annual_revenue: company.annual_revenue,
@@ -816,6 +818,12 @@ export const CustomerDetailPage: React.FC = () => {
                   <Calendar className="text-slate-400" size={16} />
                   <span className="text-sm">Last Purchase: {customer.last_purchase}</span>
                 </div>
+                {customer.city && (
+                  <div className="flex items-center gap-3">
+                    <Building2 className="text-slate-400" size={16} />
+                    <span className="text-sm">{customer.city}</span>
+                  </div>
+                )}
                 {customer.linkedin && (
                   <div className="flex items-center gap-3">
                     <Linkedin className="text-blue-700" size={16} />
