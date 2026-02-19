@@ -324,12 +324,14 @@ CREATE OR REPLACE VIEW v_expense_summary_by_category
 WITH (security_invoker=true)
 AS
 SELECT 
-  category,
+  e.category_name,
+  ec.name as category_full_name,
   COUNT(*) as expense_count,
-  SUM(amount) as total_amount,
-  AVG(amount) as avg_amount
-FROM expenses
-GROUP BY category;
+  SUM(e.amount) as total_amount,
+  AVG(e.amount) as avg_amount
+FROM expenses e
+LEFT JOIN expense_categories ec ON e.category_id = ec.id
+GROUP BY e.category_name, ec.name;
 
 -- Fix: v_monthly_expense_trends
 DROP VIEW IF EXISTS v_monthly_expense_trends;
@@ -337,11 +339,11 @@ CREATE OR REPLACE VIEW v_monthly_expense_trends
 WITH (security_invoker=true)
 AS
 SELECT 
-  DATE_TRUNC('month', expense_date) as month,
-  category,
-  SUM(amount) as total_amount
-FROM expenses
-GROUP BY DATE_TRUNC('month', expense_date), category
+  DATE_TRUNC('month', e.expense_date) as month,
+  e.category_name,
+  SUM(e.amount) as total_amount
+FROM expenses e
+GROUP BY DATE_TRUNC('month', e.expense_date), e.category_name
 ORDER BY month DESC;
 
 -- Fix: v_vendor_spending
@@ -350,12 +352,12 @@ CREATE OR REPLACE VIEW v_vendor_spending
 WITH (security_invoker=true)
 AS
 SELECT 
-  vendor,
+  vendor_name,
   COUNT(*) as transaction_count,
   SUM(amount) as total_spent
 FROM expenses
-WHERE vendor IS NOT NULL
-GROUP BY vendor
+WHERE vendor_name IS NOT NULL
+GROUP BY vendor_name
 ORDER BY total_spent DESC;
 
 -- =====================================================
