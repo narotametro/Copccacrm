@@ -480,9 +480,23 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleDeleteCustomer = (customerId: string) => {
-    setCompanies(companies.filter(c => c.id !== customerId));
-    toast.success('Customer deleted successfully');
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', customerId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setCompanies(companies.filter(c => c.id !== customerId));
+      toast.success('Customer deleted successfully');
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      toast.error('Failed to delete customer. Please try again.');
+    }
   };
 
   const handleEditCustomer = (customer: Business) => {

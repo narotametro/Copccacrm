@@ -808,12 +808,14 @@ export const CustomerDetailPage: React.FC = () => {
                   <Phone className="text-slate-400" size={16} />
                   <span className="text-sm">{customer.phone || 'N/A'}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Globe className="text-slate-400" size={16} />
-                  <a href={customer.website || '#'} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline">
-                    {customer.website || 'N/A'}
-                  </a>
-                </div>
+                {customer.website && (
+                  <div className="flex items-center gap-3">
+                    <Globe className="text-slate-400" size={16} />
+                    <a href={customer.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline">
+                      {customer.website}
+                    </a>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <Calendar className="text-slate-400" size={16} />
                   <span className="text-sm">Last Purchase: {customer.last_purchase}</span>
@@ -1205,87 +1207,12 @@ export const CustomerDetailPage: React.FC = () => {
                   <Brain className="text-white" size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Priority Actions (Top 3)</h3>
-                  <p className="text-sm text-slate-600">AI-recommended actions for {customer.name}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">AI Insights</h3>
+                  <p className="text-sm text-slate-600">Intelligent analysis for {customer.name}</p>
                 </div>
               </div>
-
-              <div className="space-y-3">
-                {(customer.priority_actions || []).map((action, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-white rounded-xl border-l-4 border-primary-500 hover:shadow-md transition-shadow">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span className="text-primary-600 font-bold">{index + 1}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900 mb-2">{action}</p>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          icon={CheckCircle}
-                          onClick={() => {
-                            setSelectedAction(action);
-                            setShowMarkDoneModal(true);
-                          }}
-                        >
-                          Mark Done
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
-                          icon={Calendar}
-                          onClick={() => {
-                            setSelectedAction(action);
-                            setShowSetReminderModal(true);
-                          }}
-                        >
-                          Set Reminder
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="border-l-4 border-green-500">
-              <h3 className="text-lg font-semibold mb-4">AI Insights Summary</h3>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Target className="text-green-600 flex-shrink-0 mt-1" size={20} />
-                  <div>
-                    <p className="font-medium text-slate-900 mb-1">Best Time to Contact</p>
-                    <p className="text-sm text-slate-700">
-                      {customer.customer_type === 'vip' ? 'Monday-Wednesday, 9 AM - 11 AM' :
-                       customer.customer_type === 'active' ? 'Tuesday-Thursday, 2 PM - 4 PM' :
-                       'Wednesday-Friday, 10 AM - 12 PM'}
-                      (based on {customer.purchases || Math.floor(Math.random() * 50) + 10} purchase interactions)
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <BarChart3 className="text-blue-600 flex-shrink-0 mt-1" size={20} />
-                  <div>
-                    <p className="font-medium text-slate-900 mb-1">Engagement Pattern</p>
-                    <p className="text-sm text-slate-700">
-                      {customer.sentiment === 'positive' ? 'High' : customer.sentiment === 'neutral' ? 'Moderate' : 'Low'} 
-                      engagement rate ({Math.round(60 + (customer.health_score || 50) * 0.8)}%), 
-                      prefers {customer.customer_type === 'vip' ? 'personal consultations' : 
-                              customer.customer_type === 'active' ? 'email updates' : 
-                              'automated notifications'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Banknote className="text-purple-600 flex-shrink-0 mt-1" size={20} />
-                  <div>
-                    <p className="font-medium text-slate-900 mb-1">Revenue Potential</p>
-                    <p className="text-sm text-slate-700">
-                      Est. ₦{Math.round(((customer.total_revenue || 100000) * ((customer.upsell_potential || 25) / 100 + 0.5))).toLocaleString()}
-                      additional revenue possible within {(customer.churn_risk || 0) < 30 ? '3 months' : '6 months'}
-                      via {(customer.tier || 'bronze') === 'bronze' ? 'upsell' : 'cross-sell'}
-                    </p>
-                  </div>
-                </div>
+              <div className="text-center py-8">
+                <p className="text-slate-600">AI insights will appear here as customer data is collected and analyzed.</p>
               </div>
             </Card>
           </div>
