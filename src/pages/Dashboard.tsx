@@ -80,7 +80,7 @@ const Dashboard = () => {
           supabase.from('deals').select('id, stage').eq('stage', 'won').eq('created_by', userData.user.id),
           supabase.from('deals').select('stage').eq('created_by', userData.user.id),
           supabase.from('deals').select('title, created_at, stage').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(3),
-          supabase.from('companies').select('name, created_at').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(2)
+          supabase.from('companies').select('name, created_at').eq('created_by', userData.user.id).eq('is_own_company', false).order('created_at', { ascending: false }).limit(2)
         ]);
         
         // Process revenue from both invoices AND sales hub orders

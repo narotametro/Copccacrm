@@ -593,7 +593,7 @@ export const CustomerDetailPage: React.FC = () => {
           avg_order_value: avgOrderValue,
           last_purchase: lastPurchaseDate,
           tier: tier,
-          contactPerson: null, // Not in current schema
+          contactPerson: company.address || null,  // Contact person stored in address field
           priority_actions: [] // Would need to be calculated
         };
 
@@ -670,9 +670,19 @@ export const CustomerDetailPage: React.FC = () => {
     );
   }
 
-  // If customer data is not loaded yet, return null (React will show nothing while loading)
+  // Show minimal loading state (not blank page)
   if (!customer) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-10 bg-slate-200 rounded w-48 mb-6"></div>
+            <div className="h-64 bg-slate-200 rounded mb-6"></div>
+            <div className="h-96 bg-slate-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const customerDeals = getDealsByCustomer(customer.id) || [];

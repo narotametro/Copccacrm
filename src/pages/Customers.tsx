@@ -107,6 +107,7 @@ export const Customers: React.FC = () => {
   // IMPORTANT: Do NOT initialize from localStorage - it may contain corrupt data with Date.now() IDs
   // Always load fresh from database
   const [companies, setCompanies] = useState<Business[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);  // Track loading state
   const [searchTerm, setSearchTerm] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [townCityFilter, setTownCityFilter] = useState('all');
@@ -131,6 +132,7 @@ export const Customers: React.FC = () => {
   const [reminderTime, setReminderTime] = useState('09:00');
   const [escalateFeedback, setEscalateFeedback] = useState<Business['feedback_history'][number] | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Business | null>(null);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);  // Track which customer is being edited
   const [salesHubProducts, setSalesHubProducts] = useState<SalesHubProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights'>(
     (localStorage.getItem('copcca-customer-modal-active-tab') as 'overview' | 'performance' | 'feedback' | 'pain-points' | 'ai-insights' | null) || 'overview'
@@ -157,6 +159,7 @@ export const Customers: React.FC = () => {
   // Load companies from database on mount
   useEffect(() => {
     const loadCompaniesFromDatabase = async () => {
+      setIsLoadingCustomers(true);  // Start loading
       try {
         // CRITICAL: Clear corrupt localStorage data from old versions
         // Old versions used Date.now() for IDs, which breaks UUID queries
@@ -175,7 +178,10 @@ export const Customers: React.FC = () => {
         }
 
         const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) return;
+        if (!userData?.user) {
+          setIsLoadingCustomers(false);
+          return;
+        }
 
         // Query ONLY customer companies (exclude user's own company)
         // is_own_company flag distinguishes between user's company and their customers
@@ -226,6 +232,8 @@ export const Customers: React.FC = () => {
         }
         // Do NOT fallback to localStorage - it may contain corrupt data with Date.now() IDs
         // User should refresh or clear cache instead
+      } finally {
+        setIsLoadingCustomers(false);  // Always stop loading
       }
     };
 
@@ -387,7 +395,38 @@ export const Customers: React.FC = () => {
         return;
       }
 
-      // Insert customer into database (Supabase will generate UUID)
+      // Check if editing existing customer
+      if (editingCustomerId) {
+        // UPDATE existing customer
+        const { error } = await supabase
+          .from('companies')
+          .update({
+            name: formData.name,
+            email: formData.email.toLowerCase(),  // Auto-lowercase email
+            phone: formData.phone,
+            website: formData.website,
+            address: formData.contactPerson,  // Store contact person in address field
+            city: formData.townCity,  // Store town/city in city field
+          })
+          .eq('id', editingCustomerId);
+
+        if (error) throw error;
+
+        // Update local state
+        setCompanies(companies.map(c => 
+          c.id === editingCustomerId 
+            ? { ...c, ...formData, email: formData.email.toLowerCase() }
+            : c
+        ));
+        toast.success('Customer updated successfully');
+        setShowModal(false);
+        setEditingCustomerId(null);
+        setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
+        setCurrentOther('');
+        return;
+      }
+
+      // INSERT new customer (Supabase will generate UUID)
       const { data: newCompany, error } = await supabase
         .from('companies')
         .insert([{
@@ -456,9 +495,9 @@ export const Customers: React.FC = () => {
       townCity: customer.townCity || '',
       others: customer.others || [],
     });
+    setEditingCustomerId(customer.id);  // Track which customer is being edited
     setCurrentOther('');
     setShowModal(true);
-    // Note: In a real app, you'd want to track which customer is being edited
   };
 
   const filteredCompanies = companies.filter((company) => {
@@ -494,6 +533,26 @@ export const Customers: React.FC = () => {
   });
 
   const uniqueTownCities = Array.from(new Set(companies.map(c => c.townCity).filter(Boolean))).sort() as string[];
+
+  // Show loading skeleton while fetching data
+  if (isLoadingCustomers) {
+    return (
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Customer 360°</h1>
+            <p className="text-slate-600 mt-1 text-sm md:text-base">Loading customers...</p>
+          </div>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-20 bg-slate-200 rounded-lg"></div>
+          <div className="h-32 bg-slate-200 rounded-lg"></div>
+          <div className="h-32 bg-slate-200 rounded-lg"></div>
+          <div className="h-32 bg-slate-200 rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -795,14 +854,18 @@ export const Customers: React.FC = () => {
         })}
       </div>
 
-      {/* Add Customer Modal */}
+      {/* Add/Edit Customer Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title="Add New Customer"
+        onClose={() => {
+          setShowModal(false);
+          setEditingCustomerId(null);  // Reset editing state
+          setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
+        }}
+        title={editingCustomerId ? "Edit Customer" : "Add New Customer"}
         headerActions={
           <Button type="submit" form="add-customer-form" size="sm">
-            Add Customer
+            {editingCustomerId ? "Update Customer" : "Add Customer"}
           </Button>
         }
       >
