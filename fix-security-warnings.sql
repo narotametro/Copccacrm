@@ -17,7 +17,8 @@
 -- Prevents schema-shadowing attacks on all functions
 
 -- Fix: get_trial_status
-CREATE OR REPLACE FUNCTION get_trial_status(user_id UUID)
+DROP FUNCTION IF EXISTS get_trial_status(UUID);
+CREATE FUNCTION get_trial_status(user_id UUID)
 RETURNS TABLE (
   is_trial BOOLEAN,
   trial_start_date TIMESTAMPTZ,
@@ -52,7 +53,8 @@ END;
 $$;
 
 -- Fix: verify_admin_login
-CREATE OR REPLACE FUNCTION verify_admin_login(p_email TEXT, p_password TEXT)
+DROP FUNCTION IF EXISTS verify_admin_login(TEXT, TEXT);
+CREATE FUNCTION verify_admin_login(p_email TEXT, p_password TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -82,7 +84,8 @@ END;
 $$;
 
 -- Fix: calculate_customer_health_score
-CREATE OR REPLACE FUNCTION calculate_customer_health_score(customer_id UUID)
+DROP FUNCTION IF EXISTS calculate_customer_health_score(UUID);
+CREATE FUNCTION calculate_customer_health_score(customer_id UUID)
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -111,7 +114,8 @@ END;
 $$;
 
 -- Fix: hash_password
-CREATE OR REPLACE FUNCTION hash_password(password TEXT)
+DROP FUNCTION IF EXISTS hash_password(TEXT);
+CREATE FUNCTION hash_password(password TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -123,7 +127,8 @@ END;
 $$;
 
 -- Fix: change_admin_password
-CREATE OR REPLACE FUNCTION change_admin_password(p_user_id UUID, p_old_password TEXT, p_new_password TEXT)
+DROP FUNCTION IF EXISTS change_admin_password(UUID, TEXT, TEXT);
+CREATE FUNCTION change_admin_password(p_user_id UUID, p_old_password TEXT, p_new_password TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -144,7 +149,8 @@ END;
 $$;
 
 -- Fix: update_debt_days_overdue
-CREATE OR REPLACE FUNCTION update_debt_days_overdue()
+DROP FUNCTION IF EXISTS update_debt_days_overdue();
+CREATE FUNCTION update_debt_days_overdue()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -157,7 +163,8 @@ END;
 $$;
 
 -- Fix: update_invoice_paid_amount
-CREATE OR REPLACE FUNCTION update_invoice_paid_amount()
+DROP FUNCTION IF EXISTS update_invoice_paid_amount();
+CREATE FUNCTION update_invoice_paid_amount()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -177,7 +184,8 @@ END;
 $$;
 
 -- Fix: update_invoice_status
-CREATE OR REPLACE FUNCTION update_invoice_status()
+DROP FUNCTION IF EXISTS update_invoice_status();
+CREATE FUNCTION update_invoice_status()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -199,7 +207,8 @@ END;
 $$;
 
 -- Fix: get_trial_analytics
-CREATE OR REPLACE FUNCTION get_trial_analytics()
+DROP FUNCTION IF EXISTS get_trial_analytics();
+CREATE FUNCTION get_trial_analytics()
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -224,7 +233,8 @@ END;
 $$;
 
 -- Fix: update_invoice_total
-CREATE OR REPLACE FUNCTION update_invoice_total()
+DROP FUNCTION IF EXISTS update_invoice_total();
+CREATE FUNCTION update_invoice_total()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -237,7 +247,8 @@ END;
 $$;
 
 -- Fix: update_company_feedback_metrics
-CREATE OR REPLACE FUNCTION update_company_feedback_metrics(p_company_id UUID)
+DROP FUNCTION IF EXISTS update_company_feedback_metrics(UUID);
+CREATE FUNCTION update_company_feedback_metrics(p_company_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -261,7 +272,8 @@ END;
 $$;
 
 -- Fix: trigger_update_company_feedback_metrics
-CREATE OR REPLACE FUNCTION trigger_update_company_feedback_metrics()
+DROP FUNCTION IF EXISTS trigger_update_company_feedback_metrics();
+CREATE FUNCTION trigger_update_company_feedback_metrics()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -274,7 +286,8 @@ END;
 $$;
 
 -- Fix: calculate_expense_totals
-CREATE OR REPLACE FUNCTION calculate_expense_totals(p_company_id UUID, p_start_date DATE, p_end_date DATE)
+DROP FUNCTION IF EXISTS calculate_expense_totals(UUID, DATE, DATE);
+CREATE FUNCTION calculate_expense_totals(p_company_id UUID, p_start_date DATE, p_end_date DATE)
 RETURNS NUMERIC
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -294,7 +307,8 @@ END;
 $$;
 
 -- Fix: generate_recurring_expenses
-CREATE OR REPLACE FUNCTION generate_recurring_expenses()
+DROP FUNCTION IF EXISTS generate_recurring_expenses();
+CREATE FUNCTION generate_recurring_expenses()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -321,7 +335,8 @@ END;
 $$;
 
 -- Fix: assign_start_plan_to_new_user
-CREATE OR REPLACE FUNCTION assign_start_plan_to_new_user()
+DROP FUNCTION IF EXISTS assign_start_plan_to_new_user();
+CREATE FUNCTION assign_start_plan_to_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -343,7 +358,8 @@ END;
 $$;
 
 -- Fix: upsert_system_setting
-CREATE OR REPLACE FUNCTION upsert_system_setting(p_key TEXT, p_value TEXT)
+DROP FUNCTION IF EXISTS upsert_system_setting(TEXT, TEXT);
+CREATE FUNCTION upsert_system_setting(p_key TEXT, p_value TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -358,7 +374,8 @@ END;
 $$;
 
 -- Fix: get_integration_stats
-CREATE OR REPLACE FUNCTION get_integration_stats()
+DROP FUNCTION IF EXISTS get_integration_stats();
+CREATE FUNCTION get_integration_stats()
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -380,7 +397,8 @@ END;
 $$;
 
 -- Fix: has_feature_access
-CREATE OR REPLACE FUNCTION has_feature_access(p_user_id UUID, p_feature_name TEXT)
+DROP FUNCTION IF EXISTS has_feature_access(UUID, TEXT);
+CREATE FUNCTION has_feature_access(p_user_id UUID, p_feature_name TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -406,7 +424,8 @@ END;
 $$;
 
 -- Fix: activate_subscription
-CREATE OR REPLACE FUNCTION activate_subscription(p_user_id UUID, p_plan_id UUID)
+DROP FUNCTION IF EXISTS activate_subscription(UUID, UUID);
+CREATE FUNCTION activate_subscription(p_user_id UUID, p_plan_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -425,7 +444,8 @@ END;
 $$;
 
 -- Fix: upgrade_user_subscription
-CREATE OR REPLACE FUNCTION upgrade_user_subscription(p_user_id UUID, p_new_plan_id UUID)
+DROP FUNCTION IF EXISTS upgrade_user_subscription(UUID, UUID);
+CREATE FUNCTION upgrade_user_subscription(p_user_id UUID, p_new_plan_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -444,7 +464,8 @@ END;
 $$;
 
 -- Fix: user_has_feature
-CREATE OR REPLACE FUNCTION user_has_feature(p_user_id UUID, p_feature_name TEXT)
+DROP FUNCTION IF EXISTS user_has_feature(UUID, TEXT);
+CREATE FUNCTION user_has_feature(p_user_id UUID, p_feature_name TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -456,7 +477,8 @@ END;
 $$;
 
 -- Fix: assign_inviter_subscription_to_user
-CREATE OR REPLACE FUNCTION assign_inviter_subscription_to_user()
+DROP FUNCTION IF EXISTS assign_inviter_subscription_to_user();
+CREATE FUNCTION assign_inviter_subscription_to_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -482,7 +504,8 @@ END;
 $$;
 
 -- Fix: auto_block_ip_if_needed
-CREATE OR REPLACE FUNCTION auto_block_ip_if_needed()
+DROP FUNCTION IF EXISTS auto_block_ip_if_needed();
+CREATE FUNCTION auto_block_ip_if_needed()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -508,7 +531,8 @@ END;
 $$;
 
 -- Fix: cleanup_old_audit_logs
-CREATE OR REPLACE FUNCTION cleanup_old_audit_logs()
+DROP FUNCTION IF EXISTS cleanup_old_audit_logs();
+CREATE FUNCTION cleanup_old_audit_logs()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -521,7 +545,8 @@ END;
 $$;
 
 -- Fix: cleanup_expired_sessions
-CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+DROP FUNCTION IF EXISTS cleanup_expired_sessions();
+CREATE FUNCTION cleanup_expired_sessions()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -534,7 +559,8 @@ END;
 $$;
 
 -- Fix: cleanup_expired_ip_blocks
-CREATE OR REPLACE FUNCTION cleanup_expired_ip_blocks()
+DROP FUNCTION IF EXISTS cleanup_expired_ip_blocks();
+CREATE FUNCTION cleanup_expired_ip_blocks()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -547,7 +573,8 @@ END;
 $$;
 
 -- Fix: log_security_event
-CREATE OR REPLACE FUNCTION log_security_event(p_user_id UUID, p_event_type TEXT, p_ip_address INET, p_details JSONB)
+DROP FUNCTION IF EXISTS log_security_event(UUID, TEXT, INET, JSONB);
+CREATE FUNCTION log_security_event(p_user_id UUID, p_event_type TEXT, p_ip_address INET, p_details JSONB)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -560,7 +587,8 @@ END;
 $$;
 
 -- Fix: is_ip_blocked
-CREATE OR REPLACE FUNCTION is_ip_blocked(p_ip_address INET)
+DROP FUNCTION IF EXISTS is_ip_blocked(INET);
+CREATE FUNCTION is_ip_blocked(p_ip_address INET)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -577,7 +605,8 @@ END;
 $$;
 
 -- Fix: process_trial_expirations
-CREATE OR REPLACE FUNCTION process_trial_expirations()
+DROP FUNCTION IF EXISTS process_trial_expirations();
+CREATE FUNCTION process_trial_expirations()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -593,7 +622,8 @@ END;
 $$;
 
 -- Fix: set_sms_log_company
-CREATE OR REPLACE FUNCTION set_sms_log_company()
+DROP FUNCTION IF EXISTS set_sms_log_company();
+CREATE FUNCTION set_sms_log_company()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -609,7 +639,8 @@ END;
 $$;
 
 -- Fix: get_sms_stats
-CREATE OR REPLACE FUNCTION get_sms_stats(p_company_id UUID)
+DROP FUNCTION IF EXISTS get_sms_stats(UUID);
+CREATE FUNCTION get_sms_stats(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -633,7 +664,8 @@ END;
 $$;
 
 -- Fix: get_debt_sms_history
-CREATE OR REPLACE FUNCTION get_debt_sms_history(p_debt_id UUID)
+DROP FUNCTION IF EXISTS get_debt_sms_history(UUID);
+CREATE FUNCTION get_debt_sms_history(p_debt_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -660,7 +692,8 @@ END;
 $$;
 
 -- Fix: record_cash_payment
-CREATE OR REPLACE FUNCTION record_cash_payment(
+DROP FUNCTION IF EXISTS record_cash_payment(UUID, NUMERIC, TEXT, TEXT, UUID);
+CREATE FUNCTION record_cash_payment(
   p_company_id UUID,
   p_amount NUMERIC,
   p_payment_method TEXT,
@@ -684,7 +717,8 @@ END;
 $$;
 
 -- Fix: verify_cash_payment
-CREATE OR REPLACE FUNCTION verify_cash_payment(p_payment_id UUID, p_verified_by UUID)
+DROP FUNCTION IF EXISTS verify_cash_payment(UUID, UUID);
+CREATE FUNCTION verify_cash_payment(p_payment_id UUID, p_verified_by UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -701,7 +735,8 @@ END;
 $$;
 
 -- Fix: get_cash_payments_summary
-CREATE OR REPLACE FUNCTION get_cash_payments_summary(p_company_id UUID)
+DROP FUNCTION IF EXISTS get_cash_payments_summary(UUID);
+CREATE FUNCTION get_cash_payments_summary(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -725,7 +760,8 @@ END;
 $$;
 
 -- Fix: get_cash_payments_by_collector
-CREATE OR REPLACE FUNCTION get_cash_payments_by_collector(p_company_id UUID)
+DROP FUNCTION IF EXISTS get_cash_payments_by_collector(UUID);
+CREATE FUNCTION get_cash_payments_by_collector(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -751,7 +787,8 @@ END;
 $$;
 
 -- Fix: activate_subscription_with_payment
-CREATE OR REPLACE FUNCTION activate_subscription_with_payment(
+DROP FUNCTION IF EXISTS activate_subscription_with_payment(UUID, UUID, UUID);
+CREATE FUNCTION activate_subscription_with_payment(
   p_user_id UUID,
   p_plan_id UUID,
   p_payment_id UUID
@@ -780,7 +817,8 @@ END;
 $$;
 
 -- Fix: get_subscription_dashboard_stats
-CREATE OR REPLACE FUNCTION get_subscription_dashboard_stats()
+DROP FUNCTION IF EXISTS get_subscription_dashboard_stats();
+CREATE FUNCTION get_subscription_dashboard_stats()
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -805,7 +843,8 @@ END;
 $$;
 
 -- Fix: update_trial_statuses
-CREATE OR REPLACE FUNCTION update_trial_statuses()
+DROP FUNCTION IF EXISTS update_trial_statuses();
+CREATE FUNCTION update_trial_statuses()
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
