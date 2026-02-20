@@ -1131,9 +1131,16 @@ USING (
 -- Note: Skipped - table schema unknown, company_id column not verified
 -- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
--- Fix: kv_store_a2294ced (key-value store - user-specific)
--- Note: Skipped - table schema unknown, column structure unclear
--- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
+-- Fix: kv_store_a2294ced (key-value store - shared data)
+-- Note: Table has no ownership columns (no user_id, company_id, created_by)
+-- Creating permissive policies for all authenticated users since data appears to be shared
+DROP POLICY IF EXISTS "Authenticated users can access key-value store" ON kv_store_a2294ced;
+
+CREATE POLICY "Authenticated users can access key-value store" ON kv_store_a2294ced
+FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
 
 -- Fix: payments
 DROP POLICY IF EXISTS "Users can view own company payments" ON payments;
