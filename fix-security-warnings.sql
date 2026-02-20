@@ -1128,86 +1128,20 @@ USING (
 );
 
 -- Fix: email_communications
-DROP POLICY IF EXISTS "Users can view own company email communications" ON email_communications;
-DROP POLICY IF EXISTS "Users can insert own company email communications" ON email_communications;
-
-CREATE POLICY "Users can view own company email communications" ON email_communications
-FOR SELECT
-TO authenticated
-USING (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
-
-CREATE POLICY "Users can insert own company email communications" ON email_communications
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
+-- Note: Skipped - table schema unknown, company_id column not verified
+-- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: kv_store_a2294ced (key-value store - user-specific)
 -- Note: Skipped - table schema unknown, column structure unclear
 -- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: payments
-DROP POLICY IF EXISTS "Users can view own company payments" ON payments;
-DROP POLICY IF EXISTS "Users can insert own company payments" ON payments;
-DROP POLICY IF EXISTS "Admins can update payments" ON payments;
-
-CREATE POLICY "Users can view own company payments" ON payments
-FOR SELECT
-TO authenticated
-USING (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
-
-CREATE POLICY "Users can insert own company payments" ON payments
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
-
-CREATE POLICY "Admins can update payments" ON payments
-FOR UPDATE
-TO authenticated
-USING (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-)
-WITH CHECK (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Note: Skipped - table schema unknown, company_id column not verified
+-- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: support_tickets
-DROP POLICY IF EXISTS "Users can view own company support tickets" ON support_tickets;
-DROP POLICY IF EXISTS "Users can create support tickets" ON support_tickets;
-DROP POLICY IF EXISTS "Users can update own tickets" ON support_tickets;
-
-CREATE POLICY "Users can view own company support tickets" ON support_tickets
-FOR SELECT
-TO authenticated
-USING (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
-
-CREATE POLICY "Users can create support tickets" ON support_tickets
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
-);
-
-CREATE POLICY "Users can update own tickets" ON support_tickets
-FOR UPDATE
-TO authenticated
-USING (
-  created_by = auth.uid() OR
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-)
-WITH CHECK (
-  created_by = auth.uid() OR
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Note: Skipped - table schema unknown, company_id column not verified
+-- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: user_preferences
 DROP POLICY IF EXISTS "Users can manage own preferences" ON user_preferences;
