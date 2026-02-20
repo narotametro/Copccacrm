@@ -2555,8 +2555,6 @@ const SalesHub: React.FC = () => {
         .from('companies')
         .select('*')
         .eq('status', 'active')
-        .eq('created_by', userData.user.id)
-        .eq('is_own_company', false) // Exclude user's own company
         .order('name');
 
       if (error) throw error;
@@ -2729,12 +2727,12 @@ const SalesHub: React.FC = () => {
               </div>
             </div>
             <div class="header-right">
-              <strong style="font-size: 12px;">${companyInfo.name}</strong><br />
-              ${companyInfo.address}<br />
-              ${companyInfo.city}${companyInfo.city && companyInfo.country ? ', ' : ''}${companyInfo.country}<br />
-              Phone: ${companyInfo.phone}<br />
-              Email: ${companyInfo.email}<br />
-              TIN: ${companyInfo.tin}
+              ${companyInfo.name ? `<strong style="font-size: 12px;">${companyInfo.name}</strong><br />` : ''}
+              ${companyInfo.address ? `${companyInfo.address}<br />` : ''}
+              ${companyInfo.city || companyInfo.country ? `${companyInfo.city}${companyInfo.city && companyInfo.country ? ', ' : ''}${companyInfo.country}<br />` : ''}
+              ${companyInfo.phone ? `Phone: ${companyInfo.phone}<br />` : ''}
+              ${companyInfo.email ? `Email: ${companyInfo.email}<br />` : ''}
+              ${companyInfo.tin ? `TIN: ${companyInfo.tin}` : ''}
             </div>
           </div>
 
@@ -3592,7 +3590,7 @@ const SalesHub: React.FC = () => {
       toast.success('Order completed successfully!');
 
       // Process backend operations asynchronously without blocking UI
-      setTimeout(async () => {
+      (async () => {
         try {
           let salesHubCustomerId;
 
@@ -3727,6 +3725,9 @@ const SalesHub: React.FC = () => {
 
           await Promise.all(stockPromises);
 
+          // Refresh order history immediately so user can print invoice
+          await loadOrderHistory();
+
           // Update products state
           setProducts(prevProducts =>
             prevProducts.map(product => {
@@ -3740,7 +3741,7 @@ const SalesHub: React.FC = () => {
         } catch (error) {
           console.error('Error processing order in background:', error);
         }
-      }, 0);
+      })();
     } catch (error) {
       console.error('Error completing order:', error);
       toast.error('Failed to complete order. Please try again.');
@@ -3854,12 +3855,12 @@ const SalesHub: React.FC = () => {
                 </div>
               </div>
               <div class="header-right">
-                <strong style="font-size: 12px;">${companyInfo.name}</strong><br />
-                ${companyInfo.address}<br />
-                ${companyInfo.city}${companyInfo.city && companyInfo.country ? ', ' : ''}${companyInfo.country}<br />
-                Phone: ${companyInfo.phone}<br />
-                Email: ${companyInfo.email}<br />
-                TIN: ${companyInfo.tin}
+                ${companyInfo.name ? `<strong style="font-size: 12px;">${companyInfo.name}</strong><br />` : ''}
+                ${companyInfo.address ? `${companyInfo.address}<br />` : ''}
+                ${companyInfo.city || companyInfo.country ? `${companyInfo.city}${companyInfo.city && companyInfo.country ? ', ' : ''}${companyInfo.country}<br />` : ''}
+                ${companyInfo.phone ? `Phone: ${companyInfo.phone}<br />` : ''}
+                ${companyInfo.email ? `Email: ${companyInfo.email}<br />` : ''}
+                ${companyInfo.tin ? `TIN: ${companyInfo.tin}` : ''}
               </div>
             </div>
 
