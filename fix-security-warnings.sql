@@ -127,7 +127,7 @@ END;
 $$;
 
 -- Fix: change_admin_password
-DROP FUNCTION IF EXISTS change_admin_password(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS change_admin_password CASCADE;
 CREATE FUNCTION change_admin_password(p_user_id UUID, p_old_password TEXT, p_new_password TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -204,7 +204,7 @@ END;
 $$;
 
 -- Fix: get_trial_analytics
-DROP FUNCTION IF EXISTS get_trial_analytics();
+DROP FUNCTION IF EXISTS get_trial_analytics CASCADE;
 CREATE FUNCTION get_trial_analytics()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -352,7 +352,7 @@ END;
 $$;
 
 -- Fix: upsert_system_setting
-DROP FUNCTION IF EXISTS upsert_system_setting(TEXT, TEXT);
+DROP FUNCTION IF EXISTS upsert_system_setting CASCADE;
 CREATE FUNCTION upsert_system_setting(p_key TEXT, p_value TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -418,7 +418,7 @@ END;
 $$;
 
 -- Fix: activate_subscription
-DROP FUNCTION IF EXISTS activate_subscription(UUID, UUID);
+DROP FUNCTION IF EXISTS activate_subscription CASCADE;
 CREATE FUNCTION activate_subscription(p_user_id UUID, p_plan_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -438,7 +438,7 @@ END;
 $$;
 
 -- Fix: upgrade_user_subscription
-DROP FUNCTION IF EXISTS upgrade_user_subscription(UUID, UUID);
+DROP FUNCTION IF EXISTS upgrade_user_subscription CASCADE;
 CREATE FUNCTION upgrade_user_subscription(p_user_id UUID, p_new_plan_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -565,7 +565,7 @@ END;
 $$;
 
 -- Fix: log_security_event
-DROP FUNCTION IF EXISTS log_security_event(UUID, TEXT, INET, JSONB);
+DROP FUNCTION IF EXISTS log_security_event CASCADE;
 CREATE FUNCTION log_security_event(p_user_id UUID, p_event_type TEXT, p_ip_address INET, p_details JSONB)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -579,7 +579,7 @@ END;
 $$;
 
 -- Fix: is_ip_blocked
-DROP FUNCTION IF EXISTS is_ip_blocked(INET);
+DROP FUNCTION IF EXISTS is_ip_blocked CASCADE;
 CREATE FUNCTION is_ip_blocked(p_ip_address INET)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -630,7 +630,7 @@ END;
 $$;
 
 -- Fix: get_sms_stats
-DROP FUNCTION IF EXISTS get_sms_stats(UUID);
+DROP FUNCTION IF EXISTS get_sms_stats CASCADE;
 CREATE FUNCTION get_sms_stats(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -683,7 +683,7 @@ END;
 $$;
 
 -- Fix: record_cash_payment
-DROP FUNCTION IF EXISTS record_cash_payment(UUID, NUMERIC, TEXT, TEXT, UUID);
+DROP FUNCTION IF EXISTS record_cash_payment CASCADE;
 CREATE FUNCTION record_cash_payment(
   p_company_id UUID,
   p_amount NUMERIC,
@@ -708,7 +708,7 @@ END;
 $$;
 
 -- Fix: verify_cash_payment
-DROP FUNCTION IF EXISTS verify_cash_payment(UUID, UUID);
+DROP FUNCTION IF EXISTS verify_cash_payment CASCADE;
 CREATE FUNCTION verify_cash_payment(p_payment_id UUID, p_verified_by UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -726,7 +726,7 @@ END;
 $$;
 
 -- Fix: get_cash_payments_summary
-DROP FUNCTION IF EXISTS get_cash_payments_summary(UUID);
+DROP FUNCTION IF EXISTS get_cash_payments_summary CASCADE;
 CREATE FUNCTION get_cash_payments_summary(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -751,7 +751,7 @@ END;
 $$;
 
 -- Fix: get_cash_payments_by_collector
-DROP FUNCTION IF EXISTS get_cash_payments_by_collector(UUID);
+DROP FUNCTION IF EXISTS get_cash_payments_by_collector CASCADE;
 CREATE FUNCTION get_cash_payments_by_collector(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -778,7 +778,7 @@ END;
 $$;
 
 -- Fix: activate_subscription_with_payment
-DROP FUNCTION IF EXISTS activate_subscription_with_payment(UUID, UUID, UUID);
+DROP FUNCTION IF EXISTS activate_subscription_with_payment CASCADE;
 CREATE FUNCTION activate_subscription_with_payment(
   p_user_id UUID,
   p_plan_id UUID,
