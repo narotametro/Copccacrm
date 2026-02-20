@@ -1128,8 +1128,43 @@ USING (
 );
 
 -- Fix: email_communications
--- Note: Skipped - table schema unknown, company_id column not verified
--- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
+DROP POLICY IF EXISTS "Users can view own company email communications" ON email_communications;
+DROP POLICY IF EXISTS "Users can insert own company email communications" ON email_communications;
+DROP POLICY IF EXISTS "Users can update own company email communications" ON email_communications;
+DROP POLICY IF EXISTS "Users can delete own email communications" ON email_communications;
+
+CREATE POLICY "Users can view own company email communications" ON email_communications
+FOR SELECT
+TO authenticated
+USING (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+);
+
+CREATE POLICY "Users can insert own company email communications" ON email_communications
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+  AND sent_by = auth.uid()
+);
+
+CREATE POLICY "Users can update own company email communications" ON email_communications
+FOR UPDATE
+TO authenticated
+USING (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+)
+WITH CHECK (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+);
+
+CREATE POLICY "Users can delete own email communications" ON email_communications
+FOR DELETE
+TO authenticated
+USING (
+  sent_by = auth.uid() OR
+  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+);
 
 -- Fix: kv_store_a2294ced (key-value store - shared data)
 -- Note: Table has no ownership columns (no user_id, company_id, created_by)
