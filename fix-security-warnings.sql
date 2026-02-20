@@ -838,6 +838,367 @@ END;
 $$;
 
 -- =====================================================
+-- PART 1B: FIX REMAINING OVERLOADED FUNCTION VERSIONS
+-- =====================================================
+-- These are the alternate signatures of overloaded functions
+
+-- Fix: activate_subscription (version 2: single parameter)
+CREATE OR REPLACE FUNCTION activate_subscription(p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE subscriptions
+  SET 
+    is_trial = false,
+    status = 'active',
+    current_period_start = NOW(),
+    current_period_end = NOW() + INTERVAL '1 month'
+  WHERE user_id = p_user_id;
+END;
+$$;
+
+-- Fix: activate_subscription_with_payment (version 2: with defaults)
+CREATE OR REPLACE FUNCTION activate_subscription_with_payment(
+  p_user_id UUID,
+  p_payment_method TEXT DEFAULT 'card'::TEXT,
+  p_transaction_id TEXT DEFAULT NULL::TEXT,
+  p_amount NUMERIC DEFAULT NULL::NUMERIC
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE subscriptions
+  SET 
+    is_trial = false,
+    status = 'active',
+    current_period_start = NOW(),
+    current_period_end = NOW() + INTERVAL '1 month'
+  WHERE user_id = p_user_id;
+  
+  RETURN json_build_object('success', true, 'message', 'Subscription activated', 'payment_method', p_payment_method);
+END;
+$$;
+
+-- Fix: change_admin_password (version 2: email-based)
+CREATE OR REPLACE FUNCTION change_admin_password(admin_email TEXT, current_password TEXT, new_password TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user RECORD;
+BEGIN
+  SELECT * INTO v_user FROM users WHERE email = admin_email AND role = 'admin';
+  
+  IF v_user IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Admin not found');
+  END IF;
+  
+  IF v_user.password_hash = crypt(current_password, v_user.password_hash) THEN
+    UPDATE users SET password_hash = crypt(new_password, gen_salt('bf', 10)) WHERE email = admin_email;
+    RETURN json_build_object('success', true);
+  ELSE
+    RETURN json_build_object('success', false, 'message', 'Invalid current password');
+  END IF;
+END;
+$$;
+
+-- Fix: get_cash_payments_by_collector (version 2: date range)
+CREATE OR REPLACE FUNCTION get_cash_payments_by_collector(
+  p_start_date TIMESTAMPTZ DEFAULT (NOW() - INTERVAL '30 days'),
+  p_end_date TIMESTAMPTZ DEFAULT NOW()
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_agg(
+    json_build_object(
+      'collector_id', collected_by,
+      'total_collected', SUM(amount),
+      'payment_count', COUNT(*)
+    )
+  )
+  INTO v_result
+  FROM cash_payments
+  WHERE created_at BETWEEN p_start_date AND p_end_date
+  GROUP BY collected_by;
+  
+  RETURN COALESCE(v_result, '[]'::JSON);
+END;
+$$;
+
+-- Fix: get_cash_payments_summary (version 2: date range)
+CREATE OR REPLACE FUNCTION get_cash_payments_summary(
+  p_start_date TIMESTAMPTZ DEFAULT (NOW() - INTERVAL '30 days'),
+  p_end_date TIMESTAMPTZ DEFAULT NOW()
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_build_object(
+    'total_payments', COUNT(*),
+    'total_amount', SUM(amount),
+    'verified_amount', SUM(amount) FILTER (WHERE status = 'verified'),
+    'pending_amount', SUM(amount) FILTER (WHERE status = 'pending')
+  )
+  INTO v_result
+  FROM cash_payments
+  WHERE created_at BETWEEN p_start_date AND p_end_date;
+  
+  RETURN v_result;
+END;
+$$;
+
+-- Fix: get_sms_stats (version 2: with days parameter)
+CREATE OR REPLACE FUNCTION get_sms_stats(p_company_id UUID, p_days INTEGER DEFAULT 30)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_build_object(
+    'total_sent', COUNT(*),
+    'total_delivered', COUNT(*) FILTER (WHERE status = 'delivered'),
+    'total_failed', COUNT(*) FILTER (WHERE status = 'failed'),
+    'total_cost', SUM(cost)
+  )
+  INTO v_result
+  FROM sms_logs
+  WHERE company_id = p_company_id
+    AND sent_at >= NOW() - (p_days || ' days')::INTERVAL;
+  
+  RETURN v_result;
+END;
+$$;
+
+-- Fix: get_trial_analytics (version 2: with days_back parameter)
+CREATE OR REPLACE FUNCTION get_trial_analytics(days_back INTEGER DEFAULT 30)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_build_object(
+    'total_trials', COUNT(*) FILTER (WHERE is_trial = true),
+    'active_trials', COUNT(*) FILTER (WHERE is_trial = true AND trial_end_date > NOW()),
+    'expired_trials', COUNT(*) FILTER (WHERE is_trial = true AND trial_end_date < NOW()),
+    'recent_trials', COUNT(*) FILTER (WHERE is_trial = true AND trial_start_date >= NOW() - (days_back || ' days')::INTERVAL),
+    'conversion_rate', 
+      ROUND((COUNT(*) FILTER (WHERE is_trial = false)::NUMERIC / 
+             NULLIF(COUNT(*) FILTER (WHERE is_trial = true), 0) * 100), 2)
+  )
+  INTO v_result
+  FROM subscriptions
+  WHERE created_at >= NOW() - (days_back || ' days')::INTERVAL;
+  
+  RETURN v_result;
+END;
+$$;
+
+-- Fix: is_ip_blocked (version 2: varchar parameter)
+CREATE OR REPLACE FUNCTION is_ip_blocked(p_ip_address VARCHAR)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS(
+    SELECT 1
+    FROM blocked_ips
+    WHERE ip_address::TEXT = p_ip_address
+      AND (expires_at IS NULL OR expires_at > NOW())
+  );
+END;
+$$;
+
+-- Fix: log_security_event (version 2: extended parameters)
+CREATE OR REPLACE FUNCTION log_security_event(
+  p_user_id UUID,
+  p_action VARCHAR,
+  p_resource_type VARCHAR DEFAULT NULL::VARCHAR,
+  p_resource_id UUID DEFAULT NULL::UUID,
+  p_status VARCHAR DEFAULT 'success'::VARCHAR,
+  p_ip_address VARCHAR DEFAULT NULL::VARCHAR,
+  p_user_agent TEXT DEFAULT NULL::TEXT,
+  p_metadata JSONB DEFAULT NULL::JSONB
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO security_audit_logs (
+    user_id, 
+    event_type, 
+    ip_address, 
+    details, 
+    created_at
+  )
+  VALUES (
+    p_user_id,
+    p_action,
+    p_ip_address::INET,
+    jsonb_build_object(
+      'resource_type', p_resource_type,
+      'resource_id', p_resource_id,
+      'status', p_status,
+      'user_agent', p_user_agent,
+      'metadata', p_metadata
+    ),
+    NOW()
+  );
+END;
+$$;
+
+-- Fix: record_cash_payment (version 2: subscription-based)
+CREATE OR REPLACE FUNCTION record_cash_payment(
+  p_subscription_id UUID,
+  p_amount NUMERIC,
+  p_currency TEXT DEFAULT 'TZS'::TEXT,
+  p_payment_date TIMESTAMPTZ DEFAULT NOW(),
+  p_collector_id UUID DEFAULT NULL::UUID,
+  p_notes TEXT DEFAULT NULL::TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_payment_id UUID;
+  v_company_id UUID;
+BEGIN
+  -- Get company_id from subscription
+  SELECT s.user_id INTO v_company_id
+  FROM subscriptions s
+  WHERE s.id = p_subscription_id;
+  
+  INSERT INTO cash_payments (
+    company_id, 
+    amount, 
+    payment_method, 
+    reference, 
+    collected_by, 
+    status,
+    created_at
+  )
+  VALUES (
+    v_company_id,
+    p_amount,
+    p_currency,
+    p_notes,
+    p_collector_id,
+    'pending',
+    p_payment_date
+  )
+  RETURNING id INTO v_payment_id;
+  
+  RETURN v_payment_id;
+END;
+$$;
+
+-- Fix: upgrade_user_subscription (version 2: plan name-based)
+CREATE OR REPLACE FUNCTION upgrade_user_subscription(
+  p_user_id UUID,
+  p_new_plan_name TEXT,
+  p_billing_cycle TEXT DEFAULT 'monthly'::TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_plan_id UUID;
+BEGIN
+  -- Get plan_id from plan name
+  SELECT id INTO v_plan_id
+  FROM subscription_plans
+  WHERE name = p_new_plan_name
+  LIMIT 1;
+  
+  IF v_plan_id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'Plan not found');
+  END IF;
+  
+  UPDATE subscriptions
+  SET 
+    plan_id = v_plan_id,
+    is_trial = false,
+    status = 'active'
+  WHERE user_id = p_user_id;
+  
+  RETURN json_build_object('success', true, 'message', 'Subscription upgraded', 'plan', p_new_plan_name);
+END;
+$$;
+
+-- Fix: upsert_system_setting (version 2: with category and description)
+CREATE OR REPLACE FUNCTION upsert_system_setting(
+  p_key TEXT,
+  p_value TEXT,
+  p_category TEXT DEFAULT 'general'::TEXT,
+  p_description TEXT DEFAULT ''::TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO system_settings (key, value, updated_at)
+  VALUES (p_key, p_value, NOW())
+  ON CONFLICT (key)
+  DO UPDATE SET value = p_value, updated_at = NOW();
+END;
+$$;
+
+-- Fix: verify_cash_payment (version 2: with status parameter)
+CREATE OR REPLACE FUNCTION verify_cash_payment(
+  p_payment_id UUID,
+  p_verifier_id UUID,
+  p_status TEXT DEFAULT 'verified'::TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE cash_payments
+  SET 
+    status = p_status,
+    verified_by = p_verifier_id,
+    verified_at = NOW()
+  WHERE id = p_payment_id;
+END;
+$$;
+
+-- =====================================================
 -- PART 2: FIX OVERLY PERMISSIVE RLS POLICIES
 -- =====================================================
 
