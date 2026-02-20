@@ -149,8 +149,7 @@ END;
 $$;
 
 -- Fix: update_debt_days_overdue
-DROP FUNCTION IF EXISTS update_debt_days_overdue();
-CREATE FUNCTION update_debt_days_overdue()
+CREATE OR REPLACE FUNCTION update_debt_days_overdue()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -163,8 +162,7 @@ END;
 $$;
 
 -- Fix: update_invoice_paid_amount
-DROP FUNCTION IF EXISTS update_invoice_paid_amount();
-CREATE FUNCTION update_invoice_paid_amount()
+CREATE OR REPLACE FUNCTION update_invoice_paid_amount()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -184,8 +182,7 @@ END;
 $$;
 
 -- Fix: update_invoice_status
-DROP FUNCTION IF EXISTS update_invoice_status();
-CREATE FUNCTION update_invoice_status()
+CREATE OR REPLACE FUNCTION update_invoice_status()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -233,8 +230,7 @@ END;
 $$;
 
 -- Fix: update_invoice_total
-DROP FUNCTION IF EXISTS update_invoice_total();
-CREATE FUNCTION update_invoice_total()
+CREATE OR REPLACE FUNCTION update_invoice_total()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -272,8 +268,7 @@ END;
 $$;
 
 -- Fix: trigger_update_company_feedback_metrics
-DROP FUNCTION IF EXISTS trigger_update_company_feedback_metrics();
-CREATE FUNCTION trigger_update_company_feedback_metrics()
+CREATE OR REPLACE FUNCTION trigger_update_company_feedback_metrics()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -335,8 +330,7 @@ END;
 $$;
 
 -- Fix: assign_start_plan_to_new_user
-DROP FUNCTION IF EXISTS assign_start_plan_to_new_user();
-CREATE FUNCTION assign_start_plan_to_new_user()
+CREATE OR REPLACE FUNCTION assign_start_plan_to_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -477,8 +471,7 @@ END;
 $$;
 
 -- Fix: assign_inviter_subscription_to_user
-DROP FUNCTION IF EXISTS assign_inviter_subscription_to_user();
-CREATE FUNCTION assign_inviter_subscription_to_user()
+CREATE OR REPLACE FUNCTION assign_inviter_subscription_to_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -504,8 +497,7 @@ END;
 $$;
 
 -- Fix: auto_block_ip_if_needed
-DROP FUNCTION IF EXISTS auto_block_ip_if_needed();
-CREATE FUNCTION auto_block_ip_if_needed()
+CREATE OR REPLACE FUNCTION auto_block_ip_if_needed()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -622,8 +614,7 @@ END;
 $$;
 
 -- Fix: set_sms_log_company
-DROP FUNCTION IF EXISTS set_sms_log_company();
-CREATE FUNCTION set_sms_log_company()
+CREATE OR REPLACE FUNCTION set_sms_log_company()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
