@@ -1146,17 +1146,8 @@ WITH CHECK (
 );
 
 -- Fix: kv_store_a2294ced (key-value store - user-specific)
-DROP POLICY IF EXISTS "Users can manage own kv store" ON kv_store_a2294ced;
-
-CREATE POLICY "Users can manage own kv store" ON kv_store_a2294ced
-FOR ALL
-TO authenticated
-USING (
-  user_id = auth.uid()
-)
-WITH CHECK (
-  user_id = auth.uid()
-);
+-- Note: Skipped - table schema unknown, column structure unclear
+-- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: payments
 DROP POLICY IF EXISTS "Users can view own company payments" ON payments;
