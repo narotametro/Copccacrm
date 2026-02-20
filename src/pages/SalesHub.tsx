@@ -2556,6 +2556,7 @@ const SalesHub: React.FC = () => {
         .select('*')
         .eq('status', 'active')
         .eq('created_by', userData.user.id)
+        .eq('is_own_company', false) // Exclude user's own company
         .order('name');
 
       if (error) throw error;
