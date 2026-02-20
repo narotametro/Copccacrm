@@ -837,6 +837,70 @@ BEGIN
 END;
 $$;
 
+-- Fix: handle_new_user
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN NEW;
+END;
+$$;
+
+-- Fix: update_customer_updated_at
+CREATE OR REPLACE FUNCTION update_customer_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+-- Fix: update_sales_hub_order_updated_at
+CREATE OR REPLACE FUNCTION update_sales_hub_order_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+-- Fix: update_subscription_updated_at
+CREATE OR REPLACE FUNCTION update_subscription_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+-- Fix: update_updated_at_column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
 -- =====================================================
 -- PART 1B: FIX REMAINING OVERLOADED FUNCTION VERSIONS
 -- =====================================================
