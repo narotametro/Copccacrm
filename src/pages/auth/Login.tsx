@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -14,14 +14,19 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('rememberedEmail'));
   const navigate = useNavigate();
+  const location = useLocation();
   const navigatedRef = useRef(false);
 
   useEffect(() => {
     if (user && !navigatedRef.current) {
       navigatedRef.current = true;
-      navigate('/app/dashboard', { replace: true });
+      // Get the intended destination from location state or localStorage
+      const from = location.state?.from || localStorage.getItem('redirectAfterLogin') || '/app/dashboard';
+      // Clear the stored redirect path
+      localStorage.removeItem('redirectAfterLogin');
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

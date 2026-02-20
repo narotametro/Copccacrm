@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -73,6 +73,16 @@ const preloadCriticalRoutes = () => {
 
 const AppRoutes = () => {
   const { user } = useAuthStore();
+  const location = useLocation();
+
+  // Save current path on every route change (for persistence after refresh)
+  useEffect(() => {
+    // Only save app paths, not login/register/etc
+    if (location.pathname.startsWith('/app/') || location.pathname.startsWith('/copcca-admin/')) {
+      sessionStorage.setItem('requested_path', location.pathname);
+    }
+  }, [location.pathname]);
+
 
   // Preload critical routes after authentication (optimistic)
   useEffect(() => {
