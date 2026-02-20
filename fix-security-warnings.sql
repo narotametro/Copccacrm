@@ -843,7 +843,8 @@ $$;
 -- These are the alternate signatures of overloaded functions
 
 -- Fix: activate_subscription (version 2: single parameter)
-CREATE OR REPLACE FUNCTION activate_subscription(p_user_id UUID)
+DROP FUNCTION IF EXISTS activate_subscription(UUID);
+CREATE FUNCTION activate_subscription(p_user_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -861,7 +862,8 @@ END;
 $$;
 
 -- Fix: activate_subscription_with_payment (version 2: with defaults)
-CREATE OR REPLACE FUNCTION activate_subscription_with_payment(
+DROP FUNCTION IF EXISTS activate_subscription_with_payment(UUID, TEXT, TEXT, NUMERIC);
+CREATE FUNCTION activate_subscription_with_payment(
   p_user_id UUID,
   p_payment_method TEXT DEFAULT 'card'::TEXT,
   p_transaction_id TEXT DEFAULT NULL::TEXT,
@@ -886,7 +888,8 @@ END;
 $$;
 
 -- Fix: change_admin_password (version 2: email-based)
-CREATE OR REPLACE FUNCTION change_admin_password(admin_email TEXT, current_password TEXT, new_password TEXT)
+DROP FUNCTION IF EXISTS change_admin_password(TEXT, TEXT, TEXT);
+CREATE FUNCTION change_admin_password(admin_email TEXT, current_password TEXT, new_password TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -911,7 +914,8 @@ END;
 $$;
 
 -- Fix: get_cash_payments_by_collector (version 2: date range)
-CREATE OR REPLACE FUNCTION get_cash_payments_by_collector(
+DROP FUNCTION IF EXISTS get_cash_payments_by_collector(TIMESTAMPTZ, TIMESTAMPTZ);
+CREATE FUNCTION get_cash_payments_by_collector(
   p_start_date TIMESTAMPTZ DEFAULT (NOW() - INTERVAL '30 days'),
   p_end_date TIMESTAMPTZ DEFAULT NOW()
 )
@@ -940,7 +944,8 @@ END;
 $$;
 
 -- Fix: get_cash_payments_summary (version 2: date range)
-CREATE OR REPLACE FUNCTION get_cash_payments_summary(
+DROP FUNCTION IF EXISTS get_cash_payments_summary(TIMESTAMPTZ, TIMESTAMPTZ);
+CREATE FUNCTION get_cash_payments_summary(
   p_start_date TIMESTAMPTZ DEFAULT (NOW() - INTERVAL '30 days'),
   p_end_date TIMESTAMPTZ DEFAULT NOW()
 )
@@ -967,7 +972,8 @@ END;
 $$;
 
 -- Fix: get_sms_stats (version 2: with days parameter)
-CREATE OR REPLACE FUNCTION get_sms_stats(p_company_id UUID, p_days INTEGER DEFAULT 30)
+DROP FUNCTION IF EXISTS get_sms_stats(UUID, INTEGER);
+CREATE FUNCTION get_sms_stats(p_company_id UUID, p_days INTEGER DEFAULT 30)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -992,7 +998,8 @@ END;
 $$;
 
 -- Fix: get_trial_analytics (version 2: with days_back parameter)
-CREATE OR REPLACE FUNCTION get_trial_analytics(days_back INTEGER DEFAULT 30)
+DROP FUNCTION IF EXISTS get_trial_analytics(INTEGER);
+CREATE FUNCTION get_trial_analytics(days_back INTEGER DEFAULT 30)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1019,7 +1026,8 @@ END;
 $$;
 
 -- Fix: is_ip_blocked (version 2: varchar parameter)
-CREATE OR REPLACE FUNCTION is_ip_blocked(p_ip_address VARCHAR)
+DROP FUNCTION IF EXISTS is_ip_blocked(VARCHAR);
+CREATE FUNCTION is_ip_blocked(p_ip_address VARCHAR)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1036,7 +1044,8 @@ END;
 $$;
 
 -- Fix: log_security_event (version 2: extended parameters)
-CREATE OR REPLACE FUNCTION log_security_event(
+DROP FUNCTION IF EXISTS log_security_event(UUID, VARCHAR, VARCHAR, UUID, VARCHAR, VARCHAR, TEXT, JSONB);
+CREATE FUNCTION log_security_event(
   p_user_id UUID,
   p_action VARCHAR,
   p_resource_type VARCHAR DEFAULT NULL::VARCHAR,
@@ -1076,7 +1085,8 @@ END;
 $$;
 
 -- Fix: record_cash_payment (version 2: subscription-based)
-CREATE OR REPLACE FUNCTION record_cash_payment(
+DROP FUNCTION IF EXISTS record_cash_payment(UUID, NUMERIC, TEXT, TIMESTAMPTZ, UUID, TEXT);
+CREATE FUNCTION record_cash_payment(
   p_subscription_id UUID,
   p_amount NUMERIC,
   p_currency TEXT DEFAULT 'TZS'::TEXT,
@@ -1123,7 +1133,8 @@ END;
 $$;
 
 -- Fix: upgrade_user_subscription (version 2: plan name-based)
-CREATE OR REPLACE FUNCTION upgrade_user_subscription(
+DROP FUNCTION IF EXISTS upgrade_user_subscription(UUID, TEXT, TEXT);
+CREATE FUNCTION upgrade_user_subscription(
   p_user_id UUID,
   p_new_plan_name TEXT,
   p_billing_cycle TEXT DEFAULT 'monthly'::TEXT
@@ -1158,7 +1169,8 @@ END;
 $$;
 
 -- Fix: upsert_system_setting (version 2: with category and description)
-CREATE OR REPLACE FUNCTION upsert_system_setting(
+DROP FUNCTION IF EXISTS upsert_system_setting(TEXT, TEXT, TEXT, TEXT);
+CREATE FUNCTION upsert_system_setting(
   p_key TEXT,
   p_value TEXT,
   p_category TEXT DEFAULT 'general'::TEXT,
@@ -1178,7 +1190,8 @@ END;
 $$;
 
 -- Fix: verify_cash_payment (version 2: with status parameter)
-CREATE OR REPLACE FUNCTION verify_cash_payment(
+DROP FUNCTION IF EXISTS verify_cash_payment(UUID, UUID, TEXT);
+CREATE FUNCTION verify_cash_payment(
   p_payment_id UUID,
   p_verifier_id UUID,
   p_status TEXT DEFAULT 'verified'::TEXT
