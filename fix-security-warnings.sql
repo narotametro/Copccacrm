@@ -1136,8 +1136,66 @@ USING (
 -- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: payments
--- Note: Skipped - table schema unknown, company_id column not verified
--- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
+DROP POLICY IF EXISTS "Users can view own company payments" ON payments;
+DROP POLICY IF EXISTS "Users can insert own company payments" ON payments;
+DROP POLICY IF EXISTS "Users can update own company payments" ON payments;
+DROP POLICY IF EXISTS "Admins can delete payments" ON payments;
+
+CREATE POLICY "Users can view own company payments" ON payments
+FOR SELECT
+TO authenticated
+USING (
+  invoice_id IN (
+    SELECT i.id
+    FROM invoices i
+    WHERE i.company_id IN (
+      SELECT company_id FROM users WHERE id = auth.uid()
+    )
+  )
+);
+
+CREATE POLICY "Users can insert own company payments" ON payments
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  invoice_id IN (
+    SELECT i.id
+    FROM invoices i
+    WHERE i.company_id IN (
+      SELECT company_id FROM users WHERE id = auth.uid()
+    )
+  )
+  AND recorded_by = auth.uid()
+);
+
+CREATE POLICY "Users can update own company payments" ON payments
+FOR UPDATE
+TO authenticated
+USING (
+  invoice_id IN (
+    SELECT i.id
+    FROM invoices i
+    WHERE i.company_id IN (
+      SELECT company_id FROM users WHERE id = auth.uid()
+    )
+  )
+)
+WITH CHECK (
+  invoice_id IN (
+    SELECT i.id
+    FROM invoices i
+    WHERE i.company_id IN (
+      SELECT company_id FROM users WHERE id = auth.uid()
+    )
+  )
+);
+
+CREATE POLICY "Admins can delete payments" ON payments
+FOR DELETE
+TO authenticated
+USING (
+  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+);
 
 -- Fix: support_tickets
 DROP POLICY IF EXISTS "Users can view own company support tickets" ON support_tickets;
