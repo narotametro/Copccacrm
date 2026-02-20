@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -72,8 +72,10 @@ const preloadCriticalRoutes = () => {
 };
 
 const AppRoutes = () => {
-  const { user } = useAuthStore();
+  const { user, loading } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
+  const hasRestoredPath = useRef(false);
 
   // Save current path on every route change (for persistence after refresh)
   useEffect(() => {
@@ -83,6 +85,19 @@ const AppRoutes = () => {
     }
   }, [location.pathname]);
 
+  // Restore saved path after page refresh (only once on mount when user is authenticated)
+  useEffect(() => {
+    if (!loading && user && !hasRestoredPath.current) {
+      const savedPath = sessionStorage.getItem('requested_path');
+      if (savedPath && savedPath !== location.pathname && savedPath.startsWith('/app/')) {
+        hasRestoredPath.current = true;
+        sessionStorage.removeItem('requested_path');
+        navigate(savedPath, { replace: true });
+      } else {
+        hasRestoredPath.current = true;
+      }
+    }
+  }, [loading, user, location.pathname, navigate]); // Only run when auth state is ready
 
   // Preload critical routes after authentication (optimistic)
   useEffect(() => {
@@ -188,13 +203,6 @@ const AppRoutes = () => {
     </Suspense>
   );
 };
-
-// Restore requested path BEFORE React Router initializes
-const requestedPath = sessionStorage.getItem('requested_path');
-if (requestedPath && requestedPath !== window.location.pathname) {
-  sessionStorage.removeItem('requested_path');
-  window.history.replaceState(null, '', requestedPath);
-}
 
 const App = () => {
   const initialize = useAuthStore((state) => state.initialize);
