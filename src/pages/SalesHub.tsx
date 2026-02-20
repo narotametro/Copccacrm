@@ -2551,12 +2551,21 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Get user's company_id from metadata to exclude only their own company
+      const userCompanyId = userData.user.user_metadata?.company_id;
+
+      let query = supabase
         .from('companies')
         .select('*')
         .eq('status', 'active')
-        .neq('is_own_company', true) // Exclude user's own company registration
         .order('name');
+
+      // Only exclude the user's specific company, not all companies marked as is_own_company
+      if (userCompanyId) {
+        query = query.neq('id', userCompanyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
