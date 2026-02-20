@@ -127,8 +127,7 @@ END;
 $$;
 
 -- Fix: change_admin_password
-DROP FUNCTION IF EXISTS change_admin_password(UUID, TEXT, TEXT) CASCADE;
-CREATE FUNCTION change_admin_password(p_user_id UUID, p_old_password TEXT, p_new_password TEXT)
+CREATE OR REPLACE FUNCTION change_admin_password(p_user_id UUID, p_old_password TEXT, p_new_password TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -204,8 +203,7 @@ END;
 $$;
 
 -- Fix: get_trial_analytics
-DROP FUNCTION IF EXISTS get_trial_analytics() CASCADE;
-CREATE FUNCTION get_trial_analytics()
+CREATE OR REPLACE FUNCTION get_trial_analytics()
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -352,8 +350,7 @@ END;
 $$;
 
 -- Fix: upsert_system_setting
-DROP FUNCTION IF EXISTS upsert_system_setting(TEXT, TEXT) CASCADE;
-CREATE FUNCTION upsert_system_setting(p_key TEXT, p_value TEXT)
+CREATE OR REPLACE FUNCTION upsert_system_setting(p_key TEXT, p_value TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -418,8 +415,7 @@ END;
 $$;
 
 -- Fix: activate_subscription
-DROP FUNCTION IF EXISTS activate_subscription(UUID, UUID) CASCADE;
-CREATE FUNCTION activate_subscription(p_user_id UUID, p_plan_id UUID)
+CREATE OR REPLACE FUNCTION activate_subscription(p_user_id UUID, p_plan_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -438,8 +434,7 @@ END;
 $$;
 
 -- Fix: upgrade_user_subscription
-DROP FUNCTION IF EXISTS upgrade_user_subscription(UUID, UUID) CASCADE;
-CREATE FUNCTION upgrade_user_subscription(p_user_id UUID, p_new_plan_id UUID)
+CREATE OR REPLACE FUNCTION upgrade_user_subscription(p_user_id UUID, p_new_plan_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -565,8 +560,7 @@ END;
 $$;
 
 -- Fix: log_security_event
-DROP FUNCTION IF EXISTS log_security_event(UUID, TEXT, INET, JSONB) CASCADE;
-CREATE FUNCTION log_security_event(p_user_id UUID, p_event_type TEXT, p_ip_address INET, p_details JSONB)
+CREATE OR REPLACE FUNCTION log_security_event(p_user_id UUID, p_event_type TEXT, p_ip_address INET, p_details JSONB)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -579,8 +573,7 @@ END;
 $$;
 
 -- Fix: is_ip_blocked
-DROP FUNCTION IF EXISTS is_ip_blocked(INET) CASCADE;
-CREATE FUNCTION is_ip_blocked(p_ip_address INET)
+CREATE OR REPLACE FUNCTION is_ip_blocked(p_ip_address INET)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -630,8 +623,7 @@ END;
 $$;
 
 -- Fix: get_sms_stats
-DROP FUNCTION IF EXISTS get_sms_stats(UUID) CASCADE;
-CREATE FUNCTION get_sms_stats(p_company_id UUID)
+CREATE OR REPLACE FUNCTION get_sms_stats(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -683,8 +675,7 @@ END;
 $$;
 
 -- Fix: record_cash_payment
-DROP FUNCTION IF EXISTS record_cash_payment(UUID, NUMERIC, TEXT, TEXT, UUID) CASCADE;
-CREATE FUNCTION record_cash_payment(
+CREATE OR REPLACE FUNCTION record_cash_payment(
   p_company_id UUID,
   p_amount NUMERIC,
   p_payment_method TEXT,
@@ -708,8 +699,7 @@ END;
 $$;
 
 -- Fix: verify_cash_payment
-DROP FUNCTION IF EXISTS verify_cash_payment(UUID, UUID) CASCADE;
-CREATE FUNCTION verify_cash_payment(p_payment_id UUID, p_verified_by UUID)
+CREATE OR REPLACE FUNCTION verify_cash_payment(p_payment_id UUID, p_verified_by UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -726,8 +716,7 @@ END;
 $$;
 
 -- Fix: get_cash_payments_summary
-DROP FUNCTION IF EXISTS get_cash_payments_summary(UUID) CASCADE;
-CREATE FUNCTION get_cash_payments_summary(p_company_id UUID)
+CREATE OR REPLACE FUNCTION get_cash_payments_summary(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -751,8 +740,7 @@ END;
 $$;
 
 -- Fix: get_cash_payments_by_collector
-DROP FUNCTION IF EXISTS get_cash_payments_by_collector(UUID) CASCADE;
-CREATE FUNCTION get_cash_payments_by_collector(p_company_id UUID)
+CREATE OR REPLACE FUNCTION get_cash_payments_by_collector(p_company_id UUID)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -778,8 +766,7 @@ END;
 $$;
 
 -- Fix: activate_subscription_with_payment
-DROP FUNCTION IF EXISTS activate_subscription_with_payment(UUID, UUID, UUID) CASCADE;
-CREATE FUNCTION activate_subscription_with_payment(
+CREATE OR REPLACE FUNCTION activate_subscription_with_payment(
   p_user_id UUID,
   p_plan_id UUID,
   p_payment_id UUID
