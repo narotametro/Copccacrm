@@ -1140,8 +1140,43 @@ USING (
 -- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
 
 -- Fix: support_tickets
--- Note: Skipped - table schema unknown, company_id column not verified
--- Table will remain with RLS enabled but no policies (requires manual policy creation based on actual schema)
+DROP POLICY IF EXISTS "Users can view own company support tickets" ON support_tickets;
+DROP POLICY IF EXISTS "Users can insert own company support tickets" ON support_tickets;
+DROP POLICY IF EXISTS "Users can update own company support tickets" ON support_tickets;
+DROP POLICY IF EXISTS "Users can delete own support tickets" ON support_tickets;
+
+CREATE POLICY "Users can view own company support tickets" ON support_tickets
+FOR SELECT
+TO authenticated
+USING (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+);
+
+CREATE POLICY "Users can insert own company support tickets" ON support_tickets
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+  AND created_by = auth.uid()
+);
+
+CREATE POLICY "Users can update own company support tickets" ON support_tickets
+FOR UPDATE
+TO authenticated
+USING (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+)
+WITH CHECK (
+  company_id IN (SELECT company_id FROM users WHERE id = auth.uid())
+);
+
+CREATE POLICY "Users can delete own support tickets" ON support_tickets
+FOR DELETE
+TO authenticated
+USING (
+  created_by = auth.uid() OR
+  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+);
 
 -- Fix: user_preferences
 DROP POLICY IF EXISTS "Users can manage own preferences" ON user_preferences;
