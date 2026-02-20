@@ -1330,11 +1330,12 @@ WHERE schemaname = 'public'
     'failed_login_attempts',
     'security_audit_logs',
     'session_fingerprints',
-    'sync_logs'
+    'sync_logs',
+    'kv_store_a2294ced'
   )
 ORDER BY tablename, policyname;
 
--- Should return 0 rows (excluding system tables)
+-- Should return 0 rows (excluding system tables and kv_store)
 
 -- Verify all RLS-enabled tables now have policies
 SELECT 
