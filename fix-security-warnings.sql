@@ -874,6 +874,8 @@ $$;
 
 -- Fix: invoice_payments - Add proper USING clause
 DROP POLICY IF EXISTS "Users can insert own company invoice payments" ON invoice_payments;
+DROP POLICY IF EXISTS "Users can view own company invoice payments" ON invoice_payments;
+DROP POLICY IF EXISTS "Users can update own company invoice payments" ON invoice_payments;
 
 CREATE POLICY "Users can view own company invoice payments" ON invoice_payments
 FOR SELECT
@@ -925,6 +927,10 @@ WITH CHECK (
 
 -- Fix: invoice_reminders - Add proper USING clause
 DROP POLICY IF EXISTS "Users can manage own company invoice reminders" ON invoice_reminders;
+DROP POLICY IF EXISTS "Users can view own company invoice reminders" ON invoice_reminders;
+DROP POLICY IF EXISTS "Users can insert own company invoice reminders" ON invoice_reminders;
+DROP POLICY IF EXISTS "Users can update own company invoice reminders" ON invoice_reminders;
+DROP POLICY IF EXISTS "Users can delete own company invoice reminders" ON invoice_reminders;
 
 CREATE POLICY "Users can view own company invoice reminders" ON invoice_reminders
 FOR SELECT
@@ -992,6 +998,10 @@ USING (
 -- =====================================================
 
 -- Fix: campaign_leads
+DROP POLICY IF EXISTS "Users can view own company campaign leads" ON campaign_leads;
+DROP POLICY IF EXISTS "Users can insert own company campaign leads" ON campaign_leads;
+DROP POLICY IF EXISTS "Users can update own company campaign leads" ON campaign_leads;
+
 CREATE POLICY "Users can view own company campaign leads" ON campaign_leads
 FOR SELECT
 TO authenticated
@@ -1029,6 +1039,11 @@ WITH CHECK (
 );
 
 -- Fix: deal_products
+DROP POLICY IF EXISTS "Users can view own company deal products" ON deal_products;
+DROP POLICY IF EXISTS "Users can insert own company deal products" ON deal_products;
+DROP POLICY IF EXISTS "Users can update own company deal products" ON deal_products;
+DROP POLICY IF EXISTS "Users can delete own company deal products" ON deal_products;
+
 CREATE POLICY "Users can view own company deal products" ON deal_products
 FOR SELECT
 TO authenticated
@@ -1076,6 +1091,11 @@ USING (
 );
 
 -- Fix: debts
+DROP POLICY IF EXISTS "Users can view own company debts" ON debts;
+DROP POLICY IF EXISTS "Users can insert own company debts" ON debts;
+DROP POLICY IF EXISTS "Users can update own company debts" ON debts;
+DROP POLICY IF EXISTS "Admins can delete debts" ON debts;
+
 CREATE POLICY "Users can view own company debts" ON debts
 FOR SELECT
 TO authenticated
@@ -1108,6 +1128,9 @@ USING (
 );
 
 -- Fix: email_communications
+DROP POLICY IF EXISTS "Users can view own company email communications" ON email_communications;
+DROP POLICY IF EXISTS "Users can insert own company email communications" ON email_communications;
+
 CREATE POLICY "Users can view own company email communications" ON email_communications
 FOR SELECT
 TO authenticated
@@ -1123,6 +1146,8 @@ WITH CHECK (
 );
 
 -- Fix: kv_store_a2294ced (key-value store - user-specific)
+DROP POLICY IF EXISTS "Users can manage own kv store" ON kv_store_a2294ced;
+
 CREATE POLICY "Users can manage own kv store" ON kv_store_a2294ced
 FOR ALL
 TO authenticated
@@ -1134,6 +1159,10 @@ WITH CHECK (
 );
 
 -- Fix: payments
+DROP POLICY IF EXISTS "Users can view own company payments" ON payments;
+DROP POLICY IF EXISTS "Users can insert own company payments" ON payments;
+DROP POLICY IF EXISTS "Admins can update payments" ON payments;
+
 CREATE POLICY "Users can view own company payments" ON payments
 FOR SELECT
 TO authenticated
@@ -1159,6 +1188,10 @@ WITH CHECK (
 );
 
 -- Fix: support_tickets
+DROP POLICY IF EXISTS "Users can view own company support tickets" ON support_tickets;
+DROP POLICY IF EXISTS "Users can create support tickets" ON support_tickets;
+DROP POLICY IF EXISTS "Users can update own tickets" ON support_tickets;
+
 CREATE POLICY "Users can view own company support tickets" ON support_tickets
 FOR SELECT
 TO authenticated
@@ -1186,6 +1219,8 @@ WITH CHECK (
 );
 
 -- Fix: user_preferences
+DROP POLICY IF EXISTS "Users can manage own preferences" ON user_preferences;
+
 CREATE POLICY "Users can manage own preferences" ON user_preferences
 FOR ALL
 TO authenticated
