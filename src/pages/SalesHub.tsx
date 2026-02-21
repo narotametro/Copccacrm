@@ -2551,8 +2551,14 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Get user's company_id from metadata to exclude only their own company
-      const userCompanyId = userData.user.user_metadata?.company_id;
+      // Get user's company_id from users table (not metadata)
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', userData.user.id)
+        .single();
+
+      const userCompanyId = userRecord?.company_id;
 
       let query = supabase
         .from('companies')
@@ -2560,7 +2566,7 @@ const SalesHub: React.FC = () => {
         .eq('status', 'active')
         .order('name');
 
-      // Only exclude the user's specific company, not all companies marked as is_own_company
+      // Exclude the user's own company from customer list
       if (userCompanyId) {
         query = query.neq('id', userCompanyId);
       }
