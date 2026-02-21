@@ -338,7 +338,21 @@ const CartItem: React.FC<{
 
       {/* Product Details */}
       <div className="flex-1 min-w-0">
-        <h5 className="font-medium text-slate-900 text-sm leading-tight mb-3">{item.product.name}</h5>
+        <h5 className="font-medium text-slate-900 text-sm leading-tight">{item.product.name}</h5>
+        
+        {/* SKU and Brand Info */}
+        <div className="flex items-center gap-3 mt-1 mb-3">
+          {item.product.sku && (
+            <span className="text-xs text-slate-500">
+              <span className="font-medium">SKU:</span> {item.product.sku}
+            </span>
+          )}
+          {item.product.brands?.name && (
+            <span className="text-xs text-blue-600 font-medium">
+              🏷️ {item.product.brands.name}
+            </span>
+          )}
+        </div>
 
         {/* Price and Quantity Controls */}
         <div className="grid grid-cols-2 gap-4">
