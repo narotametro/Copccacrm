@@ -3155,6 +3155,7 @@ const SalesHub: React.FC = () => {
       if (products.length === 0) {
         loadProductsWithVelocity();
       }
+      loadBrands(); // Load brands for filter dropdown
     }
     if (activeSubsection === 'carts-invoice') {
       loadCustomers();
@@ -3358,18 +3359,10 @@ const SalesHub: React.FC = () => {
 
   const loadBrands = async () => {
     try {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('company_id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (!userData?.company_id) return;
-
+      // Load ALL brands for filtering (not just user's company brands)
       const { data, error } = await supabase
         .from('brands')
         .select('id, name, description')
-        .eq('company_id', userData.company_id)
         .order('name');
 
       if (error) throw error;
