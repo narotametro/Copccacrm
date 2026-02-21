@@ -165,6 +165,7 @@ interface ProductCardProps {
   onAddToCart: (product: Product, quantity: number, customPrice: number) => void;
   formatCurrency: (amount: number) => string;
   onEdit?: (product: Product) => void;
+  onDelete?: (product: Product) => void;
 }
 
 // COMPLETELY REWRITTEN: Input with isolated state - zero re-renders during typing
@@ -400,7 +401,7 @@ const CartItem: React.FC<{
   );
 };
 
-const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCart, formatCurrency, onEdit }) => {
+const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCart, formatCurrency, onEdit, onDelete }) => {
   const [inputState, setInputState] = useState({
     quantity: '1',
     customPrice: '',
@@ -500,9 +501,21 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
                   onClick={() => onEdit(product)}
                   size="sm"
                   variant="outline"
-                  className="h-8 w-8 p-0 border-slate-300 hover:bg-slate-50"
+                  className="h-8 w-8 p-0 border-slate-300 hover:bg-blue-50 hover:border-blue-400"
+                  title="Edit product"
                 >
-                  <Edit className="h-3 w-3" />
+                  <Edit className="h-4 w-4 text-blue-600" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  onClick={() => onDelete(product)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 border-slate-300 hover:bg-red-50 hover:border-red-400"
+                  title="Delete product"
+                >
+                  <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
               )}
               <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${stockInfo.color}`}>
@@ -4455,6 +4468,40 @@ const SalesHub: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to delete products');
+        return;
+      }
+
+      // Delete product
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', product.id);
+
+      if (error) {
+        console.error('Error deleting product:', error);
+        toast.error('Failed to delete product. Please try again.');
+        return;
+      }
+
+      // Update local state
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
+
+      toast.success(`Successfully deleted product: ${product.name}`);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product. Please try again.');
+    }
+  };
+
   const handleAddCategory = async () => {
     if (!newCategoryData.name.trim()) {
       toast.error('Please enter a category name');
@@ -5874,6 +5921,7 @@ const CustomerBuyingPatternsSection = () => {
             onAddToCart={addToCartWithQuantity}
             formatCurrency={formatCurrency}
             onEdit={(product) => openEditProductModal(product)}
+            onDelete={(product) => handleDeleteProduct(product)}
           />
         ))}
       </div>
