@@ -6189,6 +6189,7 @@ const CustomerBuyingPatternsSection = () => {
 
   const InventoryStatusSection = () => {
     const [inventoryStockFilter, setInventoryStockFilter] = useState('all');
+    const [inventoryBrandFilter, setInventoryBrandFilter] = useState('all');
     const [inventorySearchTerm, setInventorySearchTerm] = useState('');
 
     return (
@@ -6257,7 +6258,7 @@ const CustomerBuyingPatternsSection = () => {
             
             {/* Stock Filter */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-700">Filter:</label>
+              <label className="text-sm font-medium text-slate-700">Stock:</label>
               <select
                 value={inventoryStockFilter}
                 onChange={(e) => setInventoryStockFilter(e.target.value)}
@@ -6267,6 +6268,21 @@ const CustomerBuyingPatternsSection = () => {
                 <option value="in-stock">IN STOCK</option>
                 <option value="low-stock">LOW STOCK</option>
                 <option value="out-of-stock">OUT OF STOCK</option>
+              </select>
+            </div>
+
+            {/* Brand Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-700">Brand:</label>
+              <select
+                value={inventoryBrandFilter}
+                onChange={(e) => setInventoryBrandFilter(e.target.value)}
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">ALL BRANDS</option>
+                {brands.map(brand => (
+                  <option key={brand.id} value={brand.id}>{brand.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -6298,11 +6314,15 @@ const CustomerBuyingPatternsSection = () => {
                          (inventoryStockFilter === 'low-stock' && stockStatus.status === 'low') ||
                          (inventoryStockFilter === 'out-of-stock' && stockStatus.status === 'out');
                   
+                  const matchesBrandFilter = inventoryBrandFilter === 'all' ||
+                         product.brand_id === inventoryBrandFilter;
+                  
                   const matchesSearch = inventorySearchTerm === '' ||
                          product.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
-                         (product.sku && product.sku.toLowerCase().includes(inventorySearchTerm.toLowerCase()));
+                         (product.sku && product.sku.toLowerCase().includes(inventorySearchTerm.toLowerCase())) ||
+                         (product.brands?.name && product.brands.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()));
                   
-                  return matchesStockFilter && matchesSearch;
+                  return matchesStockFilter && matchesBrandFilter && matchesSearch;
                 });
 
                 return filteredInventory.map(product => {
@@ -6313,6 +6333,9 @@ const CustomerBuyingPatternsSection = () => {
                         <div>
                           <div className="font-medium text-slate-900">{product.name}</div>
                           <div className="text-sm text-slate-600">SKU: {product.sku}</div>
+                          {product.brands?.name && (
+                            <div className="text-xs text-slate-500 mt-0.5">🏷️ {product.brands.name}</div>
+                          )}
                         </div>
                       </td>
                       <td className="text-center py-3 px-3">
