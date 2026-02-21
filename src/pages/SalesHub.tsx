@@ -439,15 +439,15 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
 
     onAddToCart(product, quantity, validPrice);
     
-    // Show local success message ONLY (no global toast)
-    const message = `✓ ${quantity} ${product.name}${quantity > 1 ? 's' : ''} added to cart!`;
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
+    // Build toast message with brand (if available), product name, and quantity
+    const brandPrefix = product.brands?.name ? `${product.brands.name} - ` : '';
+    const quantityText = `${quantity} ${quantity > 1 ? 'units' : 'unit'}`;
+    const toastMessage = `✓ ${brandPrefix}${product.name} (${quantityText}) added to cart!`;
     
-    // Hide the message after 3 seconds
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-    }, 3000);
+    toast.success(toastMessage, {
+      position: 'top-right',
+      duration: 3000,
+    });
     
     hideQuantityInput();
   };
