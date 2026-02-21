@@ -1103,7 +1103,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
       }
 
       // Calculate date range
-      const endDate = new Date();
+      let endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
       let startDate = new Date();
       
@@ -1111,8 +1111,23 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
         case 'today':
           startDate.setHours(0, 0, 0, 0);
           break;
+        case 'yesterday':
+          startDate.setDate(startDate.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(startDate);
+          endDate.setHours(23, 59, 59, 999);
+          break;
         case 'this-week':
           startDate.setDate(startDate.getDate() - startDate.getDay());
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'last-week':
+          const lastWeekEnd = new Date();
+          lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekEnd.getDay() - 1);
+          lastWeekEnd.setHours(23, 59, 59, 999);
+          endDate = lastWeekEnd;
+          startDate = new Date(lastWeekEnd);
+          startDate.setDate(startDate.getDate() - 6);
           startDate.setHours(0, 0, 0, 0);
           break;
         case 'this-month':
@@ -1123,8 +1138,84 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
           startDate.setDate(startDate.getDate() - 30);
           startDate.setHours(0, 0, 0, 0);
           break;
+        case 'january':
+          startDate = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 0, 31, 23, 59, 59, 999);
+          break;
+        case 'february':
+          startDate = new Date(new Date().getFullYear(), 1, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 1, 28, 23, 59, 59, 999);
+          // Handle leap year
+          if (new Date().getFullYear() % 4 === 0) endDate.setDate(29);
+          break;
+        case 'march':
+          startDate = new Date(new Date().getFullYear(), 2, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 2, 31, 23, 59, 59, 999);
+          break;
+        case 'april':
+          startDate = new Date(new Date().getFullYear(), 3, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 3, 30, 23, 59, 59, 999);
+          break;
+        case 'may':
+          startDate = new Date(new Date().getFullYear(), 4, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 4, 31, 23, 59, 59, 999);
+          break;
+        case 'june':
+          startDate = new Date(new Date().getFullYear(), 5, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 5, 30, 23, 59, 59, 999);
+          break;
+        case 'july':
+          startDate = new Date(new Date().getFullYear(), 6, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 6, 31, 23, 59, 59, 999);
+          break;
+        case 'august':
+          startDate = new Date(new Date().getFullYear(), 7, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 7, 31, 23, 59, 59, 999);
+          break;
+        case 'september':
+          startDate = new Date(new Date().getFullYear(), 8, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 8, 30, 23, 59, 59, 999);
+          break;
+        case 'october':
+          startDate = new Date(new Date().getFullYear(), 9, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 9, 31, 23, 59, 59, 999);
+          break;
+        case 'november':
+          startDate = new Date(new Date().getFullYear(), 10, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 10, 30, 23, 59, 59, 999);
+          break;
+        case 'december':
+          startDate = new Date(new Date().getFullYear(), 11, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 11, 31, 23, 59, 59, 999);
+          break;
+        case 'q1':
+          startDate = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 2, 31, 23, 59, 59, 999);
+          break;
+        case 'q2':
+          startDate = new Date(new Date().getFullYear(), 3, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 5, 30, 23, 59, 59, 999);
+          break;
+        case 'q3':
+          startDate = new Date(new Date().getFullYear(), 6, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 8, 30, 23, 59, 59, 999);
+          break;
+        case 'q4':
+          startDate = new Date(new Date().getFullYear(), 9, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear(), 11, 31, 23, 59, 59, 999);
+          break;
         case 'this-year':
           startDate.setMonth(0, 1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'last-year':
+          startDate = new Date(new Date().getFullYear() - 1, 0, 1, 0, 0, 0, 0);
+          endDate = new Date(new Date().getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+          break;
+        case 'custom':
+          // Custom date range will be handled separately
+          // For now, default to this month
+          startDate.setDate(1);
           startDate.setHours(0, 0, 0, 0);
           break;
       }
@@ -1665,19 +1756,75 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
       {/* Filters Bar */}
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
+          <div className="md:col-span-2">
             <label className="text-sm font-medium text-slate-700 mb-1 block">Date Range</label>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="today">Today</option>
-              <option value="this-week">This Week</option>
-              <option value="this-month">This Month</option>
-              <option value="last-30-days">Last 30 Days</option>
-              <option value="this-year">This Year</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <optgroup label="Quick Filters">
+                  <option value="today">📅 Today</option>
+                  <option value="yesterday">📅 Yesterday</option>
+                  <option value="this-week">📅 This Week</option>
+                  <option value="last-week">📅 Last Week</option>
+                  <option value="this-month">📅 This Month</option>
+                  <option value="last-30-days">📅 Last 30 Days</option>
+                </optgroup>
+                <optgroup label="Monthly">
+                  <option value="january">January</option>
+                  <option value="february">February</option>
+                  <option value="march">March</option>
+                  <option value="april">April</option>
+                  <option value="may">May</option>
+                  <option value="june">June</option>
+                  <option value="july">July</option>
+                  <option value="august">August</option>
+                  <option value="september">September</option>
+                  <option value="october">October</option>
+                  <option value="november">November</option>
+                  <option value="december">December</option>
+                </optgroup>
+                <optgroup label="Quarterly">
+                  <option value="q1">Q1 (Jan-Mar)</option>
+                  <option value="q2">Q2 (Apr-Jun)</option>
+                  <option value="q3">Q3 (Jul-Sep)</option>
+                  <option value="q4">Q4 (Oct-Dec)</option>
+                </optgroup>
+                <optgroup label="Yearly">
+                  <option value="this-year">This Year</option>
+                  <option value="last-year">Last Year</option>
+                </optgroup>
+                <optgroup label="Custom">
+                  <option value="custom">📆 Custom Range</option>
+                </optgroup>
+              </select>
+              {dateRange === 'custom' && (
+                <div className="col-span-2 grid grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <label className="text-xs text-slate-600 block mb-1">From</label>
+                    <input
+                      type="date"
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => {
+                        // Handle custom date start
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-600 block mb-1">To</label>
+                    <input
+                      type="date"
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => {
+                        // Handle custom date end
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1 block">Category</label>
