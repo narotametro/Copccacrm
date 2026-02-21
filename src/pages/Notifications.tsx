@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell,
   CheckCircle,
@@ -14,11 +14,14 @@ import {
   ChevronRight,
   Mail,
   MailOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatName, formatRole } from '@/lib/textFormat';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string;
@@ -48,6 +51,7 @@ export const Notifications: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const typeFilters: Array<typeof filterType> = ['all', 'unread', 'success', 'warning', 'info'];
 
@@ -65,20 +69,113 @@ export const Notifications: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+  // Load notifications from database
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedNotifications: Notification[] = data.map((n: any) => {
+          const createdAt = new Date(n.created_at);
+          return {
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            fullDetails: n.full_details || n.message,
+            time: createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            date: createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            read: n.read,
+            sender: n.sender_name || 'System',
+            senderRole: n.sender_role || 'system',
+            category: n.category,
+            priority: n.priority,
+            actionRequired: n.action_required,
+            actionLink: n.action_link,
+            relatedTo: n.related_to,
+          };
+        });
+        setNotifications(formattedNotifications);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      toast.error('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  // Load on mount
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true, read_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setNotifications(notifications.map(n =>
+        n.id === id ? { ...n, read: true } : n
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-    if (selectedNotification?.id === id) {
-      setSelectedNotification(null);
+  const markAllAsRead = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true, read_at: new Date().toISOString() })
+        .eq('user_id', userData.user.id)
+        .eq('read', false);
+
+      if (error) throw error;
+
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      toast.error('Failed to mark all as read');
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setNotifications(notifications.filter(n => n.id !== id));
+      if (selectedNotification?.id === id) {
+        setSelectedNotification(null);
+      }
+      toast.success('Notification deleted');
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      toast.error('Failed to delete notification');
     }
   };
 
@@ -131,6 +228,15 @@ export const Notifications: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadNotifications}
+                disabled={loading}
+              >
+                <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -214,10 +320,16 @@ export const Notifications: React.FC = () => {
 
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto space-y-2">
-          {filteredNotifications.length === 0 ? (
+          {loading ? (
+            <Card className="p-8 text-center">
+              <RefreshCw className="mx-auto text-primary-600 mb-3 animate-spin" size={48} />
+              <p className="text-slate-600">Loading notifications...</p>
+            </Card>
+          ) : filteredNotifications.length === 0 ? (
             <Card className="p-8 text-center">
               <Bell className="mx-auto text-slate-300 mb-3" size={48} />
               <p className="text-slate-600">No notifications found</p>
+              <p className="text-sm text-slate-500 mt-2">You'll see alerts here when there are updates</p>
             </Card>
           ) : (
             filteredNotifications.map((notification) => (
