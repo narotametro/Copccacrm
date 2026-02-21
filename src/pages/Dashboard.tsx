@@ -76,7 +76,7 @@ const Dashboard = () => {
         ] = await Promise.all([
           supabase.from('invoices').select('total_amount, status').eq('status', 'paid').eq('created_by', userData.user.id),
           supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id),
-          supabase.from('companies').select('id, status').eq('status', 'active').eq('created_by', userData.user.id),
+          supabase.from('companies').select('id, status').eq('created_by', userData.user.id).eq('is_own_company', false),
           supabase.from('deals').select('id, stage').eq('stage', 'won').eq('created_by', userData.user.id),
           supabase.from('deals').select('stage').eq('created_by', userData.user.id),
           supabase.from('deals').select('title, created_at, stage').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(3),
