@@ -3432,12 +3432,11 @@ const SalesHub: React.FC = () => {
 
   const loadProductsWithVelocity = async () => {
     try {
-      // Optimized query - only fetch essential columns for fast initial load
+      // Load ALL products from database
       const { data, error } = await supabase
         .from('products')
         .select('id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, brands(id, name), categories(id, name)')
-        .order('name')
-        .limit(500); // Limit initial load for better performance
+        .order('name');
 
       if (error) throw error;
 
