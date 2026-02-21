@@ -21,10 +21,8 @@ window.addEventListener('error', (event) => {
 
 // Clear reload flag on successful load
 window.addEventListener('load', () => {
-  // Wait a bit to ensure chunks loaded successfully, then clear flag
-  setTimeout(() => {
-    sessionStorage.removeItem('chunk_reload_attempted');
-  }, 2000);
+  // Immediately clear flag on successful load
+  sessionStorage.removeItem('chunk_reload_attempted');
 });
 
 // Apply saved theme on app load

@@ -51,24 +51,19 @@ const AdminSubscriptions = lazy(() => import('@/pages/admin/AdminSubscriptions')
 const AdminSystem = lazy(() => import('@/pages/admin/AdminSystem').then(module => ({ default: module.AdminSystem })));
 const SMSAdminPanel = lazy(() => import('@/pages/admin/SMSAdminPanel').then(module => ({ default: module.SMSAdminPanel })));
 
-// Instant loading component
+// Ultra-minimal instant loading component
 const InstantLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-    <div className="text-center">
-      <div className="animate-pulse">
-        <div className="w-12 h-12 bg-primary-200 rounded-full mx-auto mb-4"></div>
-      </div>
-      <p className="text-slate-600 text-sm">Loading...</p>
-    </div>
+    <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
   </div>
 );
 
 // Preload critical routes for instant navigation
 const preloadCriticalRoutes = () => {
-  // Only preload the most essential pages to avoid blocking
-  setTimeout(() => import('@/pages/Dashboard'), 500);
-  setTimeout(() => import('@/pages/Customers'), 1000);
-  // Don't preload SalesHub immediately as it's heavy
+  // Aggressively preload the most used pages
+  import('@/pages/Dashboard');
+  import('@/pages/Customers');
+  import('@/pages/SalesHub');
 };
 
 const AppRoutes = () => {
@@ -99,10 +94,10 @@ const AppRoutes = () => {
     }
   }, [loading, user, location.pathname, navigate]); // Only run when auth state is ready
 
-  // Preload critical routes after authentication (optimistic)
+  // Preload critical routes after authentication (instant)
   useEffect(() => {
     if (user) {
-      setTimeout(preloadCriticalRoutes, 50); // Faster preload
+      preloadCriticalRoutes(); // Immediate preload when user is available
     }
   }, [user]);
   
@@ -206,17 +201,13 @@ const AppRoutes = () => {
 
 const App = () => {
   const initialize = useAuthStore((state) => state.initialize);
-  const [initialized, setInitialized] = useState(false);
   
+  // Initialize auth in background - don't block rendering!
   useEffect(() => {
-    if (!initialized) {
-      initialize().finally(() => {
-        setInitialized(true);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    initialize(); // Fire and forget - let auth load in background
+  }, [initialize]);
 
+  // Render immediately - no waiting!
   return (
     <CurrencyProvider>
       <SharedDataProvider>

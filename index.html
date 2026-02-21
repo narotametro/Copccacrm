@@ -14,7 +14,17 @@
     <title>COPCCA CRM</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Instant loading screen - shows BEFORE React loads -->
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);">
+        <div style="width: 32px; height: 32px; border: 3px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
