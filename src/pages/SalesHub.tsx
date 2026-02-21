@@ -128,6 +128,8 @@ interface StockHistoryEntry {
   id: string;
   date: string;
   product: string;
+  sku?: string;
+  brand?: string;
   variant?: string;
   action: string;
   qtyChange: number;
@@ -6702,7 +6704,7 @@ const CustomerBuyingPatternsSection = () => {
             performed_by,
             notes,
             created_at,
-            products!inner(name, model)
+            products!inner(name, model, sku, brand_id, brands(name))
           `)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: false })
@@ -6739,6 +6741,8 @@ const CustomerBuyingPatternsSection = () => {
             id: entry.id,
             date: entry.created_at,
             product: productName,
+            sku: product?.sku || '',
+            brand: product?.brands?.name || '',
             variant: '',
             action: entry.change_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown',
             qtyChange: entry.quantity_change || 0,
@@ -6893,6 +6897,8 @@ const CustomerBuyingPatternsSection = () => {
                     <tr className="border-b-2 border-slate-200">
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Date & Time</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Product</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">SKU</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Brand</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Action</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Change</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Stock Level</th>
@@ -6947,6 +6953,12 @@ const CustomerBuyingPatternsSection = () => {
                           <td className="py-3 px-4">
                             <div className="font-medium text-slate-900">{entry.product}</div>
                             {entry.variant && <div className="text-xs text-slate-500">{entry.variant}</div>}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="text-sm text-slate-600 font-mono">{entry.sku || '-'}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="text-sm text-slate-700">{entry.brand || '-'}</div>
                           </td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${actionColor}`}>
@@ -7013,6 +7025,17 @@ const CustomerBuyingPatternsSection = () => {
                     <div>
                       <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Action Type</label>
                       <p className="font-semibold text-slate-900 mt-1">{selectedEntry.action}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-white rounded-lg border border-slate-200">
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">SKU</label>
+                      <p className="font-mono text-sm text-slate-700 mt-1">{selectedEntry.sku || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Brand</label>
+                      <p className="font-semibold text-slate-900 mt-1">{selectedEntry.brand || 'N/A'}</p>
                     </div>
                   </div>
 
