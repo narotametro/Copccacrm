@@ -2727,27 +2727,14 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Get user's company_id from users table (not metadata)
-      const { data: userRecord } = await supabase
-        .from('users')
-        .select('company_id')
-        .eq('id', userData.user.id)
-        .single();
-
-      const userCompanyId = userRecord?.company_id;
-
-      let query = supabase
+      // Query ONLY customer companies (same logic as Customer 360)
+      // is_own_company flag distinguishes between user's company and their customers
+      const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('status', 'active')
+        .eq('created_by', userData.user.id)
+        .eq('is_own_company', false)  // Only load customer companies, not user's own company
         .order('name');
-
-      // Exclude the user's own company from customer list
-      if (userCompanyId) {
-        query = query.neq('id', userCompanyId);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
