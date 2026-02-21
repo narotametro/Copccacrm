@@ -4295,7 +4295,7 @@ const SalesHub: React.FC = () => {
           created_by: user.id,
           company_id: userData.company_id
         })
-        .select()
+        .select('*, brands(id, name), categories(id, name)')
         .single();
 
       if (insertError) {
@@ -4331,7 +4331,15 @@ const SalesHub: React.FC = () => {
       }
 
       // Update local products state
-      setProducts(prevProducts => [...prevProducts, newProduct]);
+      setProducts(prevProducts => [...prevProducts, {
+        ...newProduct,
+        brands: Array.isArray(newProduct.brands) && newProduct.brands.length > 0 ? newProduct.brands[0] : (newProduct.brands || null),
+        categories: Array.isArray(newProduct.categories) && newProduct.categories.length > 0 ? newProduct.categories[0] : (newProduct.categories || null),
+        sales_velocity: 0
+      }]);
+
+      // Reload products to ensure consistency and calculate velocity
+      setTimeout(() => loadProductsWithVelocity(), 100);
 
       // Close modal and reset state
       setShowAddProductModal(false);
@@ -4400,7 +4408,7 @@ const SalesHub: React.FC = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedProductForEdit.id)
-        .select()
+        .select('*, brands(id, name), categories(id, name)')
         .single();
 
       if (updateError) {
@@ -4414,11 +4422,15 @@ const SalesHub: React.FC = () => {
         prevProducts.map(product =>
           product.id === selectedProductForEdit.id ? {
             ...updatedProduct,
-            brands: brands.find(b => b.id === editProductData.brand_id),
-            categories: categories.find(cat => cat.id === editProductData.category_id)
+            brands: Array.isArray(updatedProduct.brands) && updatedProduct.brands.length > 0 ? updatedProduct.brands[0] : (updatedProduct.brands || null),
+            categories: Array.isArray(updatedProduct.categories) && updatedProduct.categories.length > 0 ? updatedProduct.categories[0] : (updatedProduct.categories || null),
+            sales_velocity: product.sales_velocity || 0
           } : product
         )
       );
+
+      // Reload products to ensure consistency
+      setTimeout(() => loadProductsWithVelocity(), 100);
 
       // Close modal and reset state
       setShowEditProductModal(false);
