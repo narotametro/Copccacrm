@@ -871,106 +871,6 @@ export const Settings: React.FC = () => {
                 </div>
               </div>
             </Card>
-
-            <Card>
-              <div className="flex items-center gap-2 mb-4">
-                <Globe className="text-primary-600 dark:text-primary-400" size={20} />
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Preferences</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language</label>
-                  <select
-                    value={preferences.language}
-                    onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-                  >
-                    <option value="en">English</option>
-                    <option value="fr">French</option>
-                    <option value="es">Spanish</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Timezone</label>
-                  <select
-                    value={preferences.timezone}
-                    onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-                  >
-                    <option value="UTC-12">UTC-12</option>
-                    <option value="UTC-11">UTC-11</option>
-                    <option value="UTC-10">UTC-10</option>
-                    <option value="UTC-9">UTC-9</option>
-                    <option value="UTC-8">UTC-8 (PST)</option>
-                    <option value="UTC-7">UTC-7 (MST)</option>
-                    <option value="UTC-6">UTC-6 (CST)</option>
-                    <option value="UTC-5">UTC-5 (EST)</option>
-                    <option value="UTC-4">UTC-4</option>
-                    <option value="UTC-3">UTC-3</option>
-                    <option value="UTC-2">UTC-2</option>
-                    <option value="UTC-1">UTC-1</option>
-                    <option value="UTC">UTC (GMT)</option>
-                    <option value="UTC+1">UTC+1 (WAT - West Africa)</option>
-                    <option value="UTC+2">UTC+2 (CAT - Central Africa)</option>
-                    <option value="UTC+3">UTC+3 (EAT - East Africa)</option>
-                    <option value="UTC+4">UTC+4</option>
-                    <option value="UTC+5">UTC+5</option>
-                    <option value="UTC+5:30">UTC+5:30 (IST)</option>
-                    <option value="UTC+6">UTC+6</option>
-                    <option value="UTC+7">UTC+7</option>
-                    <option value="UTC+8">UTC+8 (China, Singapore)</option>
-                    <option value="UTC+9">UTC+9 (Japan, Korea)</option>
-                    <option value="UTC+10">UTC+10</option>
-                    <option value="UTC+11">UTC+11</option>
-                    <option value="UTC+12">UTC+12</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Currency</label>
-                  <select
-                    value={preferences.currency}
-                    onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-                  >
-                    <option value="NGN">NGN - Nigerian Naira</option>
-                    <option value="TZS">TZS - Tanzanian Shilling</option>
-                    <option value="KES">KES - Kenyan Shilling</option>
-                    <option value="UGX">UGX - Ugandan Shilling</option>
-                    <option value="ZAR">ZAR - South African Rand</option>
-                    <option value="GHS">GHS - Ghanaian Cedi</option>
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="JPY">JPY - Japanese Yen</option>
-                    <option value="CNY">CNY - Chinese Yuan</option>
-                    <option value="INR">INR - Indian Rupee</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date format</label>
-                  <select
-                    value={preferences.dateFormat}
-                    onChange={(e) => setPreferences({ ...preferences, dateFormat: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-                  >
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                  </select>
-                </div>
-              </div>
-              <div className="mt-4 flex gap-3">
-                <Button icon={Save} onClick={handlePreferencesSave}>
-                  Save preferences
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setPreferences({ language: 'en', timezone: 'UTC+1', currency: 'NGN', dateFormat: 'DD/MM/YYYY' })}
-                >
-                  Reset
-                </Button>
-              </div>
-            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1019,24 +919,6 @@ export const Settings: React.FC = () => {
               </form>
             </Card>
           </div>
-
-          <Card>
-            <div className="flex items-center gap-2 mb-3">
-              <Database className="text-primary-600 dark:text-primary-400" size={20} />
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Data & privacy</h2>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Export your settings for backup or clear locally cached preferences.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button icon={Download} variant="secondary" onClick={handleDownloadData}>
-                Export settings
-              </Button>
-              <Button icon={Trash2} variant="danger" onClick={handleDeleteData}>
-                Clear local data
-              </Button>
-            </div>
-          </Card>
         </>
       )}
 
