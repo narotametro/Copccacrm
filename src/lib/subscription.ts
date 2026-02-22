@@ -552,14 +552,18 @@ export async function getBillingHistory(): Promise<PaymentRecord[]> {
         status,
         payment_method,
         transaction_id,
-        invoice_url,
         created_at
       `)
       .eq('subscription_id', subscription.id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Map results to include invoice_url as null (column doesn't exist in DB yet)
+    return (data || []).map(payment => ({
+      ...payment,
+      invoice_url: null,
+    }));
   } catch (error) {
     console.error('Error fetching billing history:', error);
     return [];
