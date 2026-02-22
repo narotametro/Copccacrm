@@ -877,13 +877,23 @@ const LocationsManagement: React.FC<{
   // Define plan limits based on subscription tier
   const planLimits = {
     start: { pos: 1, inventory: 1 },
+    starter: { pos: 1, inventory: 1 }, // Legacy name
     grow: { pos: 2, inventory: 2 },
-    pro: { pos: -1, inventory: -1 } // -1 means unlimited
+    pro: { pos: -1, inventory: -1 }, // -1 means unlimited
+    professional: { pos: -1, inventory: -1 }, // Legacy name
+    enterprise: { pos: -1, inventory: -1 } // Legacy name
   };
 
-  // Normalize plan name and get limits
-  const normalizedPlan = userSubscriptionPlan.toLowerCase() as 'start' | 'grow' | 'pro';
+  // Normalize plan name and get limits (handle multiple formats)
+  const normalizedPlan = userSubscriptionPlan.toLowerCase() as keyof typeof planLimits;
   const limits = planLimits[normalizedPlan] || planLimits.start;
+  
+  // Determine display plan name for UI
+  const displayPlan = normalizedPlan === 'professional' || normalizedPlan === 'enterprise' 
+    ? 'PRO' 
+    : normalizedPlan === 'starter' 
+    ? 'START' 
+    : normalizedPlan.toUpperCase();
 
   // Count locations by type
   const posCount = locations.filter(l => l.type === 'pos').length;
@@ -905,7 +915,7 @@ const LocationsManagement: React.FC<{
     const maxForType = newLocation.type === 'pos' ? limits.pos : limits.inventory;
     
     if (maxForType !== -1 && currentCount >= maxForType) {
-      toast.error(`Your ${normalizedPlan.toUpperCase()} plan allows ${maxForType} ${newLocation.type.toUpperCase()} location(s). Upgrade to add more.`);
+      toast.error(`Your ${displayPlan} plan allows ${maxForType} ${newLocation.type.toUpperCase()} location(s). Upgrade to add more.`);
       return;
     }
 
@@ -930,12 +940,12 @@ const LocationsManagement: React.FC<{
 
   // Build plan limits message
   const getLimitsMessage = () => {
-    if (normalizedPlan === 'pro') {
-      return 'PRO plan allows unlimited POS and inventory locations.';
+    if (limits.pos === -1 && limits.inventory === -1) {
+      return `${displayPlan} plan allows unlimited POS and inventory locations.`;
     }
     const posLimit = limits.pos === -1 ? 'unlimited' : limits.pos;
     const invLimit = limits.inventory === -1 ? 'unlimited' : limits.inventory;
-    return `${normalizedPlan.toUpperCase()} plan allows ${posLimit} POS and ${invLimit} inventory location(s). POS: ${posCount}/${posLimit === 'unlimited' ? '∞' : posLimit}, Inventory: ${inventoryCount}/${invLimit === 'unlimited' ? '∞' : invLimit}`;
+    return `${displayPlan} plan allows ${posLimit} POS and ${invLimit} inventory location(s). POS: ${posCount}/${posLimit === 'unlimited' ? '∞' : posLimit}, Inventory: ${inventoryCount}/${invLimit === 'unlimited' ? '∞' : invLimit}`;
   };
 
   return (
@@ -971,9 +981,9 @@ const LocationsManagement: React.FC<{
           <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No locations yet</h3>
           <p className="text-slate-600 dark:text-slate-400 mb-4">
             Add your first location to start managing inventory and POS operations.
-            {normalizedPlan === 'pro' 
-              ? ' Your PRO plan allows unlimited locations.' 
-              : ` Your ${normalizedPlan.toUpperCase()} plan allows ${limits.pos} POS and ${limits.inventory} inventory location(s).`
+            {limits.pos === -1 && limits.inventory === -1
+              ? ` Your ${displayPlan} plan allows unlimited locations.` 
+              : ` Your ${displayPlan} plan allows ${limits.pos} POS and ${limits.inventory} inventory location(s).`
             }
           </p>
           <Button onClick={() => setShowAddModal(true)}>Add Your First Location</Button>
