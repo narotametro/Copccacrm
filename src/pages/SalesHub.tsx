@@ -1784,9 +1784,76 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 
       {/* Filters Bar */}
       <Card className="p-4">
+        {/* Quick Date Range Filter Buttons */}
+        <div className="mb-4">
+          <label className="text-sm font-medium text-slate-700 mb-2 block">📅 Quick Filters</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setDateRange('today')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'today'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setDateRange('this-week')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'this-week'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              This Week
+            </button>
+            <button
+              onClick={() => setDateRange('last-week')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'last-week'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Last Week
+            </button>
+            <button
+              onClick={() => setDateRange('this-month')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'this-month'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setDateRange('last-30-days')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'last-30-days'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Last 30 Days
+            </button>
+            <button
+              onClick={() => setDateRange('this-year')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                dateRange === 'this-year'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              This Year
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2">
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Date Range</label>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Advanced Date Range</label>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={dateRange}
