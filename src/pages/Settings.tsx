@@ -756,15 +756,18 @@ export const Settings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">TIN</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    TIN <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
                   <input
                     type="text"
                     value={companyInfo.tin}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, tin: e.target.value })}
-                    placeholder="123456789"
+                    placeholder="Enter your business TIN number"
                     disabled={!isCompanyOwner}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                  <p className="text-xs text-slate-500 mt-1">Tax Identification Number - Only shown on invoices if provided</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Business Address</label>
