@@ -310,7 +310,7 @@ export const AfterSales: React.FC = () => {
         customers: customersRes.data?.map((c: Database['public']['Tables']['companies']['Row']) => ({ id: c.id, name: c.name })) || [],
         deals: dealsRes.data?.map((d: Database['public']['Tables']['deals']['Row']) => ({ id: d.id, name: d.title })) || [],
         competitors: competitorsRes.data?.map((c: Database['public']['Tables']['competitors']['Row']) => ({ id: c.id, name: c.name })) || [],
-        products: productsRes.data?.map((p: Database['public']['Tables']['products']['Row']) => ({ id: p.id, name: p.name })) || [],
+        products: productsRes.data?.map((p: any) => ({ id: p.id, name: p.name })) || [],
       });
     };
 
@@ -1092,54 +1092,6 @@ export const AfterSales: React.FC = () => {
                 placeholder="2" 
                 value={addForm.estimated_hours}
                 onChange={(e) => setAddForm({ ...addForm, estimated_hours: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Link to (optional)</label>
-              <select 
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                value={addForm.linked_type}
-                onChange={(e) => setAddForm({ ...addForm, linked_type: e.target.value, linked_name: '' })}
-              >
-                <option value="">None</option>
-                <option value="customer">Customer</option>
-                <option value="deal">Deal</option>
-                <option value="competitor">Competitor</option>
-                <option value="product">Product</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Linked Name</label>
-              {addForm.linked_type ? (
-                <Select
-                  value={addForm.linked_name}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAddForm({ ...addForm, linked_name: e.target.value })}
-                >
-                  <option value="">Select {addForm.linked_type}...</option>
-                  {linkedOptions[addForm.linked_type as keyof typeof linkedOptions]?.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </Select>
-              ) : (
-                <Input
-                  placeholder="Select a link type first"
-                  value={addForm.linked_name}
-                  onChange={(e) => setAddForm({ ...addForm, linked_name: e.target.value })}
-                  disabled
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Tags</label>
-              <Input 
-                placeholder="sales, high-value, enterprise (comma separated)"
-                value={addForm.tags}
-                onChange={(e) => setAddForm({ ...addForm, tags: e.target.value })}
               />
             </div>
           </div>
