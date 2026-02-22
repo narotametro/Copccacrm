@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Bell, Globe, Database, Download, Trash2, Save, Lock, Eye, EyeOff, Building, CreditCard, Crown, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
+import { Bell, Save, Lock, Eye, EyeOff, Building, CreditCard, Crown, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
@@ -19,7 +19,8 @@ export const Settings: React.FC = () => {
     tin: '',
     address: '',
     city: '',
-    country: ''
+    country: '',
+    subscription_plan: 'start'
   });
   const [paymentInfo, setPaymentInfo] = useState({
     m_pesa: {
@@ -45,13 +46,6 @@ export const Settings: React.FC = () => {
     deals: true,
     tasks: true,
     reports: true,
-  });
-
-  const [preferences, setPreferences] = useState({
-    language: 'en',
-    timezone: 'UTC+1',
-    currency: 'NGN',
-    dateFormat: 'DD/MM/YYYY',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -110,6 +104,7 @@ export const Settings: React.FC = () => {
                   address: companyData.address || '',
                   city: companyData.city || '',
                   country: companyData.country || '',
+                  subscription_plan: companyData.subscription_plan || 'start'
                 });
               setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar ?? true);
                 setPaymentInfo(companyData.payment_info || {
@@ -164,7 +159,8 @@ export const Settings: React.FC = () => {
                 tin: newCompany.tin || '',
                 address: newCompany.address || '',
                 city: newCompany.city || '',
-                country: newCompany.country || ''
+                country: newCompany.country || '',
+                subscription_plan: newCompany.subscription_plan || 'start'
               });
 
               toast.success('Business profile created! Please update your business information.');
@@ -185,7 +181,8 @@ export const Settings: React.FC = () => {
                 tin: companyData.tin || '',
                 address: companyData.address || '',
                 city: companyData.city || '',
-                country: companyData.country || ''
+                country: companyData.country || '',
+                subscription_plan: companyData.subscription_plan || 'start'
               });
               setShowCompanyNameInNavbar(companyData.show_company_name_in_navbar ?? true);
               setPaymentInfo(companyData.payment_info || {
@@ -204,7 +201,7 @@ export const Settings: React.FC = () => {
     loadCompanyData();
   }, [user]);
 
-  // Load user preferences and notification settings
+  // Load user notification settings
   useEffect(() => {
     const loadUserSettings = async () => {
       if (!user) return;
@@ -212,21 +209,11 @@ export const Settings: React.FC = () => {
       try {
         const { data: userData } = await supabase
           .from('users')
-          .select('preferences, notification_settings')
+          .select('notification_settings')
           .eq('id', user.id)
           .single();
 
         if (userData) {
-          // Load preferences if they exist
-          if (userData.preferences) {
-            setPreferences({
-              language: userData.preferences.language || 'en',
-              timezone: userData.preferences.timezone || 'UTC+1',
-              currency: userData.preferences.currency || 'NGN',
-              dateFormat: userData.preferences.dateFormat || 'DD/MM/YYYY'
-            });
-          }
-
           // Load notification settings if they exist
           if (userData.notification_settings) {
             setNotifications({
@@ -494,96 +481,6 @@ export const Settings: React.FC = () => {
     } catch (error) {
       console.error('Failed to update company:', error);
       toast.error('Failed to update business information');
-    }
-  };
-
-  const handlePreferencesSave = async () => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          preferences: {
-            language: preferences.language,
-            timezone: preferences.timezone,
-            currency: preferences.currency,
-            dateFormat: preferences.dateFormat
-          },
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      toast.success('Preferences saved successfully');
-    } catch (error) {
-      console.error('Failed to save preferences:', error);
-      toast.error('Failed to save preferences');
-    }
-  };
-
-  const handleDownloadData = async () => {
-    if (!user) return;
-
-    try {
-      // Fetch user data including preferences and notifications
-      const { data: userData } = await supabase
-        .from('users')
-        .select('email, full_name, role, preferences, notification_settings')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData) {
-        toast.error('Failed to fetch user data');
-        return;
-      }
-
-      // Create export data object
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        user: {
-          email: userData.email,
-          fullName: userData.full_name,
-          role: userData.role
-        },
-        preferences: userData.preferences || preferences,
-        notificationSettings: userData.notification_settings || notifications
-      };
-
-      // Create blob and download
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `copcca-settings-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success('Settings exported successfully');
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export settings');
-    }
-  };
-
-  const handleDeleteData = () => {
-    const confirmed = confirm('This will clear all locally cached data including saved preferences. Your account data on the server will not be affected. Continue?');
-    if (!confirmed) return;
-
-    try {
-      // Clear localStorage
-      localStorage.clear();
-      
-      // Clear sessionStorage
-      sessionStorage.clear();
-
-      toast.success('Local data cleared successfully. Refresh the page to reload from server.');
-    } catch (error) {
-      console.error('Clear data error:', error);
-      toast.error('Failed to clear local data');
     }
   };
 
@@ -977,12 +874,38 @@ const LocationsManagement: React.FC<{
     city: ''
   });
 
-  const maxLocations = userSubscriptionPlan === 'starter' ? 1 : userSubscriptionPlan === 'professional' ? 2 : 10;
-  const canAddMore = locations.length < maxLocations;
+  // Define plan limits based on subscription tier
+  const planLimits = {
+    start: { pos: 1, inventory: 1 },
+    grow: { pos: 2, inventory: 2 },
+    pro: { pos: -1, inventory: -1 } // -1 means unlimited
+  };
+
+  // Normalize plan name and get limits
+  const normalizedPlan = userSubscriptionPlan.toLowerCase() as 'start' | 'grow' | 'pro';
+  const limits = planLimits[normalizedPlan] || planLimits.start;
+
+  // Count locations by type
+  const posCount = locations.filter(l => l.type === 'pos').length;
+  const inventoryCount = locations.filter(l => l.type === 'inventory').length;
+
+  // Check if can add more of specific type
+  const canAddPOS = limits.pos === -1 || posCount < limits.pos;
+  const canAddInventory = limits.inventory === -1 || inventoryCount < limits.inventory;
+  const canAddMore = canAddPOS || canAddInventory; // Show button if either type can be added
 
   const handleAddLocation = async () => {
     if (!newLocation.name.trim()) {
       toast.error('Location name is required');
+      return;
+    }
+
+    // Check limit for the specific type being added
+    const currentCount = newLocation.type === 'pos' ? posCount : inventoryCount;
+    const maxForType = newLocation.type === 'pos' ? limits.pos : limits.inventory;
+    
+    if (maxForType !== -1 && currentCount >= maxForType) {
+      toast.error(`Your ${normalizedPlan.toUpperCase()} plan allows ${maxForType} ${newLocation.type.toUpperCase()} location(s). Upgrade to add more.`);
       return;
     }
 
@@ -1005,15 +928,23 @@ const LocationsManagement: React.FC<{
     setEditingLocation(null);
   };
 
+  // Build plan limits message
+  const getLimitsMessage = () => {
+    if (normalizedPlan === 'pro') {
+      return 'PRO plan allows unlimited POS and inventory locations.';
+    }
+    const posLimit = limits.pos === -1 ? 'unlimited' : limits.pos;
+    const invLimit = limits.inventory === -1 ? 'unlimited' : limits.inventory;
+    return `${normalizedPlan.toUpperCase()} plan allows ${posLimit} POS and ${invLimit} inventory location(s). POS: ${posCount}/${posLimit === 'unlimited' ? '∞' : posLimit}, Inventory: ${inventoryCount}/${invLimit === 'unlimited' ? '∞' : invLimit}`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Locations</h2>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage your POS and inventory locations. {userSubscriptionPlan === 'starter' && 'Starter plan allows 1 location.'}
-            {userSubscriptionPlan === 'professional' && 'Professional plan allows up to 2 locations.'}
-            {userSubscriptionPlan === 'enterprise' && 'Enterprise plan allows unlimited locations.'}
+            Manage your POS and inventory locations. {getLimitsMessage()}
           </p>
         </div>
         {canAddMore && (
@@ -1038,10 +969,14 @@ const LocationsManagement: React.FC<{
         <Card className="p-8 text-center">
           <Building className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No locations yet</h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">Add your first location to start managing inventory and POS operations.</p>
-          {canAddMore && (
-            <Button onClick={() => setShowAddModal(true)}>Add Your First Location</Button>
-          )}
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            Add your first location to start managing inventory and POS operations.
+            {normalizedPlan === 'pro' 
+              ? ' Your PRO plan allows unlimited locations.' 
+              : ` Your ${normalizedPlan.toUpperCase()} plan allows ${limits.pos} POS and ${limits.inventory} inventory location(s).`
+            }
+          </p>
+          <Button onClick={() => setShowAddModal(true)}>Add Your First Location</Button>
         </Card>
       ) : (
         <div className="grid gap-4">
@@ -1125,9 +1060,18 @@ const LocationsManagement: React.FC<{
                   onChange={(e) => setNewLocation({ ...newLocation, type: e.target.value as 'pos' | 'inventory' })}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                 >
-                  <option value="inventory">Inventory Location</option>
-                  <option value="pos">POS Location</option>
+                  <option value="inventory" disabled={!canAddInventory}>
+                    Inventory Location {!canAddInventory ? `(Limit reached: ${inventoryCount}/${limits.inventory})` : `(${inventoryCount}/${limits.inventory === -1 ? '∞' : limits.inventory})`}
+                  </option>
+                  <option value="pos" disabled={!canAddPOS}>
+                    POS Location {!canAddPOS ? `(Limit reached: ${posCount}/${limits.pos})` : `(${posCount}/${limits.pos === -1 ? '∞' : limits.pos})`}
+                  </option>
                 </select>
+                {!canAddPOS && !canAddInventory && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    All location limits reached. Please upgrade your plan to add more locations.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
