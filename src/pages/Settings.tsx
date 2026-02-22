@@ -834,11 +834,10 @@ export const Settings: React.FC = () => {
       {activeTab === 'locations' && (
         <LocationsManagement 
           locations={locations}
-          loading={false}
           onSave={saveLocation}
           onUpdate={updateLocation}
           onDelete={deleteLocation}
-          userSubscriptionPlan={companyInfo.subscription_plan || 'starter'}
+          userSubscriptionPlan={companyInfo.subscription_plan || 'start'}
         />
       )}
     </div>
@@ -854,12 +853,11 @@ const LocationsManagement: React.FC<{
     city?: string;
     status: 'active' | 'inactive';
   }>;
-  loading: boolean;
   onSave: (location: { name: string; type: 'pos' | 'inventory'; address?: string; city?: string }) => Promise<void>;
   onUpdate: (id: string, updates: { name?: string; address?: string; city?: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   userSubscriptionPlan: string;
-}> = ({ locations, loading, onSave, onUpdate, onDelete, userSubscriptionPlan }) => {
+}> = ({ locations, onSave, onUpdate, onDelete, userSubscriptionPlan }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLocation, setEditingLocation] = useState<{
     id: string;
@@ -887,6 +885,9 @@ const LocationsManagement: React.FC<{
   // Normalize plan name and get limits (handle multiple formats)
   const normalizedPlan = userSubscriptionPlan.toLowerCase() as keyof typeof planLimits;
   const limits = planLimits[normalizedPlan] || planLimits.start;
+  
+  // Debug: Log the plan name to help troubleshoot
+  console.log('Location limits - Plan:', userSubscriptionPlan, 'Normalized:', normalizedPlan, 'Limits:', limits);
   
   // Determine display plan name for UI
   const displayPlan = normalizedPlan === 'professional' || normalizedPlan === 'enterprise' 
@@ -965,17 +966,7 @@ const LocationsManagement: React.FC<{
         )}
       </div>
 
-      {loading ? (
-        <div className="grid gap-4">
-          {/* Show skeleton loading cards instead of spinner */}
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="p-4 animate-pulse">
-              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-2"></div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
-            </Card>
-          ))}
-        </div>
-      ) : locations.length === 0 ? (
+      {locations.length === 0 ? (
         <Card className="p-8 text-center">
           <Building className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No locations yet</h3>
