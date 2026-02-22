@@ -259,32 +259,58 @@ export const AfterSales: React.FC = () => {
       const mapped = (data || []).map(mapRowToTask);
       setTasks(mapped);
 
-      // Fetch users for assignment dropdown
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .order('full_name');
+      // Fetch team members (users from same company) for assignment dropdown
+      const { data: currentUserData } = await supabase.auth.getUser();
+      if (currentUserData?.user) {
+        const { data: currentUserRecord } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', currentUserData.user.id)
+          .single();
 
-      if (!usersError && usersData) {
-        setUsers(usersData);
+        if (currentUserRecord?.company_id) {
+          const { data: teamMembers, error: usersError } = await supabase
+            .from('users')
+            .select('id, full_name, email')
+            .eq('company_id', currentUserRecord.company_id)
+            .order('full_name');
+
+          if (!usersError && teamMembers) {
+            setUsers(teamMembers);
+          }
+        }
       }
 
       // Fetch linked options for task linking
-      const [customersRes, dealsRes, competitorsRes] = await Promise.all([
+      const [customersRes, dealsRes, competitorsRes, productsRes] = await Promise.all([
         (async () => {
           const { data: userData } = await supabase.auth.getUser();
           if (!userData?.user) return { data: [], error: null };
-          return supabase.from('companies').select('id, name').eq('created_by', userData.user.id).order('name');
+          return supabase
+            .from('companies')
+            .select('id, name')
+            .eq('created_by', userData.user.id)
+            .eq('is_own_company', false)  // Only load actual customers, not own company
+            .order('name');
         })(),
         supabase.from('deals').select('id, title').order('title'),
         supabase.from('competitors').select('id, name').order('name'),
+        (async () => {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData?.user) return { data: [], error: null };
+          return supabase
+            .from('products')
+            .select('id, name')
+            .eq('created_by', userData.user.id)
+            .order('name');
+        })(),
       ]);
 
       setLinkedOptions({
         customers: customersRes.data?.map((c: Database['public']['Tables']['companies']['Row']) => ({ id: c.id, name: c.name })) || [],
         deals: dealsRes.data?.map((d: Database['public']['Tables']['deals']['Row']) => ({ id: d.id, name: d.title })) || [],
         competitors: competitorsRes.data?.map((c: Database['public']['Tables']['competitors']['Row']) => ({ id: c.id, name: c.name })) || [],
-        products: [], // No products table exists
+        products: productsRes.data?.map((p: Database['public']['Tables']['products']['Row']) => ({ id: p.id, name: p.name })) || [],
       });
     };
 
