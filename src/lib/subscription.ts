@@ -440,14 +440,27 @@ export async function checkUsageLimit(limitType: 'users' | 'products' | 'invoice
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { current: 0, limit, canAdd: true };
 
+    // Get user's company_id from users table (not from metadata)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    const companyId = userData?.company_id;
+
     switch (limitType) {
       case 'users': {
         // Count users in the same company
-        const { count: userCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', user.user_metadata?.company_id);
-        current = userCount || 0;
+        if (!companyId) {
+          current = 1; // Only count current user if no company
+        } else {
+          const { count: userCount } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', companyId);
+          current = userCount || 0;
+        }
         break;
       }
       case 'products': {

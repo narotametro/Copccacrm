@@ -58,28 +58,40 @@ export const SMSCredits: React.FC = () => {
 
       if (!userData?.company_id) return;
 
-      // Get SMS usage stats
-      const { data: statsData, error: statsError } = await supabase
-        .rpc('get_sms_usage_stats', { p_company_id: userData.company_id, p_days: 30 });
+      // Get SMS usage stats (gracefully handle if function doesn't exist)
+      try {
+        const { data: statsData, error: statsError } = await supabase
+          .rpc('get_sms_usage_stats', { p_company_id: userData.company_id, p_days: 30 });
 
-      if (!statsError && statsData) {
-        setBalance(statsData.current_balance);
-        setStats(statsData);
+        if (!statsError && statsData) {
+          setBalance(statsData.current_balance);
+          setStats(statsData);
+        }
+      } catch (rpcError) {
+        console.warn('SMS usage stats function not available:', rpcError);
+        // Set default values when function doesn't exist
+        setBalance(0);
+        setStats(null);
       }
 
-      // Get available packages
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('sms_pricing')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order');
+      // Get available packages (gracefully handle if table doesn't exist)
+      try {
+        const { data: packagesData, error: packagesError } = await supabase
+          .from('sms_pricing')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order');
 
-      if (!packagesError && packagesData) {
-        setPackages(packagesData);
+        if (!packagesError && packagesData) {
+          setPackages(packagesData);
+        }
+      } catch (tableError) {
+        console.warn('SMS pricing table not available:', tableError);
+        setPackages([]);
       }
     } catch (error) {
       console.error('Failed to load SMS credits data:', error);
-      toast.error('Failed to load SMS credits');
+      // Don't show error toast if tables/functions don't exist - this is expected during setup
     } finally {
       setLoading(false);
     }
