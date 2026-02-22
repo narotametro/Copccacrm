@@ -487,6 +487,9 @@ export const Settings: React.FC = () => {
 
       if (error) throw error;
 
+      // Dispatch event to notify navbar to refresh company data
+      window.dispatchEvent(new CustomEvent('company-info-updated'));
+
       toast.success('Business information updated successfully');
     } catch (error) {
       console.error('Failed to update company:', error);

@@ -234,6 +234,17 @@ export const AppLayout: React.FC = () => {
     };
 
     loadCompanyPopupSettings();
+
+    // Listen for company info updates from Settings page
+    const handleCompanyUpdate = () => {
+      loadCompanyPopupSettings();
+    };
+
+    window.addEventListener('company-info-updated', handleCompanyUpdate);
+
+    return () => {
+      window.removeEventListener('company-info-updated', handleCompanyUpdate);
+    };
   }, [user]);
 
   const markAsRead = (id: string) => {
