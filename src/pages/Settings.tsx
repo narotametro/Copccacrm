@@ -281,19 +281,19 @@ export const Settings: React.FC = () => {
 
       if (!userData?.company_id) return;
 
-      // Load both POS and inventory locations
-      const [posResult, inventoryResult] = await Promise.all([
-        supabase
-          .from('pos_locations')
-          .select('id, name, address, city, status')
-          .eq('company_id', userData.company_id)
-          .eq('status', 'active'),
-        supabase
-          .from('inventory_locations')
-          .select('id, name, address, city, type, status')
-          .eq('company_id', userData.company_id)
-          .eq('status', 'active')
-      ]);
+      // Load all locations from unified table
+      const { data: locationsData, error } = await supabase
+        .from('locations')
+        .select('id, name, type, address, city, status')
+        .eq('company_id', userData.company_id)
+        .eq('status', 'active')
+        .order('type')
+        .order('name');
+
+      if (error) {
+        console.error('Error loading locations:', error);
+        return;
+      }
 
       const allLocations: Array<{
         id: string;
@@ -302,35 +302,7 @@ export const Settings: React.FC = () => {
         address?: string;
         city?: string;
         status: 'active' | 'inactive';
-      }> = [];
-
-      // Add POS locations
-      if (posResult.data) {
-        posResult.data.forEach(loc => {
-          allLocations.push({
-            id: loc.id,
-            name: loc.name,
-            type: 'pos',
-            address: loc.address,
-            city: loc.city,
-            status: loc.status as 'active' | 'inactive'
-          });
-        });
-      }
-
-      // Add inventory locations
-      if (inventoryResult.data) {
-        inventoryResult.data.forEach(loc => {
-          allLocations.push({
-            id: loc.id,
-            name: loc.name,
-            type: 'inventory',
-            address: loc.address,
-            city: loc.city,
-            status: loc.status as 'active' | 'inactive'
-          });
-        });
-      }
+      }> = locationsData || [];
 
       setLocations(allLocations);
     } catch (error) {
@@ -360,12 +332,11 @@ export const Settings: React.FC = () => {
         return;
       }
 
-      const tableName = locationData.type === 'pos' ? 'pos_locations' : 'inventory_locations';
-      
       const { error } = await supabase
-        .from(tableName)
+        .from('locations')
         .insert({
           name: locationData.name,
+          type: locationData.type,
           address: locationData.address,
           city: locationData.city,
           company_id: userData.company_id,
@@ -387,14 +358,8 @@ export const Settings: React.FC = () => {
     if (!user) return;
 
     try {
-      // Find the location to determine which table to update
-      const location = locations.find(loc => loc.id === id);
-      if (!location) return;
-
-      const tableName = location.type === 'pos' ? 'pos_locations' : 'inventory_locations';
-
       const { error } = await supabase
-        .from(tableName)
+        .from('locations')
         .update({
           ...updates,
           updated_at: new Date().toISOString()
@@ -415,14 +380,8 @@ export const Settings: React.FC = () => {
     if (!user) return;
 
     try {
-      // Find the location to determine which table to update
-      const location = locations.find(loc => loc.id === id);
-      if (!location) return;
-
-      const tableName = location.type === 'pos' ? 'pos_locations' : 'inventory_locations';
-
       const { error } = await supabase
-        .from(tableName)
+        .from('locations')
         .update({ status: 'inactive' })
         .eq('id', id);
 
