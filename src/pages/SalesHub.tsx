@@ -33,6 +33,7 @@ import {
   Edit,
   Eye,
   Download,
+  Truck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -40,6 +41,7 @@ import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { useSalesHubStore } from '@/store/salesHubStore';
+import { StockTransfers } from '@/components/inventory/StockTransfers';
 
 interface Product {
   id: string;
@@ -158,7 +160,7 @@ interface AIInsight {
   action: string;
 }
 
-type Subsection = 'updates' | 'products' | 'carts-invoice' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history';
+type Subsection = 'updates' | 'products' | 'carts-invoice' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history' | 'stock-transfers';
 
 interface ProductCardProps {
   product: Product;
@@ -7293,6 +7295,7 @@ const CustomerBuyingPatternsSection = () => {
     { id: "products", label: "Products", icon: Package },
     { id: "carts-invoice", label: "Carts & Invoice", icon: Receipt },
     { id: "inventory-status", label: "Inventory Management", icon: BarChart3 },
+    { id: "stock-transfers", label: "Stock Transfers", icon: Truck },
     { id: "customer-buying-patterns", label: "Customer Buying Patterns", icon: Users },
     { id: "expenses", label: "Expenses", icon: Banknote },
     { id: "product-stocking-history", label: "Product Stocking History", icon: History },
@@ -7431,6 +7434,7 @@ const CustomerBuyingPatternsSection = () => {
       {activeSubsection === 'products' && <ProductsSection />}
       {activeSubsection === 'carts-invoice' && <CartsInvoiceSection />}
       {activeSubsection === 'inventory-status' && <InventoryStatusSection />}
+      {activeSubsection === 'stock-transfers' && <StockTransfers />}
       {activeSubsection === 'customer-buying-patterns' && <CustomerBuyingPatternsSection />}
       {activeSubsection === 'expenses' && <ExpensesSection expenses={expenses} setExpenses={setExpenses} />}
       {activeSubsection === 'product-stocking-history' && <ProductStockingHistorySection />}
