@@ -106,7 +106,10 @@ BEGIN
       id,
       company_id,
       name,
-      COALESCE(type, 'inventory'),
+      CASE 
+        WHEN type IN ('warehouse', 'inventory') THEN 'inventory'
+        ELSE 'inventory'
+      END,
       address,
       city,
       status,
