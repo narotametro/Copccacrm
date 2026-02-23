@@ -41,7 +41,6 @@ interface StockTransfer {
   expected_delivery_date?: string;
   actual_delivery_date?: string;
   notes: string;
-  remarks: string;
   transfer_day: string;
   created_by: string;
   approved_by?: string;
@@ -70,7 +69,6 @@ export const StockTransfers: React.FC = () => {
     to_location_id: '',
     expected_delivery_date: '',
     notes: '',
-    remarks: '',
     items: [] as TransferItem[]
   });
 
@@ -226,11 +224,6 @@ export const StockTransfers: React.FC = () => {
       return;
     }
     
-    if (!newTransfer.remarks.trim()) {
-      toast.error('Please provide remarks for this transfer');
-      return;
-    }
-    
     if (newTransfer.items.length === 0) {
       toast.error('Please add at least one item');
       return;
@@ -274,7 +267,6 @@ export const StockTransfers: React.FC = () => {
           to_location_id: newTransfer.to_location_id,
           expected_delivery_date: newTransfer.expected_delivery_date || null,
           notes: newTransfer.notes,
-          remarks: newTransfer.remarks,
           transfer_day: transferDay,
           created_by: user.id,
           status: 'pending'
@@ -310,7 +302,6 @@ export const StockTransfers: React.FC = () => {
         to_location_id: '',
         expected_delivery_date: '',
         notes: '',
-        remarks: '',
         items: []
       });
       loadData();
@@ -472,8 +463,7 @@ export const StockTransfers: React.FC = () => {
             })}</p>
             <p><strong>Expected Delivery:</strong> ${transfer.expected_delivery_date ? new Date(transfer.expected_delivery_date).toLocaleDateString() : 'N/A'}</p>
             <p><strong>Status:</strong> ${transfer.status.toUpperCase()}</p>
-            ${transfer.remarks ? `<p style="background: #f0f9ff; padding: 8px; border-radius: 4px; margin-top: 10px;"><strong>Remarks:</strong><br/>${transfer.remarks}</p>` : ''}
-            ${transfer.notes ? `<p><strong>Notes:</strong> ${transfer.notes}</p>` : ''}
+            ${transfer.notes ? `<p style="margin-top: 10px;"><strong>Notes:</strong> ${transfer.notes}</p>` : ''}
           </div>
           
           <table>
@@ -630,14 +620,8 @@ export const StockTransfers: React.FC = () => {
                     {transfer.expected_delivery_date && ` • Expected: ${new Date(transfer.expected_delivery_date).toLocaleDateString()}`}
                   </p>
                   
-                  {transfer.remarks && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
-                      <strong>Remarks:</strong> {transfer.remarks}
-                    </p>
-                  )}
-                  
                   {transfer.notes && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                       <strong>Notes:</strong> {transfer.notes}
                     </p>
                   )}
@@ -723,45 +707,17 @@ export const StockTransfers: React.FC = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Expected Delivery Date
-                </label>
-                <input
-                  type="date"
-                  value={newTransfer.expected_delivery_date}
-                  onChange={(e) => setNewTransfer({ ...newTransfer, expected_delivery_date: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Notes
-                </label>
-                <input
-                  type="text"
-                  value={newTransfer.notes}
-                  onChange={(e) => setNewTransfer({ ...newTransfer, notes: e.target.value })}
-                  placeholder="Any special instructions..."
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Remarks *
-                </label>
-                <textarea
-                  value={newTransfer.remarks}
-                  onChange={(e) => setNewTransfer({ ...newTransfer, remarks: e.target.value })}
-                  placeholder="Reason for transfer, special requirements, etc..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg resize-none"
-                  required
-                />
-              </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Notes
+              </label>
+              <textarea
+                value={newTransfer.notes}
+                onChange={(e) => setNewTransfer({ ...newTransfer, notes: e.target.value })}
+                placeholder="Reason for transfer, special instructions, etc..."
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg resize-none"
+              />
             </div>
             
             <div className="mb-4">
