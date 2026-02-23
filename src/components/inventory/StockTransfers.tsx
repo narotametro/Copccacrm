@@ -41,12 +41,17 @@ interface StockTransfer {
   expected_delivery_date?: string;
   actual_delivery_date?: string;
   notes: string;
+  remarks: string;
+  transfer_day: string;
   created_by: string;
   approved_by?: string;
+  approved_at?: string;
   received_by?: string;
+  received_at?: string;
   from_location?: Location;
   to_location?: Location;
   items?: TransferItem[];
+  created_at: string;
 }
 
 export const StockTransfers: React.FC = () => {
@@ -57,18 +62,60 @@ export const StockTransfers: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<StockTransfer | null>(null);
+  const [userPlan, setUserPlan] = useState('start');
+  const [planLimits, setPlanLimits] = useState({ pos: 1, inventory: 1 });
   
   const [newTransfer, setNewTransfer] = useState({
     from_location_id: '',
     to_location_id: '',
     expected_delivery_date: '',
     notes: '',
+    remarks: '',
     items: [] as TransferItem[]
   });
 
   useEffect(() => {
     loadData();
+    loadUserPlan();
   }, [user]);
+
+  const loadUserPlan = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) return;
+
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('plan')
+        .eq('company_id', userData.company_id)
+        .eq('status', 'active')
+        .single();
+
+      const plan = (subscription?.plan || 'start').toLowerCase();
+      setUserPlan(plan);
+
+      // Define limits based on plan
+      const limits: Record<string, { pos: number; inventory: number }> = {
+        start: { pos: 1, inventory: 1 },
+        starter: { pos: 1, inventory: 1 },
+        grow: { pos: 2, inventory: 2 },
+        pro: { pos: -1, inventory: -1 },
+        professional: { pos: -1, inventory: -1 },
+        enterprise: { pos: -1, inventory: -1 }
+      };
+
+      setPlanLimits(limits[plan] || limits.start);
+    } catch (error) {
+      console.error('Error loading user plan:', error);
+    }
+  };
 
   const loadData = async () => {
     if (!user) return;
@@ -179,8 +226,28 @@ export const StockTransfers: React.FC = () => {
       return;
     }
     
+    if (!newTransfer.remarks.trim()) {
+      toast.error('Please provide remarks for this transfer');
+      return;
+    }
+    
     if (newTransfer.items.length === 0) {
       toast.error('Please add at least one item');
+      return;
+    }
+
+    // Validate plan limits
+    const fromLocation = locations.find(l => l.id === newTransfer.from_location_id);
+    const toLocation = locations.find(l => l.id === newTransfer.to_location_id);
+    
+    const posLocations = locations.filter(l => l.type === 'pos');
+    const inventoryLocations = locations.filter(l => l.type === 'inventory');
+    
+    const posLimit = planLimits.pos === -1 ? Infinity : planLimits.pos;
+    const inventoryLimit = planLimits.inventory === -1 ? Infinity : planLimits.inventory;
+    
+    if (posLocations.length > posLimit || inventoryLocations.length > inventoryLimit) {
+      toast.error(`Your ${userPlan.toUpperCase()} plan allows ${planLimits.pos === -1 ? 'unlimited' : planLimits.pos} POS and ${planLimits.inventory === -1 ? 'unlimited' : planLimits.inventory} inventory location(s). Please upgrade to add more locations.`);
       return;
     }
 
@@ -193,6 +260,11 @@ export const StockTransfers: React.FC = () => {
 
       if (!userData?.company_id) return;
 
+      // Get day of week
+      const now = new Date();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const transferDay = dayNames[now.getDay()];
+
       // Create transfer
       const { data: transfer, error: transferError } = await supabase
         .from('stock_transfers')
@@ -202,6 +274,8 @@ export const StockTransfers: React.FC = () => {
           to_location_id: newTransfer.to_location_id,
           expected_delivery_date: newTransfer.expected_delivery_date || null,
           notes: newTransfer.notes,
+          remarks: newTransfer.remarks,
+          transfer_day: transferDay,
           created_by: user.id,
           status: 'pending'
         })
@@ -236,6 +310,7 @@ export const StockTransfers: React.FC = () => {
         to_location_id: '',
         expected_delivery_date: '',
         notes: '',
+        remarks: '',
         items: []
       });
       loadData();
@@ -251,8 +326,10 @@ export const StockTransfers: React.FC = () => {
       
       if (status === 'in_transit') {
         updates.approved_by = user?.id;
+        updates.approved_at = new Date().toISOString();
       } else if (status === 'completed') {
         updates.received_by = user?.id;
+        updates.received_at = new Date().toISOString();
         updates.actual_delivery_date = new Date().toISOString();
         
         // Update all items to mark quantities as received
@@ -385,9 +462,17 @@ export const StockTransfers: React.FC = () => {
           </div>
           
           <div class="info-box">
-            <p><strong>Transfer Date:</strong> ${new Date(transfer.transfer_date).toLocaleDateString()}</p>
+            <p><strong>Transfer Day:</strong> ${transfer.transfer_day || new Date(transfer.created_at).toLocaleDateString('en-US', { weekday: 'long' })}</p>
+            <p><strong>Transfer Date & Time:</strong> ${new Date(transfer.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
             <p><strong>Expected Delivery:</strong> ${transfer.expected_delivery_date ? new Date(transfer.expected_delivery_date).toLocaleDateString() : 'N/A'}</p>
             <p><strong>Status:</strong> ${transfer.status.toUpperCase()}</p>
+            ${transfer.remarks ? `<p style="background: #f0f9ff; padding: 8px; border-radius: 4px; margin-top: 10px;"><strong>Remarks:</strong><br/>${transfer.remarks}</p>` : ''}
             ${transfer.notes ? `<p><strong>Notes:</strong> ${transfer.notes}</p>` : ''}
           </div>
           
@@ -534,12 +619,25 @@ export const StockTransfers: React.FC = () => {
                   </div>
                   
                   <p className="text-sm text-slate-500 mt-1">
-                    Date: {new Date(transfer.transfer_date).toLocaleDateString()}
+                    {transfer.transfer_day && <span className="font-medium">{transfer.transfer_day}, </span>}
+                    {new Date(transfer.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                     {transfer.expected_delivery_date && ` • Expected: ${new Date(transfer.expected_delivery_date).toLocaleDateString()}`}
                   </p>
                   
+                  {transfer.remarks && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                      <strong>Remarks:</strong> {transfer.remarks}
+                    </p>
+                  )}
+                  
                   {transfer.notes && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                       <strong>Notes:</strong> {transfer.notes}
                     </p>
                   )}
@@ -648,6 +746,20 @@ export const StockTransfers: React.FC = () => {
                   onChange={(e) => setNewTransfer({ ...newTransfer, notes: e.target.value })}
                   placeholder="Any special instructions..."
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Remarks *
+                </label>
+                <textarea
+                  value={newTransfer.remarks}
+                  onChange={(e) => setNewTransfer({ ...newTransfer, remarks: e.target.value })}
+                  placeholder="Reason for transfer, special requirements, etc..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg resize-none"
+                  required
                 />
               </div>
             </div>

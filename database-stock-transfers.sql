@@ -24,9 +24,13 @@ CREATE TABLE IF NOT EXISTS stock_transfers (
   
   -- Metadata
   notes text,
+  remarks text, -- User remarks/comments about the transfer
+  transfer_day varchar(20), -- Day of week when created
   created_by uuid REFERENCES users(id) NOT NULL,
   approved_by uuid REFERENCES users(id),
+  approved_at timestamptz,
   received_by uuid REFERENCES users(id),
+  received_at timestamptz,
   
   -- Timestamps
   created_at timestamptz DEFAULT now(),
