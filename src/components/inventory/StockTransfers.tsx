@@ -18,6 +18,8 @@ interface Product {
   name: string;
   sku: string;
   unit_of_measure: string;
+  location_id?: string;
+  stock_quantity?: number;
 }
 
 interface TransferItem {
@@ -138,10 +140,10 @@ export const StockTransfers: React.FC = () => {
 
       if (locationsData) setLocations(locationsData);
 
-      // Load products
+      // Load products with location info
       const { data: productsData } = await supabase
         .from('products')
-        .select('id, name, sku, unit_of_measure')
+        .select('id, name, sku, unit_of_measure, location_id, stock_quantity')
         .eq('company_id', userData.company_id);
 
       if (productsData) setProducts(productsData);
@@ -741,10 +743,19 @@ export const StockTransfers: React.FC = () => {
                         className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded"
                       >
                         <option value="">Select product</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                        ))}
+                        {products
+                          .filter(p => p.location_id === newTransfer.from_location_id)
+                          .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.sku}) - Stock: {p.stock_quantity || 0}
+                            </option>
+                          ))}
                       </select>
+                      {newTransfer.from_location_id && products.filter(p => p.location_id === newTransfer.from_location_id).length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          No products at selected location
+                        </p>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <input
