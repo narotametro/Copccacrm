@@ -60,6 +60,12 @@ interface Product {
     id: string;
     name: string;
   };
+  location_id?: string;
+  location?: {
+    id: string;
+    name: string;
+    type: 'pos' | 'inventory';
+  };
   image_url?: string;
   sales_velocity?: number;
 }
@@ -547,6 +553,14 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
               <span className="text-sm text-slate-600">
                 Stock: {product.stock_quantity} units
               </span>
+              {product.location && (
+                <span className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                  📍 {product.location.name} 
+                  <span className="ml-1 text-slate-500">
+                    ({product.location.type === 'pos' ? 'POS' : 'Inventory'})
+                  </span>
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 relative">
               <div className={`flex items-center gap-3 bg-blue-50 p-3 rounded-lg ${inputState.isVisible ? '' : 'hidden'}`}>
@@ -2481,6 +2495,7 @@ const SalesHub: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
 
   // Use persistent store for cart and customer data - OPTIMIZED with shallow comparison
   const {
@@ -2701,7 +2716,8 @@ const SalesHub: React.FC = () => {
     stock_quantity: '' as number | '',
     min_stock_level: '' as number | '',
     brand_id: '',
-    category_id: '' as string
+    category_id: '' as string,
+    location_id: ''
   });
   const [isAddingProduct, setIsAddingProduct] = useState(false);
 
@@ -3511,49 +3527,20 @@ const SalesHub: React.FC = () => {
           setUserSubscriptionPlan(companyData.subscription_plan);
         }
 
-        // Load user's locations
-        const [posResult, inventoryResult] = await Promise.all([
-          supabase
-            .from('pos_locations')
-            .select('id, name')
-            .eq('company_id', userData.company_id)
-            .eq('status', 'active'),
-          supabase
-            .from('inventory_locations')
-            .select('id, name, type')
-            .eq('company_id', userData.company_id)
-            .eq('status', 'active')
-        ]);
+        // Load user's locations from unified locations table
+        const { data: locationsData } = await supabase
+          .from('locations')
+          .select('id, name, type')
+          .eq('company_id', userData.company_id)
+          .eq('status', 'active')
+          .order('type', { ascending: true })
+          .order('name', { ascending: true });
 
-        const allLocations: Array<{
-          id: string;
-          name: string;
-          type: 'pos' | 'inventory';
-        }> = [];
-
-        // Add POS locations
-        if (posResult.data) {
-          posResult.data.forEach(loc => {
-            allLocations.push({
-              id: loc.id,
-              name: loc.name,
-              type: 'pos'
-            });
-          });
+        if (locationsData) {
+          setUserLocations(locationsData);
+        } else {
+          setUserLocations([]);
         }
-
-        // Add inventory locations
-        if (inventoryResult.data) {
-          inventoryResult.data.forEach(loc => {
-            allLocations.push({
-              id: loc.id,
-              name: loc.name,
-              type: 'inventory'
-            });
-          });
-        }
-
-        setUserLocations(allLocations);
       }
     } catch (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts
@@ -3657,22 +3644,23 @@ const SalesHub: React.FC = () => {
 
   const loadProductsWithVelocity = async () => {
     try {
-      // Load ALL products from database
+      // Load ALL products from database with location info
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, brands(id, name), categories(id, name)')
+        .select('id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, location_id, brands(id, name), categories(id, name), location:locations(id, name, type)')
         .order('name');
 
       if (error) throw error;
 
       // Display products immediately with 0 sales velocity
-      // Supabase returns brands/categories as arrays, take first element
+      // Supabase returns brands/categories/locations as arrays, take first element
       const productsWithoutVelocity = (data || []).map(product => ({
         ...product,
-        brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || null),
-        categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || null),
+        brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || undefined),
+        categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || undefined),
+        location: Array.isArray(product.location) && product.location.length > 0 ? product.location[0] : (product.location || undefined),
         sales_velocity: 0
-      }));
+      })) as Product[];
       setProducts(productsWithoutVelocity);
 
       // Calculate sales velocity in the background (non-blocking) using optimized batch query
@@ -3704,12 +3692,13 @@ const SalesHub: React.FC = () => {
           // Update products with calculated velocities
           const productsWithVelocity = (data || []).map(product => ({
             ...product,
-            brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || null),
-            categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || null),
+            brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || undefined),
+            categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || undefined),
+            location: Array.isArray(product.location) && product.location.length > 0 ? product.location[0] : (product.location || undefined),
             sales_velocity: velocityMap.has(product.id) 
               ? Math.round((velocityMap.get(product.id)! / daysDiff) * 10) / 10
               : 0
-          }));
+          })) as Product[];
 
           setProducts(productsWithVelocity);
         });
@@ -3774,13 +3763,15 @@ const SalesHub: React.FC = () => {
     const matchesCategory = categoryFilter === 'all' || productCategoryId === categoryFilter;
     const productBrandId = product.brand_id || (product.brands?.id);
     const matchesBrand = brandFilter === 'all' || productBrandId === brandFilter;
+    const productLocationId = product.location_id || (product.location?.id);
+    const matchesLocation = locationFilter === 'all' || productLocationId === locationFilter;
     const stockStatus = getStockStatus(product);
     const matchesStock = stockFilter === 'all' ||
                         (stockFilter === 'in-stock' && stockStatus.status === 'healthy') ||
                         (stockFilter === 'low-stock' && stockStatus.status === 'low') ||
                         (stockFilter === 'out-of-stock' && stockStatus.status === 'out');
 
-    return matchesSearch && matchesCategory && matchesBrand && matchesStock;
+    return matchesSearch && matchesCategory && matchesBrand && matchesLocation && matchesStock;
   });
 
   const addToCartWithQuantity = (product: Product, quantity: number, customPrice: number) => {
@@ -4344,6 +4335,11 @@ const SalesHub: React.FC = () => {
       return;
     }
 
+    if (!newProductData.location_id) {
+      toast.error('Please select a location for this product');
+      return;
+    }
+
     setIsAddingProduct(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -4364,7 +4360,22 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Insert new product
+      // Validate location exists and belongs to company
+      const { data: locationData, error: locationError } = await supabase
+        .from('locations')
+        .select('id, name, type')
+        .eq('id', newProductData.location_id)
+        .eq('company_id', userData.company_id)
+        .eq('status', 'active')
+        .single();
+
+      if (locationError || !locationData) {
+        toast.error('Invalid location selected');
+        setIsAddingProduct(false);
+        return;
+      }
+
+      // Insert new product with location_id
       const { data: newProduct, error: insertError } = await supabase
         .from('products')
         .insert({
@@ -4375,6 +4386,7 @@ const SalesHub: React.FC = () => {
           min_stock_level: typeof newProductData.min_stock_level === 'string' ? parseInt(newProductData.min_stock_level) || 0 : newProductData.min_stock_level,
           brand_id: newProductData.brand_id || null,
           category_id: newProductData.category_id || null,
+          location_id: newProductData.location_id,
           created_by: user.id,
           company_id: userData.company_id
         })
@@ -4433,7 +4445,8 @@ const SalesHub: React.FC = () => {
         stock_quantity: '',
         min_stock_level: '',
         brand_id: '',
-        category_id: ''
+        category_id: '',
+        location_id: ''
       });
 
       toast.success(`Successfully added product: ${newProductData.name}`);
@@ -5957,6 +5970,19 @@ const CustomerBuyingPatternsSection = () => {
             ))}
           </select>
 
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">📍 All Locations</option>
+            {userLocations.map(location => (
+              <option key={location.id} value={location.id}>
+                {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
+              </option>
+            ))}
+          </select>
+
           <Button
             onClick={() => setShowAddProductModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap"
@@ -6494,7 +6520,7 @@ const CustomerBuyingPatternsSection = () => {
 
         <Card className="p-4 text-center">
           <Banknote className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-slate-900">
+          <div className="text-xl font-bold text-slate-900 break-words">
             {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock_quantity), 0))}
           </div>
           <div className="text-sm text-slate-600">Inventory Value</div>
@@ -7804,7 +7830,8 @@ const CustomerBuyingPatternsSection = () => {
                   stock_quantity: '',
                   min_stock_level: '',
                   brand_id: '',
-                  category_id: ''
+                  category_id: '',
+                  location_id: ''
                 });
               }}
               className="text-gray-500 hover:text-gray-700"
@@ -7945,6 +7972,29 @@ const CustomerBuyingPatternsSection = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location *
+              </label>
+              <select
+                value={newProductData.location_id}
+                onChange={(e) => setNewProductData(prev => ({ ...prev, location_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Location</option>
+                {userLocations.map(location => (
+                  <option key={location.id} value={location.id}>
+                    {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
+                  </option>
+                ))}
+              </select>
+              {userLocations.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  No locations available. Please add a location first.
+                </p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={() => {
@@ -7956,7 +8006,8 @@ const CustomerBuyingPatternsSection = () => {
                     stock_quantity: '',
                     min_stock_level: '',
                     brand_id: '',
-                    category_id: ''
+                    category_id: '',
+                    location_id: ''
                   });
                 }}
                 variant="outline"
@@ -7966,7 +8017,7 @@ const CustomerBuyingPatternsSection = () => {
               </Button>
               <Button
                 onClick={handleAddProduct}
-                disabled={!newProductData.name || (typeof newProductData.price === 'string' ? parseFloat(newProductData.price) || 0 : newProductData.price) <= 0 || isAddingProduct}
+                disabled={!newProductData.name || !newProductData.location_id || (typeof newProductData.price === 'string' ? parseFloat(newProductData.price) || 0 : newProductData.price) <= 0 || isAddingProduct}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
                 {isAddingProduct ? 'Adding...' : 'Add Product'}
