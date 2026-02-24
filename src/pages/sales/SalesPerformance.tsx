@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface SalesRep {
   id: string;
@@ -41,6 +42,8 @@ interface WinLossReason {
 
 export const SalesPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();
+  const user = useAuthStore((state) => state.user);
+  const userData = useAuthStore((state) => state.userData);
 
   const [reps, setReps] = useState<SalesRep[]>([]);
   const [winReasons, setWinReasons] = useState<WinLossReason[]>([]);
@@ -63,14 +66,20 @@ export const SalesPerformance: React.FC = () => {
 
   // Fetch data from database
   const fetchData = async () => {
+    if (!userData?.company_id) {
+      console.log('No company_id available yet');
+      setLoading(false);
+      return;
+    }
+
     try {
       // Removed setLoading(true) - show UI immediately
 
       // PARALLEL API CALLS - fetch all data simultaneously
       const [repsResult, winResult, lossResult] = await Promise.all([
-        supabase.from('sales_reps').select('*').order('created_at', { ascending: false }),
-        supabase.from('win_reasons').select('*').order('created_at', { ascending: false }),
-        supabase.from('loss_reasons').select('*').order('created_at', { ascending: false })
+        supabase.from('sales_reps').select('*').eq('company_id', userData.company_id).order('created_at', { ascending: false }),
+        supabase.from('win_reasons').select('*').eq('company_id', userData.company_id).order('created_at', { ascending: false }),
+        supabase.from('loss_reasons').select('*').eq('company_id', userData.company_id).order('created_at', { ascending: false })
       ]);
 
       if (repsResult.error) {
@@ -113,12 +122,13 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddRep = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repForm.name.trim()) return;
+    if (!repForm.name.trim() || !userData?.company_id) return;
 
     try {
       const { error } = await supabase
         .from('sales_reps')
         .insert({
+          company_id: userData.company_id,
           name: repForm.name.trim(),
           deals_won: Number(repForm.deals_won) || 0,
           deals_lost: Number(repForm.deals_lost) || 0,
@@ -157,12 +167,13 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddWinReason = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!winForm.reason.trim()) return;
+    if (!winForm.reason.trim() || !userData?.company_id) return;
 
     try {
       const { error } = await supabase
         .from('win_reasons')
         .insert({
+          company_id: userData.company_id,
           reason: winForm.reason.trim(),
           percentage: Number(winForm.percentage) || 0,
           ai_insight: winForm.ai_insight.trim() || 'No insight yet',
@@ -187,12 +198,13 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddLossReason = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lossForm.reason.trim()) return;
+    if (!lossForm.reason.trim() || !userData?.company_id) return;
 
     try {
       const { error } = await supabase
         .from('loss_reasons')
         .insert({
+          company_id: userData.company_id,
           reason: lossForm.reason.trim(),
           percentage: Number(lossForm.percentage) || 0,
           ai_insight: lossForm.ai_insight.trim() || 'No insight yet',
