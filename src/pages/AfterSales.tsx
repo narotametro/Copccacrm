@@ -189,7 +189,7 @@ export const AfterSales: React.FC = () => {
       description: row.description || '',
       status: row.status,
       priority: row.priority,
-      assigned_to: row.assigned_to || 'Unassigned',
+      assigned_to: (row as any).assigned_user?.full_name || 'Unassigned',
       assigned_by: row.assigned_by || 'Manager',
       linked_to: {
         type: row.linked_type,
@@ -244,10 +244,10 @@ export const AfterSales: React.FC = () => {
         return;
       }
 
-      // Fetch tasks
+      // Fetch tasks with assigned user info
       const { data, error } = await supabase
         .from('after_sales_tasks')
-        .select('*, after_sales_feedback(*)')
+        .select('*, after_sales_feedback(*), assigned_user:users!assigned_to(id, full_name)')
         .order('created_at', { ascending: false });
 
       if (error) {
