@@ -43,7 +43,6 @@ interface WinLossReason {
 export const SalesPerformance: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const user = useAuthStore((state) => state.user);
-  const userData = useAuthStore((state) => state.userData);
 
   const [reps, setReps] = useState<SalesRep[]>([]);
   const [winReasons, setWinReasons] = useState<WinLossReason[]>([]);
@@ -66,6 +65,18 @@ export const SalesPerformance: React.FC = () => {
 
   // Fetch data from database
   const fetchData = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // Get user's company_id
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
     if (!userData?.company_id) {
       console.log('No company_id available yet');
       setLoading(false);
@@ -122,7 +133,16 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddRep = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repForm.name.trim() || !userData?.company_id) return;
+    if (!repForm.name.trim() || !user) return;
+
+    // Get user's company_id
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData?.company_id) return;
 
     try {
       const { error } = await supabase
@@ -167,7 +187,16 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddWinReason = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!winForm.reason.trim() || !userData?.company_id) return;
+    if (!winForm.reason.trim() || !user) return;
+
+    // Get user's company_id
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData?.company_id) return;
 
     try {
       const { error } = await supabase
@@ -198,7 +227,16 @@ export const SalesPerformance: React.FC = () => {
 
   const handleAddLossReason = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lossForm.reason.trim() || !userData?.company_id) return;
+    if (!lossForm.reason.trim() || !user) return;
+
+    // Get user's company_id
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData?.company_id) return;
 
     try {
       const { error } = await supabase
