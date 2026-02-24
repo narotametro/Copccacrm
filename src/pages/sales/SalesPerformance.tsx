@@ -9,10 +9,12 @@ import {
   Award,
   AlertCircle,
   Brain,
+  Plus,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -62,6 +64,11 @@ export const SalesPerformance: React.FC = () => {
 
   const [winForm, setWinForm] = useState({ reason: '', percentage: '', ai_insight: '' });
   const [lossForm, setLossForm] = useState({ reason: '', percentage: '', ai_insight: '' });
+  
+  // Modal states
+  const [showRepModal, setShowRepModal] = useState(false);
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showLossModal, setShowLossModal] = useState(false);
 
   // Fetch data from database
   const fetchData = async () => {
@@ -180,6 +187,9 @@ export const SalesPerformance: React.FC = () => {
         avg_deal_size: '',
         avg_cycle_days: '',
       });
+      
+      // Close modal
+      setShowRepModal(false);
     } catch (error) {
       console.error('Error adding sales rep:', error);
     }
@@ -220,6 +230,9 @@ export const SalesPerformance: React.FC = () => {
 
       // Reset form
       setWinForm({ reason: '', percentage: '', ai_insight: '' });
+      
+      // Close modal
+      setShowWinModal(false);
     } catch (error) {
       console.error('Error adding win reason:', error);
     }
@@ -260,6 +273,9 @@ export const SalesPerformance: React.FC = () => {
 
       // Reset form
       setLossForm({ reason: '', percentage: '', ai_insight: '' });
+      
+      // Close modal
+      setShowLossModal(false);
     } catch (error) {
       console.error('Error adding loss reason:', error);
     }
@@ -324,9 +340,15 @@ export const SalesPerformance: React.FC = () => {
 
       {/* Sales Rep Performance */}
       <Card className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="text-blue-600" size={22} />
-          <h3 className="text-lg font-bold text-slate-900">Sales Rep Performance</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="text-blue-600" size={22} />
+            <h3 className="text-lg font-bold text-slate-900">Sales Rep Performance</h3>
+          </div>
+          <Button onClick={() => setShowRepModal(true)} size="sm">
+            <Plus size={16} className="mr-1" />
+            Add Sales Rep
+          </Button>
         </div>
         <div className="space-y-4">
           {reps.length > 0 ? (
@@ -413,9 +435,15 @@ export const SalesPerformance: React.FC = () => {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Win Reasons */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="text-green-600" size={22} />
-            <h3 className="text-lg font-bold text-slate-900">Top Win Reasons</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="text-green-600" size={22} />
+              <h3 className="text-lg font-bold text-slate-900">Top Win Reasons</h3>
+            </div>
+            <Button onClick={() => setShowWinModal(true)} size="sm">
+              <Plus size={16} className="mr-1" />
+              Add Win Reason
+            </Button>
           </div>
           <div className="space-y-4">
             {winReasons.length > 0 ? (
@@ -446,9 +474,15 @@ export const SalesPerformance: React.FC = () => {
 
         {/* Loss Reasons */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="text-red-600" size={22} />
-            <h3 className="text-lg font-bold text-slate-900">Top Loss Reasons</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingDown className="text-red-600" size={22} />
+              <h3 className="text-lg font-bold text-slate-900">Top Loss Reasons</h3>
+            </div>
+            <Button onClick={() => setShowLossModal(true)} size="sm">
+              <Plus size={16} className="mr-1" />
+              Add Loss Reason
+            </Button>
           </div>
           <div className="space-y-4">
             {lossReasons.length > 0 ? (
@@ -478,119 +512,117 @@ export const SalesPerformance: React.FC = () => {
         </Card>
       </div>
 
-      {/* Data Entry Forms */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h3 className="text-lg font-bold text-slate-900 mb-3">Add Sales Rep</h3>
-          <form className="grid grid-cols-1 sm:grid-cols-2 gap-3" onSubmit={handleAddRep}>
-            <Input
-              label="Name"
-              value={repForm.name}
-              onChange={(e) => setRepForm({ ...repForm, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Deals Won"
-              type="number"
-              value={repForm.deals_won}
-              onChange={(e) => setRepForm({ ...repForm, deals_won: e.target.value })}
-            />
-            <Input
-              label="Deals Lost"
-              type="number"
-              value={repForm.deals_lost}
-              onChange={(e) => setRepForm({ ...repForm, deals_lost: e.target.value })}
-            />
-            <Input
-              label="Conversion Rate %"
-              type="number"
-              value={repForm.conversion_rate}
-              onChange={(e) => setRepForm({ ...repForm, conversion_rate: e.target.value })}
-            />
-            <Input
-              label="Revenue"
-              type="number"
-              value={repForm.revenue}
-              onChange={(e) => setRepForm({ ...repForm, revenue: e.target.value })}
-            />
-            <Input
-              label="Target"
-              type="number"
-              value={repForm.target}
-              onChange={(e) => setRepForm({ ...repForm, target: e.target.value })}
-            />
-            <Input
-              label="Avg Deal Size"
-              type="number"
-              value={repForm.avg_deal_size}
-              onChange={(e) => setRepForm({ ...repForm, avg_deal_size: e.target.value })}
-            />
-            <Input
-              label="Avg Cycle Days"
-              type="number"
-              value={repForm.avg_cycle_days}
-              onChange={(e) => setRepForm({ ...repForm, avg_cycle_days: e.target.value })}
-            />
-            <div className="sm:col-span-2 flex justify-end">
-              <Button type="submit">Add Rep</Button>
-            </div>
-          </form>
-        </Card>
-
-        <div className="space-y-4">
-          <Card className="p-5">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Win Reason</h3>
-            <form className="space-y-3" onSubmit={handleAddWinReason}>
-              <Input
-                label="Reason"
-                value={winForm.reason}
-                onChange={(e) => setWinForm({ ...winForm, reason: e.target.value })}
-                required
-              />
-              <Input
-                label="Percentage"
-                type="number"
-                value={winForm.percentage}
-                onChange={(e) => setWinForm({ ...winForm, percentage: e.target.value })}
-              />
-              <Input
-                label="AI Insight"
-                value={winForm.ai_insight}
-                onChange={(e) => setWinForm({ ...winForm, ai_insight: e.target.value })}
-              />
-              <div className="flex justify-end">
-                <Button type="submit">Add Win Reason</Button>
-              </div>
-            </form>
-          </Card>
-
-          <Card className="p-5">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Add Loss Reason</h3>
-            <form className="space-y-3" onSubmit={handleAddLossReason}>
-              <Input
-                label="Reason"
-                value={lossForm.reason}
-                onChange={(e) => setLossForm({ ...lossForm, reason: e.target.value })}
-                required
-              />
-              <Input
-                label="Percentage"
-                type="number"
-                value={lossForm.percentage}
-                onChange={(e) => setLossForm({ ...lossForm, percentage: e.target.value })}
-              />
-              <Input
-                label="AI Insight"
-                value={lossForm.ai_insight}
-                onChange={(e) => setLossForm({ ...lossForm, ai_insight: e.target.value })}
-              />
-              <div className="flex justify-end">
-                <Button type="submit">Add Loss Reason</Button>
-              </div>
-            </form>
-          </Card>
-            </div>
+      {/* Add Sales Rep Modal */}
+      <Modal isOpen={showRepModal} onClose={() => setShowRepModal(false)} title="Add Sales Rep" size="lg">
+        <form className="grid grid-cols-1 sm:grid-cols-2 gap-4" onSubmit={handleAddRep}>
+          <Input
+            label="Name"
+            value={repForm.name}
+            onChange={(e) => setRepForm({ ...repForm, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Deals Won"
+            type="number"
+            value={repForm.deals_won}
+            onChange={(e) => setRepForm({ ...repForm, deals_won: e.target.value })}
+          />
+          <Input
+            label="Deals Lost"
+            type="number"
+            value={repForm.deals_lost}
+            onChange={(e) => setRepForm({ ...repForm, deals_lost: e.target.value })}
+          />
+          <Input
+            label="Conversion Rate %"
+            type="number"
+            value={repForm.conversion_rate}
+            onChange={(e) => setRepForm({ ...repForm, conversion_rate: e.target.value })}
+          />
+          <Input
+            label="Revenue"
+            type="number"
+            value={repForm.revenue}
+            onChange={(e) => setRepForm({ ...repForm, revenue: e.target.value })}
+          />
+          <Input
+            label="Target"
+            type="number"
+            value={repForm.target}
+            onChange={(e) => setRepForm({ ...repForm, target: e.target.value })}
+          />
+          <Input
+            label="Avg Deal Size"
+            type="number"
+            value={repForm.avg_deal_size}
+            onChange={(e) => setRepForm({ ...repForm, avg_deal_size: e.target.value })}
+          />
+          <Input
+            label="Avg Cycle Days"
+            type="number"
+            value={repForm.avg_cycle_days}
+            onChange={(e) => setRepForm({ ...repForm, avg_cycle_days: e.target.value })}
+          />
+          <div className="sm:col-span-2 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowRepModal(false)}>Cancel</Button>
+            <Button type="submit">Add Sales Rep</Button>
           </div>
+        </form>
+      </Modal>
+
+      {/* Add Win Reason Modal */}
+      <Modal isOpen={showWinModal} onClose={() => setShowWinModal(false)} title="Add Win Reason">
+        <form className="space-y-4" onSubmit={handleAddWinReason}>
+          <Input
+            label="Reason"
+            value={winForm.reason}
+            onChange={(e) => setWinForm({ ...winForm, reason: e.target.value })}
+            required
+          />
+          <Input
+            label="Percentage"
+            type="number"
+            value={winForm.percentage}
+            onChange={(e) => setWinForm({ ...winForm, percentage: e.target.value })}
+          />
+          <Input
+            label="AI Insight"
+            value={winForm.ai_insight}
+            onChange={(e) => setWinForm({ ...winForm, ai_insight: e.target.value })}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowWinModal(false)}>Cancel</Button>
+            <Button type="submit">Add Win Reason</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Loss Reason Modal */}
+      <Modal isOpen={showLossModal} onClose={() => setShowLossModal(false)} title="Add Loss Reason">
+        <form className="space-y-4" onSubmit={handleAddLossReason}>
+          <Input
+            label="Reason"
+            value={lossForm.reason}
+            onChange={(e) => setLossForm({ ...lossForm, reason: e.target.value })}
+            required
+          />
+          <Input
+            label="Percentage"
+            type="number"
+            value={lossForm.percentage}
+            onChange={(e) => setLossForm({ ...lossForm, percentage: e.target.value })}
+          />
+          <Input
+            label="AI Insight"
+            value={lossForm.ai_insight}
+            onChange={(e) => setLossForm({ ...lossForm, ai_insight: e.target.value })}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowLossModal(false)}>Cancel</Button>
+            <Button type="submit">Add Loss Reason</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
