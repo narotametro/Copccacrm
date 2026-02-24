@@ -17,7 +17,6 @@ interface Product {
   id: string;
   name: string;
   sku: string;
-  unit_of_measure: string;
   location_id?: string;
   stock_quantity?: number;
 }
@@ -143,7 +142,7 @@ export const StockTransfers: React.FC = () => {
       // Load products with location info
       const { data: productsData } = await supabase
         .from('products')
-        .select('id, name, sku, unit_of_measure, location_id, stock_quantity')
+        .select('id, name, sku, location_id, stock_quantity')
         .eq('company_id', userData.company_id);
 
       if (productsData) setProducts(productsData);
@@ -205,7 +204,7 @@ export const StockTransfers: React.FC = () => {
           product_id: value,
           product_name: product.name,
           product_sku: product.sku,
-          unit_of_measure: product.unit_of_measure
+          unit_of_measure: 'pcs' // Default unit of measure
         };
       }
     } else {
