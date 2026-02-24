@@ -189,7 +189,7 @@ export const AfterSales: React.FC = () => {
       description: row.description || '',
       status: row.status,
       priority: row.priority,
-      assigned_to: (row as any).assigned_user?.full_name || 'Unassigned',
+      assigned_to: row.assigned_to || 'Unassigned', // Will be mapped to name in fetchData
       assigned_by: row.assigned_by || 'Manager',
       linked_to: {
         type: row.linked_type,
@@ -244,23 +244,10 @@ export const AfterSales: React.FC = () => {
         return;
       }
 
-      // Fetch tasks with assigned user info
-      const { data, error } = await supabase
-        .from('after_sales_tasks')
-        .select('*, after_sales_feedback(*), assigned_user:users!assigned_to(id, full_name)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Failed to load tasks:', error.message);
-        setTasks([]);
-        return;
-      }
-
-      const mapped = (data || []).map(mapRowToTask);
-      setTasks(mapped);
-
-      // Fetch team members (users from same company) for assignment dropdown
+      // Fetch team members first to create user lookup map
       const { data: currentUserData } = await supabase.auth.getUser();
+      let userMap: { [key: string]: string } = {};
+      
       if (currentUserData?.user) {
         const { data: currentUserRecord } = await supabase
           .from('users')
@@ -277,9 +264,40 @@ export const AfterSales: React.FC = () => {
 
           if (!usersError && teamMembers) {
             setUsers(teamMembers);
+            // Create lookup map: user_id -> full_name
+            userMap = teamMembers.reduce((acc, u) => {
+              acc[u.id] = u.full_name || u.email || 'Unknown User';
+              return acc;
+            }, {} as { [key: string]: string });
           }
         }
       }
+
+      // Fetch tasks (without JOIN)
+      const { data, error } = await supabase
+        .from('after_sales_tasks')
+        .select('*, after_sales_feedback(*)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to load tasks:', error.message);
+        setTasks([]);
+        return;
+      }
+
+      const mapped = (data || []).map((row) => {
+        const task = mapRowToTask(row);
+        // Map assigned_to UUID to user name
+        if (row.assigned_to && userMap[row.assigned_to]) {
+          task.assigned_to = userMap[row.assigned_to];
+        } else if (row.assigned_to) {
+          task.assigned_to = 'Unknown User';
+        } else {
+          task.assigned_to = 'Unassigned';
+        }
+        return task;
+      });
+      setTasks(mapped);
 
       // Fetch linked options for task linking
       const [customersRes, dealsRes, competitorsRes, productsRes] = await Promise.all([
