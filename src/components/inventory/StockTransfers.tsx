@@ -752,9 +752,26 @@ export const StockTransfers: React.FC = () => {
                           ))}
                       </select>
                       {newTransfer.from_location_id && products.filter(p => p.location_id === newTransfer.from_location_id).length === 0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          No products at selected location
-                        </p>
+                        <div className="text-xs mt-1">
+                          <p className="text-amber-600">⚠️ No products at this location</p>
+                          {(() => {
+                            const locationsWithProducts = locations
+                              .map(loc => ({
+                                ...loc,
+                                productCount: products.filter(p => p.location_id === loc.id).length
+                              }))
+                              .filter(loc => loc.productCount > 0);
+                            
+                            if (locationsWithProducts.length > 0) {
+                              return (
+                                <p className="text-slate-600 mt-1">
+                                  💡 Products available at: <strong>{locationsWithProducts.map(l => `${l.name} (${l.productCount})`).join(', ')}</strong>
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                       )}
                     </div>
                     <div className="col-span-2">

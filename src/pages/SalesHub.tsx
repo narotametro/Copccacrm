@@ -6487,6 +6487,7 @@ const CustomerBuyingPatternsSection = () => {
   const InventoryStatusSection = () => {
     const [inventoryStockFilter, setInventoryStockFilter] = useState('all');
     const [inventoryBrandFilter, setInventoryBrandFilter] = useState('all');
+    const [inventoryLocationFilter, setInventoryLocationFilter] = useState('all');
     const [inventorySearchTerm, setInventorySearchTerm] = useState('');
 
     return (
@@ -6582,6 +6583,23 @@ const CustomerBuyingPatternsSection = () => {
                 ))}
               </select>
             </div>
+
+            {/* Location Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-700">Location:</label>
+              <select
+                value={inventoryLocationFilter}
+                onChange={(e) => setInventoryLocationFilter(e.target.value)}
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">ALL LOCATIONS</option>
+                {userLocations.map(location => (
+                  <option key={location.id} value={location.id}>
+                    {location.name} ({location.type === 'pos' ? 'POS' : 'Inv'})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         
@@ -6595,6 +6613,7 @@ const CustomerBuyingPatternsSection = () => {
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 px-3 font-medium text-slate-700">Product</th>
+                <th className="text-center py-2 px-3 font-medium text-slate-700">Location</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Current Stock</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Reorder Level</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Sales Velocity</th>
@@ -6614,12 +6633,15 @@ const CustomerBuyingPatternsSection = () => {
                   const matchesBrandFilter = inventoryBrandFilter === 'all' ||
                          product.brand_id === inventoryBrandFilter;
                   
+                  const matchesLocationFilter = inventoryLocationFilter === 'all' ||
+                         product.location_id === inventoryLocationFilter;
+                  
                   const matchesSearch = inventorySearchTerm === '' ||
                          product.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
                          (product.sku && product.sku.toLowerCase().includes(inventorySearchTerm.toLowerCase())) ||
                          (product.brands?.name && product.brands.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()));
                   
-                  return matchesStockFilter && matchesBrandFilter && matchesSearch;
+                  return matchesStockFilter && matchesBrandFilter && matchesLocationFilter && matchesSearch;
                 });
 
                 return filteredInventory.map(product => {
@@ -6634,6 +6656,16 @@ const CustomerBuyingPatternsSection = () => {
                             <div className="text-xs text-slate-500 mt-0.5">🏷️ {product.brands.name}</div>
                           )}
                         </div>
+                      </td>
+                      <td className="text-center py-3 px-3">
+                        {product.location ? (
+                          <div className="text-xs">
+                            <div className="font-medium text-slate-900">{product.location.name}</div>
+                            <div className="text-slate-500">({product.location.type === 'pos' ? 'POS' : 'Inventory'})</div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">No location</span>
+                        )}
                       </td>
                       <td className="text-center py-3 px-3">
                         <span className={`font-medium ${stockInfo.status === 'out' ? 'text-red-600' : stockInfo.status === 'low' ? 'text-yellow-600' : 'text-green-600'}`}>
