@@ -2530,6 +2530,10 @@ const SalesHub: React.FC = () => {
   const [committedDiscountAmount, setCommittedDiscountAmount] = useState<number>(0);
   const discountInputRef = useRef<HTMLInputElement>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
+  
+  // Warehouse/Location selection state
+  const [locations, setLocations] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('main-store');
 
   // Tax rate constant (18% VAT for Tanzania)
   const taxRate = 0.18;
@@ -2575,7 +2579,7 @@ const SalesHub: React.FC = () => {
   const [showCompanySettingsModal, setShowCompanySettingsModal] = useState(false);
   const [isSavingCompanyInfo, setIsSavingCompanyInfo] = useState(false);
 
-  // Load company info from database on mount
+  // Load company info and locations from database on mount
   useEffect(() => {
     const loadCompanyInfo = async () => {
       try {
@@ -2589,6 +2593,7 @@ const SalesHub: React.FC = () => {
           .single();
 
         if (userData?.company_id) {
+          // Load company info
           const { data: companyData } = await supabase
             .from('companies')
             .select('name, address, city, country, phone, email, tin')
@@ -2605,6 +2610,23 @@ const SalesHub: React.FC = () => {
               email: companyData.email || 'info@copcca.com',
               tin: companyData.tin || '123456789'
             });
+          }
+          
+          // Load locations/warehouses
+          const { data: locationsData } = await supabase
+            .from('locations')
+            .select('id, name, type')
+            .eq('company_id', userData.company_id)
+            .eq('status', 'active')
+            .order('name');
+            
+          if (locationsData && locationsData.length > 0) {
+            setLocations(locationsData);
+            // Set first location as default
+            setSelectedWarehouse(locationsData[0].id);
+          } else {
+            // If no locations, keep 'main-store' as default
+            setLocations([]);
           }
         }
       } catch (error) {
@@ -3926,6 +3948,10 @@ const SalesHub: React.FC = () => {
 
           await supabase.from('sales_hub_orders').insert(orderData);
 
+          // Get selected warehouse/location name
+          const selectedLocation = locations.find(loc => loc.id === selectedWarehouse);
+          const locationName = selectedLocation ? selectedLocation.name : 'main-store';
+          
           // Update stock in parallel
           const stockPromises = orderSnapshot.items.map(async (item) => {
             const { data: currentProduct } = await supabase
@@ -3945,11 +3971,11 @@ const SalesHub: React.FC = () => {
                 quantity_change: -item.quantity,
                 quantity_before: stockBefore,
                 quantity_after: stockAfter,
-                location: 'main-store',
+                location: locationName,
                 reference_type: 'order',
                 reference_id: invoiceNumber,
                 performed_by: (await supabase.auth.getUser()).data.user?.id,
-                notes: `Sale via order ${invoiceNumber}`
+                notes: `Sale via order ${invoiceNumber} from ${locationName}`
               })
             ]);
           });
@@ -6304,6 +6330,32 @@ const CustomerBuyingPatternsSection = () => {
                       <span className="ml-2 text-sm text-slate-700">💳 Credit</span>
                     </label>
                   </div>
+                </div>
+
+                {/* Warehouse/Location Selection */}
+                <div className="space-y-3">
+                  <h5 className="text-sm font-semibold text-slate-700">📦 Select Warehouse</h5>
+                  
+                  {locations.length > 0 ? (
+                    <select
+                      value={selectedWarehouse}
+                      onChange={(e) => setSelectedWarehouse(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-600">
+                      No locations found. Using default location.
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500 mt-1">
+                    Stock will be deducted from the selected location
+                  </p>
                 </div>
 
                 {/* Order Summary Breakdown */}
