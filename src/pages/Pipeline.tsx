@@ -100,6 +100,18 @@ export const Pipeline: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
 
+      // Get current user's company_id first
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', userData.user.id)
+        .single();
+
+      if (!currentUserProfile?.company_id) {
+        toast.error('User company not found');
+        return;
+      }
+
       // PARALLEL API CALLS - fetch all data simultaneously
       const [dealsResult, companiesResult, usersResult] = await Promise.all([
         supabase
@@ -119,6 +131,7 @@ export const Pipeline: React.FC = () => {
         supabase
           .from('profiles')
           .select('id, full_name, email')
+          .eq('company_id', currentUserProfile.company_id)
           .order('full_name')
       ]);
 
