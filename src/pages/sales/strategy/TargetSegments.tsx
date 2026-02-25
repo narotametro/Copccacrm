@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Banknote, Target, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, Banknote, Target, TrendingUp, Users, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Input } from '@/components/ui/Input';
 
@@ -27,6 +28,7 @@ interface TargetSegmentsProps {
 export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
   const { formatCurrency } = useCurrency();
   const [segments, setSegments] = useState<Segment[]>(initialSegments);
+  const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     name: '',
     size: '',
@@ -73,14 +75,21 @@ export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
       pain_points: '',
       decision_makers: '',
     });
+    setShowModal(false);
   };
 
   return (
     <div className="space-y-4">
       {/* Back Button */}
-      <Button variant="outline" icon={ArrowLeft} onClick={onBack}>
-        Back to Strategy
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="outline" icon={ArrowLeft} onClick={onBack}>
+          Back to Strategy
+        </Button>
+        <Button onClick={() => setShowModal(true)} size="sm">
+          <Plus size={16} className="mr-1" />
+          Add Segment
+        </Button>
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -179,11 +188,10 @@ export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
               </div>
             </div>
           </Card>
-        ))}
-      </div>
+        ))}      </div>
 
-      <Card className="p-5">
-        <h3 className="text-lg font-bold text-slate-900 mb-3">Add Segment</h3>
+      {/* Add Segment Modal */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Segment" size="lg">
         <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
           <Input
             label="Segment Name"
@@ -239,11 +247,12 @@ export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
             value={form.decision_makers}
             onChange={(e) => setForm({ ...form, decision_makers: e.target.value })}
           />
-          <div className="md:col-span-2 flex justify-end">
+          <div className="md:col-span-2 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button type="submit">Add Segment</Button>
           </div>
         </form>
-      </Card>
+      </Modal>
     </div>
   );
 };
