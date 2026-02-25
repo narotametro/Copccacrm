@@ -155,8 +155,11 @@ export const TrialBanner: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<Awaited<ReturnType<typeof import('@/lib/subscription').getSubscriptionStatus>>>(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
     const fetchStatus = async () => {
       try {
         const { getTrialStatus, getSubscriptionStatus } = await import('@/lib/subscription');
@@ -166,8 +169,21 @@ export const TrialBanner: React.FC = () => {
         ]);
         setTrialStatus(trial);
         setSubscriptionStatus(subscription);
-      } catch (error) {
-        console.error('Error fetching trial status:', error);
+        setErrorCount(0); // Reset error count on success
+      } catch (error: any) {
+        // Don't log network errors or missing function errors
+        const isNetworkError = error?.message?.includes('Failed to fetch') ||
+                               error?.message?.includes('NetworkError') ||
+                               error?.message?.includes('ERR_');
+        
+        if (!isNetworkError) {
+          setErrorCount(prev => prev + 1);
+        }
+        
+        // Stop retrying after 3 consecutive errors
+        if (errorCount >= 2) {
+          clearInterval(intervalId);
+        }
       } finally {
         setLoading(false);
       }
@@ -175,10 +191,13 @@ export const TrialBanner: React.FC = () => {
 
     fetchStatus();
 
-    // Refresh every minute
-    const interval = setInterval(fetchStatus, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    // Refresh every minute (only if not too many errors)
+    if (errorCount < 3) {
+      intervalId = setInterval(fetchStatus, 60000);
+    }
+    
+    return () => clearInterval(intervalId);
+  }, [errorCount]);
 
   if (loading || dismissed || !trialStatus || !subscriptionStatus) {
     return null;

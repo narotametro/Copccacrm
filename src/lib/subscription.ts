@@ -369,12 +369,17 @@ export async function getTrialStatus(): Promise<{
       .rpc('get_trial_status');
 
     if (error) {
-      // Don't log AbortErrors - they're expected during navigation/remounts
-      if (error.message?.includes('AbortError') || error.message?.includes('aborted') || 
-          (error instanceof DOMException && error.name === 'AbortError')) {
-        return null;
+      // Don't log expected errors (AbortError, network errors, missing RPC function)
+      const isExpectedError = error.message?.includes('AbortError') || 
+                              error.message?.includes('aborted') ||
+                              error.message?.includes('Failed to fetch') ||
+                              error.message?.includes('Could not find') ||
+                              error.code === '42883' || // function does not exist
+                              (error instanceof DOMException && error.name === 'AbortError');
+      
+      if (!isExpectedError) {
+        console.error('Error getting trial status:', error);
       }
-      console.error('Error getting trial status:', error);
       return null;
     }
 
@@ -387,12 +392,16 @@ export async function getTrialStatus(): Promise<{
       message: data.isTrial ? `${data.daysLeft} days left in trial` : 'Active subscription'
     };
   } catch (error: any) {
-    // Don't log AbortErrors - they're expected during navigation/remounts
-    if (error?.message?.includes('AbortError') || error?.message?.includes('aborted') || 
-        (error instanceof DOMException && error.name === 'AbortError')) {
-      return null;
+    // Don't log expected errors (AbortError, network errors)
+    const isExpectedError = error?.message?.includes('AbortError') ||
+                            error?.message?.includes('aborted') ||
+                            error?.message?.includes('Failed to fetch') ||
+                            error?.message?.includes('NetworkError') ||
+                            (error instanceof DOMException && error.name === 'AbortError');
+    
+    if (!isExpectedError) {
+      console.error('Error getting trial status:', error);
     }
-    console.error('Error getting trial status:', error);
     return null;
   }
 }
