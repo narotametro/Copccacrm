@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Banknote, CheckCircle, Target } from 'lucide-react';
+import { ArrowLeft, Banknote, CheckCircle, Target, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 
 interface ValueProp {
@@ -22,6 +23,7 @@ interface ValuePropositionAlignmentProps {
 
 export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps> = ({ onBack }) => {
   const [valueProps, setValueProps] = useState<ValueProp[]>(initialProps);
+  const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     segment: '',
     customer_need: '',
@@ -47,14 +49,21 @@ export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps>
 
     setValueProps((prev) => [newValue, ...prev]);
     setForm({ segment: '', customer_need: '', our_solution: '', unique_advantage: '', evidence: '', roi_claim: '' });
+    setShowModal(false);
   };
 
   return (
     <div className="space-y-4">
       {/* Back Button */}
-      <Button variant="outline" icon={ArrowLeft} onClick={onBack}>
-        Back to Strategy
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="outline" icon={ArrowLeft} onClick={onBack}>
+          Back to Strategy
+        </Button>
+        <Button onClick={() => setShowModal(true)} size="sm">
+          <Plus size={16} className="mr-1" />
+          Add Value Proposition
+        </Button>
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -140,8 +149,8 @@ export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps>
         ))}
       </div>
 
-      <Card className="p-5">
-        <h3 className="text-lg font-bold text-slate-900 mb-3">Add Value Proposition</h3>
+      {/* Add Value Proposition Modal */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Value Proposition" size="lg">
         <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
           <Input
             label="Segment"
@@ -176,11 +185,12 @@ export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps>
             value={form.roi_claim}
             onChange={(e) => setForm({ ...form, roi_claim: e.target.value })}
           />
-          <div className="md:col-span-2 flex justify-end">
+          <div className="md:col-span-2 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button type="submit">Add Value Prop</Button>
           </div>
         </form>
-      </Card>
+      </Modal>
     </div>
   );
 };
