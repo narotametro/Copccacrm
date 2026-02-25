@@ -29,6 +29,7 @@ export const ChannelStrategy: React.FC<ChannelStrategyProps> = ({ onBack }) => {
   const user = useAuthStore((state) => state.user);
   const [loading, setLoading] = useState(true);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     name: '',
     approach: '',
@@ -115,6 +116,7 @@ export const ChannelStrategy: React.FC<ChannelStrategyProps> = ({ onBack }) => {
       };
 
       setChannels((prev) => [newChannel, ...prev]);
+      setShowModal(false);
       setForm({ name: '', approach: '', target_segments: '', key_activities: '', typical_conversion: '', resources_needed: '' });
     } catch (error) {
       console.error('Error:', error);
@@ -231,47 +233,59 @@ export const ChannelStrategy: React.FC<ChannelStrategyProps> = ({ onBack }) => {
         ))}
       </div>
 
-      <Card className="p-5">
-        <h3 className="text-lg font-bold text-slate-900 mb-3">Add Channel</h3>
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
-          <Input
-            label="Channel Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Approach"
-            value={form.approach}
-            onChange={(e) => setForm({ ...form, approach: e.target.value })}
-            required
-          />
-          <Input
-            label="Target Segments (comma separated)"
-            value={form.target_segments}
-            onChange={(e) => setForm({ ...form, target_segments: e.target.value })}
-          />
-          <Input
-            label="Key Activities (comma separated)"
-            value={form.key_activities}
-            onChange={(e) => setForm({ ...form, key_activities: e.target.value })}
-          />
-          <Input
-            label="Typical Conversion (%)"
-            type="number"
-            value={form.typical_conversion}
-            onChange={(e) => setForm({ ...form, typical_conversion: e.target.value })}
-          />
-          <Input
-            label="Resources Needed (comma separated)"
-            value={form.resources_needed}
-            onChange={(e) => setForm({ ...form, resources_needed: e.target.value })}
-          />
-          <div className="md:col-span-2 flex justify-end">
-            <Button type="submit">Add Channel</Button>
+      <div className="flex justify-end">
+        <Button onClick={() => setShowModal(true)}>Add Channel</Button>
+      </div>
+
+      {/* Add Channel Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Add Channel</h3>
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
+                <Input
+                  label="Channel Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Approach"
+                  value={form.approach}
+                  onChange={(e) => setForm({ ...form, approach: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Target Segments (comma separated)"
+                  value={form.target_segments}
+                  onChange={(e) => setForm({ ...form, target_segments: e.target.value })}
+                />
+                <Input
+                  label="Key Activities (comma separated)"
+                  value={form.key_activities}
+                  onChange={(e) => setForm({ ...form, key_activities: e.target.value })}
+                />
+                <Input
+                  label="Typical Conversion (%)"
+                  type="number"
+                  value={form.typical_conversion}
+                  onChange={(e) => setForm({ ...form, typical_conversion: e.target.value })}
+                />
+                <Input
+                  label="Resources Needed (comma separated)"
+                  value={form.resources_needed}
+                  onChange={(e) => setForm({ ...form, resources_needed: e.target.value })}
+                />
+                <div className="md:col-span-2 flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                  <Button type="submit">Add Channel</Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };

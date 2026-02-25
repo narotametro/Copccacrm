@@ -111,6 +111,7 @@ export const PricingLogic: React.FC<PricingLogicProps> = ({ onBack }) => {
       }
 
       setTiers((prev) => [data, ...prev]);
+      setShowModal(false);
       setForm({
         name: '',
         segment: '',
@@ -238,65 +239,77 @@ export const PricingLogic: React.FC<PricingLogicProps> = ({ onBack }) => {
         ))}
       </div>
 
-      <Card className="p-5">
-        <h3 className="text-lg font-bold text-slate-900 mb-3">Add Pricing Tier</h3>
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
-          <Input
-            label="Tier Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Segment"
-            value={form.segment}
-            onChange={(e) => setForm({ ...form, segment: e.target.value })}
-            required
-          />
-          <Input
-            label="Base Price"
-            type="number"
-            value={form.base_price}
-            onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-            required
-          />
-          <Input
-            label="Pricing Model"
-            value={form.pricing_model}
-            onChange={(e) => setForm({ ...form, pricing_model: e.target.value })}
-            placeholder="e.g. Annual subscription"
-          />
-          <Input
-            label="Discount Rules (comma separated)"
-            value={form.discount_rules}
-            onChange={(e) => setForm({ ...form, discount_rules: e.target.value })}
-          />
-          <Input
-            label="Typical Discount (%)"
-            type="number"
-            value={form.typical_discount}
-            onChange={(e) => setForm({ ...form, typical_discount: e.target.value })}
-          />
-          <Input
-            label="Value Drivers (comma separated)"
-            value={form.value_drivers}
-            onChange={(e) => setForm({ ...form, value_drivers: e.target.value })}
-          />
-          <Input
-            label="Competitive Position"
-            value={form.competitive_position}
-            onChange={(e) => setForm({ ...form, competitive_position: e.target.value })}
-          />
-          <Input
-            label="AI Discount Suggestion"
-            value={form.ai_discount_suggestion}
-            onChange={(e) => setForm({ ...form, ai_discount_suggestion: e.target.value })}
-          />
-          <div className="md:col-span-2 flex justify-end">
-            <Button type="submit">Add Pricing Tier</Button>
+      <div className="flex justify-end">
+        <Button onClick={() => setShowModal(true)}>Add Pricing Tier</Button>
+      </div>
+
+      {/* Add Pricing Tier Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Add Pricing Tier</h3>
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
+                <Input
+                  label="Tier Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Segment"
+                  value={form.segment}
+                  onChange={(e) => setForm({ ...form, segment: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Base Price"
+                  type="number"
+                  value={form.base_price}
+                  onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Pricing Model"
+                  value={form.pricing_model}
+                  onChange={(e) => setForm({ ...form, pricing_model: e.target.value })}
+                  placeholder="e.g. Annual subscription"
+                />
+                <Input
+                  label="Discount Rules (comma separated)"
+                  value={form.discount_rules}
+                  onChange={(e) => setForm({ ...form, discount_rules: e.target.value })}
+                />
+                <Input
+                  label="Typical Discount (%)"
+                  type="number"
+                  value={form.typical_discount}
+                  onChange={(e) => setForm({ ...form, typical_discount: e.target.value })}
+                />
+                <Input
+                  label="Value Drivers (comma separated)"
+                  value={form.value_drivers}
+                  onChange={(e) => setForm({ ...form, value_drivers: e.target.value })}
+                />
+                <Input
+                  label="Competitive Position"
+                  value={form.competitive_position}
+                  onChange={(e) => setForm({ ...form, competitive_position: e.target.value })}
+                />
+                <Input
+                  label="AI Discount Suggestion"
+                  value={form.ai_discount_suggestion}
+                  onChange={(e) => setForm({ ...form, ai_discount_suggestion: e.target.value })}
+                />
+                <div className="md:col-span-2 flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                  <Button type="submit">Add Pricing Tier</Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };

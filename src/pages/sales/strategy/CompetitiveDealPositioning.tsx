@@ -28,6 +28,7 @@ export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProp
   const user = useAuthStore((state) => state.user);
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<CompetitiveDeal[]>([]);
+  const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     deal_name: '',
     customer: '',
@@ -123,13 +124,13 @@ export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProp
       }
 
       setDeals((prev) => [data, ...prev]);
+      setShowModal(false);
       setForm({
         deal_name: '',
         customer: '',
         competitors: '',
         our_strengths: '',
         competitor_strengths: '',
-        ai_risk_score: '',
         ai_risk_level: 'medium',
         ai_recommendations: '',
         differentiation_strategy: '',
@@ -293,76 +294,88 @@ export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProp
         ))}
       </div>
 
-      <Card className="p-5">
-        <h3 className="text-lg font-bold text-slate-900 mb-3">Add Competitive Deal</h3>
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
-          <Input
-            label="Deal Name"
-            value={form.deal_name}
-            onChange={(e) => setForm({ ...form, deal_name: e.target.value })}
-            required
-          />
-          <Input
-            label="Customer"
-            value={form.customer}
-            onChange={(e) => setForm({ ...form, customer: e.target.value })}
-            required
-          />
-          <Input
-            label="Competitors (comma separated)"
-            value={form.competitors}
-            onChange={(e) => setForm({ ...form, competitors: e.target.value })}
-          />
-          <Input
-            label="Our Strengths (comma separated)"
-            value={form.our_strengths}
-            onChange={(e) => setForm({ ...form, our_strengths: e.target.value })}
-          />
-          <Input
-            label="Competitor Strengths (comma separated)"
-            value={form.competitor_strengths}
-            onChange={(e) => setForm({ ...form, competitor_strengths: e.target.value })}
-          />
-          <Input
-            label="Win Probability (%)"
-            type="number"
-            value={form.win_probability}
-            onChange={(e) => setForm({ ...form, win_probability: e.target.value })}
-          />
-          <Input
-            label="AI Risk Score (0-100)"
-            type="number"
-            value={form.ai_risk_score}
-            onChange={(e) => setForm({ ...form, ai_risk_score: e.target.value })}
-          />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">AI Risk Level</label>
-            <select
-              value={form.ai_risk_level}
-              onChange={(e) => setForm({ ...form, ai_risk_level: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+      <div className="flex justify-end">
+        <Button onClick={() => setShowModal(true)}>Add Competitive Deal</Button>
+      </div>
+
+      {/* Add Deal Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Add Competitive Deal</h3>
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleAdd}>
+                <Input
+                  label="Deal Name"
+                  value={form.deal_name}
+                  onChange={(e) => setForm({ ...form, deal_name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Customer"
+                  value={form.customer}
+                  onChange={(e) => setForm({ ...form, customer: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Competitors (comma separated)"
+                  value={form.competitors}
+                  onChange={(e) => setForm({ ...form, competitors: e.target.value })}
+                />
+                <Input
+                  label="Our Strengths (comma separated)"
+                  value={form.our_strengths}
+                  onChange={(e) => setForm({ ...form, our_strengths: e.target.value })}
+                />
+                <Input
+                  label="Competitor Strengths (comma separated)"
+                  value={form.competitor_strengths}
+                  onChange={(e) => setForm({ ...form, competitor_strengths: e.target.value })}
+                />
+                <Input
+                  label="Win Probability (%)"
+                  type="number"
+                  value={form.win_probability}
+                  onChange={(e) => setForm({ ...form, win_probability: e.target.value })}
+                />
+                <Input
+                  label="AI Risk Score (0-100)"
+                  type="number"
+                  value={form.ai_risk_score}
+                  onChange={(e) => setForm({ ...form, ai_risk_score: e.target.value })}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">AI Risk Level</label>
+                  <select
+                    value={form.ai_risk_level}
+                    onChange={(e) => setForm({ ...form, ai_risk_level: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <Input
+                  label="AI Recommendations (comma separated)"
+                  value={form.ai_recommendations}
+                  onChange={(e) => setForm({ ...form, ai_recommendations: e.target.value })}
+                />
+                <Input
+                  label="Differentiation Strategy"
+                  value={form.differentiation_strategy}
+                  onChange={(e) => setForm({ ...form, differentiation_strategy: e.target.value })}
+                />
+                <div className="md:col-span-2 flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                  <Button type="submit">Add Deal</Button>
+                </div>
+              </form>
+            </div>
           </div>
-          <Input
-            label="AI Recommendations (comma separated)"
-            value={form.ai_recommendations}
-            onChange={(e) => setForm({ ...form, ai_recommendations: e.target.value })}
-          />
-          <Input
-            label="Differentiation Strategy"
-            value={form.differentiation_strategy}
-            onChange={(e) => setForm({ ...form, differentiation_strategy: e.target.value })}
-          />
-          <div className="md:col-span-2 flex justify-end">
-            <Button type="submit">Add Deal</Button>
-          </div>
-        </form>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };
