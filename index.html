@@ -2,10 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Build: 2026-02-25-09:30 -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <parameter name="Pragma" content="no-cache" />
+    <!-- Build: 2026-02-25-09:45 -->
+    <!-- Aggressive Cache Prevention -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    <meta name="cache" content="no-cache" />
+    <meta name="revisit-after" content="1 days" />
     <!-- Favicons -->
     <link rel="shortcut icon" href="/favicon.png" type="image/png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -31,5 +34,59 @@
       </style>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Auto-reload on new deployment detection -->
+    <script>
+      // Version check - auto-reload if new build is deployed
+      const BUILD_VERSION = '2026-02-25-09:45';
+      
+      // Check for new version every 5 minutes
+      setInterval(async () => {
+        try {
+          const response = await fetch('/index.html', { 
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' }
+          });
+          const html = await response.text();
+          const match = html.match(/Build: ([\d-:]+)/);
+          
+          if (match && match[1] !== BUILD_VERSION) {
+            console.log('New version detected! Reloading...');
+            // Clear all caches
+            if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+            }
+            // Force reload
+            window.location.reload(true);
+          }
+        } catch (e) {
+          // Silently fail - network might be offline
+        }
+      }, 5 * 60 * 1000); // Check every 5 minutes
+      
+      // Also check on page visibility change (user returns to tab)
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+          try {
+            const response = await fetch('/index.html', { 
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+            const html = await response.text();
+            const match = html.match(/Build: ([\d-:]+)/);
+            
+            if (match && match[1] !== BUILD_VERSION) {
+              console.log('New version detected! Reloading...');
+              if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+              }
+              window.location.reload(true);
+            }
+          } catch (e) {}
+        }
+      });
+    </script>
   </body>
 </html>

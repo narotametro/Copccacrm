@@ -70,6 +70,8 @@ export default defineConfig({
         // Add SPA fallback for React Router
         navigateFallback: '/index.html',
         navigateFallbackAllowlist: [/^(?!\/__).*/], // Allow all except special paths
+        // Aggressive cache cleanup - delete ALL old caches on new deployment
+        ignoreURLParametersMatching: [/.*/],
         runtimeCaching: [
           // JS/CSS chunks: Network-first to always get latest after deployment
           {
