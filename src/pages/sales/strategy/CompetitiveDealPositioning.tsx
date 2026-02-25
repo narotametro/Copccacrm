@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, AlertTriangle, Brain, Shield, Target, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface CompetitiveDeal {
   id: string;
@@ -18,14 +20,14 @@ interface CompetitiveDeal {
   win_probability: number;
 }
 
-const initialDeals: CompetitiveDeal[] = [];
-
 interface CompetitiveDealPositioningProps {
   onBack: () => void;
 }
 
 export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProps> = ({ onBack }) => {
-  const [deals, setDeals] = useState<CompetitiveDeal[]>(initialDeals);
+  const user = useAuthStore((state) => state.user);
+  const [loading, setLoading] = useState(true);
+  const [deals, setDeals] = useState<CompetitiveDeal[]>([]);
   const [form, setForm] = useState({
     deal_name: '',
     customer: '',
@@ -39,6 +41,44 @@ export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProp
     win_probability: '',
   });
 
+  // Load competitive deals from database
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.company_id) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('sales_competitive_deals')
+          .select('*')
+          .eq('company_id', userData.company_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching competitive deals:', error);
+        } else {
+          setDeals(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
   const avgRisk = Math.round(
     deals.reduce((sum, deal) => sum + deal.ai_risk_score, 0) / (deals.length || 1)
   );
@@ -46,37 +86,58 @@ export const CompetitiveDealPositioning: React.FC<CompetitiveDealPositioningProp
     deals.reduce((sum, deal) => sum + deal.win_probability, 0) / (deals.length || 1)
   );
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.deal_name || !form.customer) return;
+    if (!form.deal_name || !form.customer || !user) return;
 
-    const newDeal: CompetitiveDeal = {
-      id: crypto.randomUUID(),
-      deal_name: form.deal_name,
-      customer: form.customer,
-      competitors: form.competitors ? form.competitors.split(',').map((c) => c.trim()).filter(Boolean) : [],
-      our_strengths: form.our_strengths ? form.our_strengths.split(',').map((s) => s.trim()).filter(Boolean) : [],
-      competitor_strengths: form.competitor_strengths ? form.competitor_strengths.split(',').map((s) => s.trim()).filter(Boolean) : [],
-      ai_risk_score: Number(form.ai_risk_score) || 0,
-      ai_risk_level: form.ai_risk_level as CompetitiveDeal['ai_risk_level'],
-      ai_recommendations: form.ai_recommendations ? form.ai_recommendations.split(',').map((r) => r.trim()).filter(Boolean) : [],
-      differentiation_strategy: form.differentiation_strategy || 'Not specified',
-      win_probability: Number(form.win_probability) || 0,
-    };
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
 
-    setDeals((prev) => [newDeal, ...prev]);
-    setForm({
-      deal_name: '',
-      customer: '',
-      competitors: '',
-      our_strengths: '',
-      competitor_strengths: '',
-      ai_risk_score: '',
-      ai_risk_level: 'medium',
-      ai_recommendations: '',
-      differentiation_strategy: '',
-      win_probability: '',
-    });
+      if (!userData?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('sales_competitive_deals')
+        .insert({
+          company_id: userData.company_id,
+          deal_name: form.deal_name,
+          customer: form.customer,
+          competitors: form.competitors ? form.competitors.split(',').map((c) => c.trim()).filter(Boolean) : [],
+          our_strengths: form.our_strengths ? form.our_strengths.split(',').map((s) => s.trim()).filter(Boolean) : [],
+          competitor_strengths: form.competitor_strengths ? form.competitor_strengths.split(',').map((s) => s.trim()).filter(Boolean) : [],
+          ai_risk_score: Number(form.ai_risk_score) || 0,
+          ai_risk_level: form.ai_risk_level,
+          ai_recommendations: form.ai_recommendations ? form.ai_recommendations.split(',').map((r) => r.trim()).filter(Boolean) : [],
+          differentiation_strategy: form.differentiation_strategy || 'Not specified',
+          win_probability: Number(form.win_probability) || 0,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding competitive deal:', error);
+        return;
+      }
+
+      setDeals((prev) => [data, ...prev]);
+      setForm({
+        deal_name: '',
+        customer: '',
+        competitors: '',
+        our_strengths: '',
+        competitor_strengths: '',
+        ai_risk_score: '',
+        ai_risk_level: 'medium',
+        ai_recommendations: '',
+        differentiation_strategy: '',
+        win_probability: '',
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (

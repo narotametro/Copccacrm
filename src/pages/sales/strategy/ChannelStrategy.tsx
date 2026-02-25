@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Banknote, Target, TrendingUp, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface Channel {
   id: string;
@@ -19,14 +21,14 @@ interface Channel {
   typical_conversion: number;
 }
 
-const initialChannels: Channel[] = [];
-
 interface ChannelStrategyProps {
   onBack: () => void;
 }
 
 export const ChannelStrategy: React.FC<ChannelStrategyProps> = ({ onBack }) => {
-  const [channels, setChannels] = useState<Channel[]>(initialChannels);
+  const user = useAuthStore((state) => state.user);
+  const [loading, setLoading] = useState(true);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [form, setForm] = useState({
     name: '',
     approach: '',
@@ -36,23 +38,87 @@ export const ChannelStrategy: React.FC<ChannelStrategyProps> = ({ onBack }) => {
     resources_needed: '',
   });
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.approach) return;
+  // Load channels from database
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
 
-    const newChannel: Channel = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      approach: form.approach,
-      target_segments: form.target_segments ? form.target_segments.split(',').map((s) => s.trim()).filter(Boolean) : [],
-      key_activities: form.key_activities ? form.key_activities.split(',').map((a) => a.trim()).filter(Boolean) : [],
-      success_metrics: [],
-      resources_needed: form.resources_needed ? form.resources_needed.split(',').map((r) => r.trim()).filter(Boolean) : [],
-      typical_conversion: Number(form.typical_conversion) || 0,
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.company_id) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('sales_channels')
+          .select('*')
+          .eq('company_id', userData.company_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching channels:', error);
+        } else {
+          setChannels(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setChannels((prev) => [newChannel, ...prev]);
-    setForm({ name: '', approach: '', target_segments: '', key_activities: '', typical_conversion: '', resources_needed: '' });
+    fetchData();
+  }, [user]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.approach || !user) return;
+
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('sales_channels')
+        .insert({
+          company_id: userData.company_id,
+          name: form.name,
+          approach: form.approach,
+          target_segments: form.target_segments ? form.target_segments.split(',').map((s) => s.trim()).filter(Boolean) : [],
+          key_activities: form.key_activities ? form.key_activities.split(',').map((a) => a.trim()).filter(Boolean) : [],
+          resources_needed: form.resources_needed ? form.resources_needed.split(',').map((r) => r.trim()).filter(Boolean) : [],
+          typical_conversion: Number(form.typical_conversion) || 0,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding channel:', error);
+        return;
+      }
+
+      // Update local state with database record (note: success_metrics is not in DB, keep as empty array)
+      const newChannel: Channel = {
+        ...data,
+        success_metrics: [],
+      };
+
+      setChannels((prev) => [newChannel, ...prev]);
+      setForm({ name: '', approach: '', target_segments: '', key_activities: '', typical_conversion: '', resources_needed: '' });
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (

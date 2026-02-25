@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Banknote, CheckCircle, Target, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface ValueProp {
   id: string;
@@ -15,15 +17,11 @@ interface ValueProp {
   roi_claim: string;
 }
 
-const initialProps: ValueProp[] = [];
-
-interface ValuePropositionAlignmentProps {
-  onBack: () => void;
-}
-
 export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps> = ({ onBack }) => {
-  const [valueProps, setValueProps] = useState<ValueProp[]>(initialProps);
+  const user = useAuthStore((state) => state.user);
+  const [valueProps, setValueProps] = useState<ValueProp[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     segment: '',
     customer_need: '',
@@ -33,23 +31,82 @@ export const ValuePropositionAlignment: React.FC<ValuePropositionAlignmentProps>
     roi_claim: '',
   });
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.segment || !form.customer_need || !form.our_solution) return;
+  // Load value propositions from database
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
 
-    const newValue: ValueProp = {
-      id: crypto.randomUUID(),
-      segment: form.segment,
-      customer_need: form.customer_need,
-      our_solution: form.our_solution,
-      unique_advantage: form.unique_advantage || 'Not specified',
-      evidence: form.evidence ? form.evidence.split(',').map((e) => e.trim()).filter(Boolean) : [],
-      roi_claim: form.roi_claim || 'Not specified',
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.company_id) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('sales_value_propositions')
+          .select('*')
+          .eq('company_id', userData.company_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching value propositions:', error);
+        } else {
+          setValueProps(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setValueProps((prev) => [newValue, ...prev]);
-    setForm({ segment: '', customer_need: '', our_solution: '', unique_advantage: '', evidence: '', roi_claim: '' });
-    setShowModal(false);
+    fetchData();
+  }, [user]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.segment || !form.customer_need || !form.our_solution || !user) return;
+
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('sales_value_propositions')
+        .insert({
+          company_id: userData.company_id,
+          segment: form.segment,
+          customer_need: form.customer_need,
+          our_solution: form.our_solution,
+          unique_advantage: form.unique_advantage || 'Not specified',
+          evidence: form.evidence ? form.evidence.split(',').map((e) => e.trim()).filter(Boolean) : [],
+          roi_claim: form.roi_claim || 'Not specified',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding value proposition:', error);
+        return;
+      }
+
+      setValueProps((prev) => [data, ...prev]);
+      setForm({ segment: '', customer_need: '', our_solution: '', unique_advantage: '', evidence: '', roi_claim: '' });
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (

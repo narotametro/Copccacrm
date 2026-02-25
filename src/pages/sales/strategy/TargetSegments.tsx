@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Banknote, Target, TrendingUp, Users, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface Segment {
   id: string;
@@ -19,16 +21,16 @@ interface Segment {
   sales_cycle: string;
 }
 
-const initialSegments: Segment[] = [];
-
 interface TargetSegmentsProps {
   onBack: () => void;
 }
 
 export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
   const { formatCurrency } = useCurrency();
-  const [segments, setSegments] = useState<Segment[]>(initialSegments);
+  const user = useAuthStore((state) => state.user);
+  const [segments, setSegments] = useState<Segment[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: '',
     size: '',
@@ -46,36 +48,95 @@ export const TargetSegments: React.FC<TargetSegmentsProps> = ({ onBack }) => {
     segments.reduce((sum, seg) => sum + seg.growth_rate, 0) / segments.length
   );
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.size || !form.annual_value || !form.growth_rate) return;
+  // Load segments from database
+  useEffect(() => {
+    const fetchSegments = async () => {
+      if (!user) return;
 
-    const newSegment: Segment = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      size: form.size,
-      annual_value: Number(form.annual_value) || 0,
-      growth_rate: Number(form.growth_rate) || 0,
-      pain_points: form.pain_points ? form.pain_points.split(',').map((p) => p.trim()).filter(Boolean) : [],
-      buying_behavior: form.buying_behavior || 'Not specified',
-      decision_makers: form.decision_makers ? form.decision_makers.split(',').map((d) => d.trim()).filter(Boolean) : [],
-      avg_deal_size: Number(form.avg_deal_size) || 0,
-      sales_cycle: form.sales_cycle || 'Not specified',
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.company_id) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('sales_target_segments')
+          .select('*')
+          .eq('company_id', userData.company_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching segments:', error);
+        } else {
+          setSegments(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setSegments((prev) => [newSegment, ...prev]);
-    setForm({
-      name: '',
-      size: '',
-      annual_value: '',
-      growth_rate: '',
-      buying_behavior: '',
-      avg_deal_size: '',
-      sales_cycle: '',
-      pain_points: '',
-      decision_makers: '',
-    });
-    setShowModal(false);
+    fetchSegments();
+  }, [user]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.size || !form.annual_value || !form.growth_rate || !user) return;
+
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('sales_target_segments')
+        .insert({
+          company_id: userData.company_id,
+          name: form.name,
+          size: form.size,
+          annual_value: Number(form.annual_value) || 0,
+          growth_rate: Number(form.growth_rate) || 0,
+          pain_points: form.pain_points ? form.pain_points.split(',').map((p) => p.trim()).filter(Boolean) : [],
+          buying_behavior: form.buying_behavior || 'Not specified',
+          decision_makers: form.decision_makers ? form.decision_makers.split(',').map((d) => d.trim()).filter(Boolean) : [],
+          avg_deal_size: Number(form.avg_deal_size) || 0,
+          sales_cycle: form.sales_cycle || 'Not specified',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding segment:', error);
+        return;
+      }
+
+      setSegments((prev) => [data, ...prev]);
+      setForm({
+        name: '',
+        size: '',
+        annual_value: '',
+        growth_rate: '',
+        buying_behavior: '',
+        avg_deal_size: '',
+        sales_cycle: '',
+        pain_points: '',
+        decision_makers: '',
+      });
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (

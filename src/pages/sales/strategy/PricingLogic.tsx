@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Banknote, Brain, TrendingDown, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useCurrency } from '@/context/CurrencyContext';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface PricingTier {
   id: string;
@@ -18,15 +20,11 @@ interface PricingTier {
   competitive_position: string;
 }
 
-const initialTiers: PricingTier[] = [];
-
-interface PricingLogicProps {
-  onBack: () => void;
-}
-
 export const PricingLogic: React.FC<PricingLogicProps> = ({ onBack }) => {
   const { formatCurrency } = useCurrency();
-  const [tiers, setTiers] = useState<PricingTier[]>(initialTiers);
+  const user = useAuthStore((state) => state.user);
+  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: '',
     segment: '',
@@ -39,35 +37,94 @@ export const PricingLogic: React.FC<PricingLogicProps> = ({ onBack }) => {
     ai_discount_suggestion: '',
   });
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.segment || !form.base_price) return;
+  // Load pricing tiers from database
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
 
-    const newTier: PricingTier = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      segment: form.segment,
-      base_price: Number(form.base_price) || 0,
-      pricing_model: form.pricing_model || 'Subscription',
-      discount_rules: form.discount_rules ? form.discount_rules.split(',').map((r) => r.trim()).filter(Boolean) : [],
-      ai_discount_suggestion: form.ai_discount_suggestion || 'No suggestion yet',
-      typical_discount: Number(form.typical_discount) || 0,
-      value_drivers: form.value_drivers ? form.value_drivers.split(',').map((v) => v.trim()).filter(Boolean) : [],
-      competitive_position: form.competitive_position || 'Not specified',
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.company_id) {
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('sales_pricing_tiers')
+          .select('*')
+          .eq('company_id', userData.company_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching pricing tiers:', error);
+        } else {
+          setTiers(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setTiers((prev) => [newTier, ...prev]);
-    setForm({
-      name: '',
-      segment: '',
-      base_price: '',
-      pricing_model: '',
-      discount_rules: '',
-      typical_discount: '',
-      value_drivers: '',
-      competitive_position: '',
-      ai_discount_suggestion: '',
-    });
+    fetchData();
+  }, [user]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.segment || !form.base_price || !user) return;
+
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) return;
+
+      const { data, error } = await supabase
+        .from('sales_pricing_tiers')
+        .insert({
+          company_id: userData.company_id,
+          name: form.name,
+          segment: form.segment,
+          base_price: Number(form.base_price) || 0,
+          pricing_model: form.pricing_model || 'Subscription',
+          discount_rules: form.discount_rules ? form.discount_rules.split(',').map((r) => r.trim()).filter(Boolean) : [],
+          ai_discount_suggestion: form.ai_discount_suggestion || 'No suggestion yet',
+          typical_discount: Number(form.typical_discount) || 0,
+          value_drivers: form.value_drivers ? form.value_drivers.split(',').map((v) => v.trim()).filter(Boolean) : [],
+          competitive_position: form.competitive_position || 'Not specified',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding pricing tier:', error);
+        return;
+      }
+
+      setTiers((prev) => [data, ...prev]);
+      setForm({
+        name: '',
+        segment: '',
+        base_price: '',
+        pricing_model: '',
+        discount_rules: '',
+        typical_discount: '',
+        value_drivers: '',
+        competitive_position: '',
+        ai_discount_suggestion: '',
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (
