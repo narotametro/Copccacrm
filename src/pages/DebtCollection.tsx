@@ -122,12 +122,13 @@ export const DebtCollection: React.FC = () => {
     }
   };
 
-  // Load Sales Hub orders
+  // Load Sales Hub orders (ONLY CREDIT/PENDING invoices)
   const loadSalesHubOrders = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
 
+      // Load ONLY credit invoices (unpaid/pending payment)
       const { data, error } = await supabase
         .from('sales_hub_orders')
         .select(`
@@ -136,6 +137,7 @@ export const DebtCollection: React.FC = () => {
         `)
         .eq('created_by', userData.user.id)
         .eq('status', 'completed')
+        .eq('payment_method', 'credit')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -466,15 +468,39 @@ export const DebtCollection: React.FC = () => {
 
   const handleAddDebt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomer || !debtForm.invoice_number.trim() || !debtForm.amount) {
-      toast.error('Please select a customer and fill in all required fields');
+    
+    // Detailed validation with specific error messages
+    if (!selectedCustomer) {
+      toast.error('Please select a customer');
+      console.error('Validation failed: No customer selected');
       return;
     }
+    
+    if (!debtForm.invoice_number.trim()) {
+      toast.error('Please enter an invoice number');
+      return;
+    }
+    
+    if (!debtForm.amount || parseFloat(debtForm.amount) <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    if (!debtForm.due_date) {
+      toast.error('Please select a due date');
+      return;
+    }
+
+    console.log('Creating debt record with:', {
+      customer: selectedCustomer.name,
+      invoice: debtForm.invoice_number,
+      amount: debtForm.amount
+    });
 
     const debtData = {
       invoice_number: debtForm.invoice_number.trim(),
       amount: Number(debtForm.amount),
-      due_date: debtForm.due_date || new Date().toISOString().slice(0, 10),
+      due_date: debtForm.due_date,
       status: 'pending' as const,
       days_overdue: 0,
       payment_probability: 70,
@@ -508,6 +534,8 @@ export const DebtCollection: React.FC = () => {
         risk_score: 'medium',
       });
       setSelectedCustomer(null);
+      setSelectedOrder(null);
+      setInvoiceSource('manual');
       setShowAddDebtModal(false);
     }
   };
@@ -894,10 +922,22 @@ export const DebtCollection: React.FC = () => {
                       amount: order.total_amount.toString(),
                     });
                     // Auto-select customer if available
+                    console.log('Looking for customer with ID:', order.customer_id);
+                    console.log('Available customers:', customers.length);
                     const customer = customers.find((c) => c.id === order.customer_id);
                     if (customer) {
+                      console.log('Found customer:', customer.name);
                       setSelectedCustomer(customer);
+                      toast.success(`Auto-filled customer: ${customer.name}`);
+                    } else {
+                      console.warn('Customer not found in list. Order customer_id:', order.customer_id);
+                      console.warn('Available customer IDs:', customers.map(c => c.id));
+                      toast.warning('Customer not found. Please select manually.');
+                      setSelectedCustomer(null);
                     }
+                  } else {
+                    setSelectedOrder(null);
+                    setSelectedCustomer(null);
                   }
                 }}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -912,12 +952,12 @@ export const DebtCollection: React.FC = () => {
               </select>
               {salesHubOrders.length === 0 && (
                 <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                  ⚠️ No Sales Hub orders found. Use Manual Entry for external POS invoices.
+                  ⚠️ No pending credit invoices found. Use Manual Entry for external POS invoices.
                 </p>
               )}
               {salesHubOrders.length > 0 && (
                 <p className="text-sm text-green-600 mt-2">
-                  ✓ {salesHubOrders.length} invoice{salesHubOrders.length !== 1 ? 's' : ''} available
+                  ✓ {salesHubOrders.length} pending credit invoice{salesHubOrders.length !== 1 ? 's' : ''} available
                 </p>
               )}
             </div>
@@ -934,10 +974,13 @@ export const DebtCollection: React.FC = () => {
                 const customerId = e.target.value;
                 const customer = customers.find((c: Customer) => c.id === customerId);
                 setSelectedCustomer(customer || null);
+                if (customer) {
+                  console.log('Manually selected customer:', customer.name);
+                }
               }}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               required
-              disabled={invoiceSource === 'sales_hub' && selectedOrder}
+              disabled={invoiceSource === 'sales_hub' && !!selectedOrder}
             >
               <option value="">Select a customer...</option>
               {customers.map((customer: Customer) => (
@@ -946,9 +989,14 @@ export const DebtCollection: React.FC = () => {
                 </option>
               ))}
             </select>
-            {invoiceSource === 'sales_hub' && selectedOrder && (
-              <p className="text-sm text-blue-600 mt-2">
-                ✓ Auto-filled from invoice
+            {invoiceSource === 'sales_hub' && selectedOrder && selectedCustomer && (
+              <p className="text-sm text-blue-600 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
+                ✓ Auto-filled: <strong>{selectedCustomer.name}</strong>
+              </p>
+            )}
+            {invoiceSource === 'sales_hub' && selectedOrder && !selectedCustomer && (
+              <p className="text-sm text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-200">
+                ⚠️ Customer not found. Please add this customer in Customers 360 first.
               </p>
             )}
           </div>
