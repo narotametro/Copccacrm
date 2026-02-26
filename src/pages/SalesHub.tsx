@@ -2530,6 +2530,7 @@ const SalesHub: React.FC = () => {
   const [committedDiscountAmount, setCommittedDiscountAmount] = useState<number>(0);
   const discountInputRef = useRef<HTMLInputElement>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
+  const [customDueDate, setCustomDueDate] = useState<string>('');
   
   // Warehouse/Location selection state
   const [locations, setLocations] = useState<Array<{ id: string; name: string; type: string }>>([]);
@@ -3838,6 +3839,7 @@ const SalesHub: React.FC = () => {
       };
 
       clearCart();
+      setCustomDueDate(''); // Reset due date after order completion
       setCompletedOrderData(orderSnapshot);
       setShowPostOrderModal(true);
       toast.success('Order completed successfully!');
@@ -3955,13 +3957,20 @@ const SalesHub: React.FC = () => {
 
           // AUTO-CREATE DEBT RECORD for credit orders
           if (paymentMethod === 'credit') {
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 30); // Default 30 days payment term
+            // Use custom due date if provided, otherwise default to +30 days
+            let dueDate: string;
+            if (customDueDate) {
+              dueDate = customDueDate;
+            } else {
+              const defaultDueDate = new Date();
+              defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+              dueDate = defaultDueDate.toISOString().split('T')[0];
+            }
 
             const debtData = {
               invoice_number: invoiceNumber,
               amount: total,
-              due_date: dueDate.toISOString().split('T')[0],
+              due_date: dueDate,
               status: 'pending',
               days_overdue: 0,
               payment_probability: 70,
@@ -6370,6 +6379,26 @@ const CustomerBuyingPatternsSection = () => {
                       <span className="ml-2 text-sm text-slate-700">💳 Credit</span>
                     </label>
                   </div>
+
+                  {/* Due Date Picker - Only show when Credit is selected */}
+                  {paymentMethod === 'credit' && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Payment Due Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={customDueDate}
+                        onChange={(e) => setCustomDueDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        required
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Specify when the customer should pay this invoice
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Warehouse/Location Selection */}

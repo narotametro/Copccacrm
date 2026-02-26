@@ -61,6 +61,19 @@ export const DebtCollection: React.FC = () => {
     risk_score: 'medium' as 'low' | 'medium' | 'high',
   });
 
+  // Helper function to format large numbers with abbreviations
+  const formatLargeNumber = (num: number): string => {
+    const absNum = Math.abs(num);
+    if (absNum >= 1000000000) {
+      return `${(num / 1000000000).toFixed(1)}B`; // Billions
+    } else if (absNum >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`; // Millions
+    } else if (absNum >= 10000) {
+      return `${(num / 1000).toFixed(0)}K`; // Thousands (only for 10K+)
+    }
+    return formatCurrency(convertAmount(num)); // Regular format for smaller amounts
+  };
+
   // Load customers from database
   useEffect(() => {
     loadCustomers();
@@ -683,8 +696,16 @@ export const DebtCollection: React.FC = () => {
             <Card>
           <Banknote className="text-primary-600 mb-2" size={24} />
           <h3 className="text-sm text-slate-600">Total Outstanding</h3>
-          <p className="text-2xl font-bold text-slate-900">
-            {formatCurrency(convertAmount(debts.filter(d => d.status !== 'paid').reduce((sum, d) => sum + d.amount, 0)))}
+          <p className="text-xl lg:text-2xl font-bold text-slate-900 break-words">
+            {(() => {
+              const total = debts.filter(d => d.status !== 'paid').reduce((sum, d) => sum + d.amount, 0);
+              const convertedTotal = convertAmount(total);
+              // Use abbreviation for very large numbers (> 1 billion)
+              if (convertedTotal >= 1000000000) {
+                return `TSh${formatLargeNumber(total)}`;
+              }
+              return formatCurrency(convertedTotal);
+            })()}
           </p>
         </Card>
         <Card>
