@@ -3946,7 +3946,12 @@ const SalesHub: React.FC = () => {
             created_by: (await supabase.auth.getUser()).data.user?.id
           };
 
-          await supabase.from('sales_hub_orders').insert(orderData);
+          const { error: orderError } = await supabase.from('sales_hub_orders').insert(orderData);
+          
+          if (orderError) {
+            console.error('Failed to save order:', orderError);
+            // Order failed but UI already updated - continue with stock updates
+          }
 
           // AUTO-CREATE DEBT RECORD for credit orders
           if (paymentMethod === 'credit') {
@@ -4002,12 +4007,12 @@ const SalesHub: React.FC = () => {
               supabase.from('products').update({ stock_quantity: stockAfter }).eq('id', item.product.id),
               supabase.from('stock_history').insert({
                 product_id: item.product.id,
-                change_type: 'sale',
+                action: 'pos_sale',
                 quantity_change: -item.quantity,
-                quantity_before: stockBefore,
-                quantity_after: stockAfter,
+                stock_before: stockBefore,
+                stock_after: stockAfter,
                 location: locationName,
-                reference_type: 'order',
+                reference_type: 'invoice',
                 reference_id: invoiceNumber,
                 performed_by: (await supabase.auth.getUser()).data.user?.id,
                 notes: `Sale via order ${invoiceNumber} from ${locationName}`
