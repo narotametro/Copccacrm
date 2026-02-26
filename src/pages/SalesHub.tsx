@@ -3962,19 +3962,24 @@ const SalesHub: React.FC = () => {
               payment_probability: 70,
               risk_score: 'medium',
               auto_reminder: true,
-              company_id: customerSelectionMode === 'walk-in' ? null : selectedCustomer!.id,
+              company_id: customerSelectionMode === 'walk-in' ? null : (selectedCustomer!.customer_id || selectedCustomer!.id),
               company_name: customerSelectionMode === 'walk-in' ? 'Walk-in Customer' : selectedCustomer!.name,
               company_contact_email: customerSelectionMode === 'walk-in' ? '' : (selectedCustomer!.email || ''),
-              company_contact_phone: customerSelectionMode === 'walk-in' ? '' : (selectedCustomer!.phone || ''),
+              company_contact_phone: customerSelectionMode === 'walk-in' ? '' : (selectedCustomer!.phone || selectedCustomer!.mobile || ''),
               created_by: (await supabase.auth.getUser()).data.user?.id
             };
 
             const { error: debtError } = await supabase.from('debts').insert(debtData);
             
             if (debtError) {
-              console.error('Failed to auto-create debt record:', debtError);
+              console.error('❌ Failed to auto-create debt record:', debtError);
+              toast.error('Failed to create debt record');
             } else {
               console.log('✓ Auto-created debt record for credit order:', invoiceNumber);
+              console.log('  Customer:', debtData.company_name);
+              console.log('  Amount:', formatCurrency(debtData.amount));
+              console.log('  Due Date:', debtData.due_date);
+              toast.success('📋 Debt record created for credit order', { duration: 3000 });
             }
           }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target, Plus } from 'lucide-react';
+import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target, Plus, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -48,6 +48,7 @@ export const DebtCollection: React.FC = () => {
   });
   const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAddDebtModal, setShowAddDebtModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [invoiceSource, setInvoiceSource] = useState<'sales_hub' | 'manual'>('manual');
@@ -76,6 +77,19 @@ export const DebtCollection: React.FC = () => {
       loadSalesHubOrders();
     }
   }, [showAddDebtModal]);
+
+  // Auto-refresh debts when page becomes visible (user returns from another page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible - refreshing debts');
+        loadDebts();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Load customers from companies table (customer companies, not the user's company)
   const loadCustomers = async () => {
@@ -155,10 +169,22 @@ export const DebtCollection: React.FC = () => {
   // Load debts from Supabase
   const loadDebts = async () => {
     try {
-      // Removed setLoading(true) - show UI immediately
+      setLoading(true);
+      
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        console.error('No user authenticated');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading debts for user:', userData.user.id);
+
+      // Load debts created by current user
       const { data, error } = await supabase
         .from('debts')
         .select('*')
+        .eq('created_by', userData.user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -167,7 +193,10 @@ export const DebtCollection: React.FC = () => {
         return;
       }
 
-      console.log('Loaded debts from database:', data?.length || 0, 'items');
+      console.log('✓ Loaded debts from database:', data?.length || 0, 'items');
+      if (data && data.length > 0) {
+        console.log('Sample debt record:', data[0]);
+      }
       setDebts(data || []);
     } catch (error) {
       console.error('Failed to load debts:', error);
@@ -175,6 +204,15 @@ export const DebtCollection: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    toast.info('Refreshing debt records...');
+    await loadDebts();
+    setIsRefreshing(false);
+    toast.success('Debts refreshed successfully!');
   };
 
   // Save debt to database
@@ -549,6 +587,16 @@ export const DebtCollection: React.FC = () => {
             <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="secondary"
+              size="sm"
+              icon={RefreshCw}
+              onClick={handleRefresh}
+              disabled={isRefreshing || isSendingReminders || isGeneratingReport}
+              className={isRefreshing ? 'animate-spin' : ''}
+            >
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
             <Button 
               variant={automationEnabled ? "default" : "secondary"} 
               icon={Zap}
