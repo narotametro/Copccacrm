@@ -3948,6 +3948,36 @@ const SalesHub: React.FC = () => {
 
           await supabase.from('sales_hub_orders').insert(orderData);
 
+          // AUTO-CREATE DEBT RECORD for credit orders
+          if (paymentMethod === 'credit') {
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30); // Default 30 days payment term
+
+            const debtData = {
+              invoice_number: invoiceNumber,
+              amount: total,
+              due_date: dueDate.toISOString().split('T')[0],
+              status: 'pending',
+              days_overdue: 0,
+              payment_probability: 70,
+              risk_score: 'medium',
+              auto_reminder: true,
+              company_id: customerSelectionMode === 'walk-in' ? null : selectedCustomer!.id,
+              company_name: customerSelectionMode === 'walk-in' ? 'Walk-in Customer' : selectedCustomer!.name,
+              company_contact_email: customerSelectionMode === 'walk-in' ? '' : (selectedCustomer!.email || ''),
+              company_contact_phone: customerSelectionMode === 'walk-in' ? '' : (selectedCustomer!.phone || ''),
+              created_by: (await supabase.auth.getUser()).data.user?.id
+            };
+
+            const { error: debtError } = await supabase.from('debts').insert(debtData);
+            
+            if (debtError) {
+              console.error('Failed to auto-create debt record:', debtError);
+            } else {
+              console.log('✓ Auto-created debt record for credit order:', invoiceNumber);
+            }
+          }
+
           // Get selected warehouse/location name
           const selectedLocation = locations.find(loc => loc.id === selectedWarehouse);
           const locationName = selectedLocation ? selectedLocation.name : 'main-store';
