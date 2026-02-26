@@ -226,6 +226,7 @@ export const Pipeline: React.FC = () => {
     e.preventDefault();
 
     try {
+      // Temporarily exclude notes to avoid Supabase schema cache issue
       const dealData = {
         title: form.title,
         company_id: form.company_id,
@@ -234,7 +235,7 @@ export const Pipeline: React.FC = () => {
         probability: parseInt(form.probability),
         expected_close_date: form.expected_close_date || null,
         assigned_to: form.assigned_to || null,
-        notes: form.notes || null,
+        // notes: form.notes || null, // TODO: Re-enable after Supabase schema cache refresh
       };
 
       if (modalMode === 'add') {
