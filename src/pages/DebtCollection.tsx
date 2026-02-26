@@ -73,15 +73,18 @@ export const DebtCollection: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
 
-      // Load all customer companies accessible to this user
-      // RLS policies will automatically filter to show only accessible companies
+      // Load ONLY customer companies (exclude user's own company)
+      // is_own_company flag distinguishes between user's company and their customers
       const { data, error } = await supabase
         .from('companies')
         .select('*')
+        .eq('created_by', userData.user.id)
+        .eq('is_own_company', false)
         .order('name');
 
       if (error) {
         console.error('Failed to load customers:', error);
+        toast.error('Failed to load customers');
         return;
       }
 
@@ -102,8 +105,10 @@ export const DebtCollection: React.FC = () => {
       }));
 
       setCustomers(transformedCustomers);
+      console.log('Loaded customers for debt collection:', transformedCustomers.length);
     } catch (error) {
       console.error('Failed to load customers:', error);
+      toast.error('Failed to load customers');
     }
   };
 
@@ -793,12 +798,19 @@ export const DebtCollection: React.FC = () => {
               <option value="">Select a customer...</option>
               {customers.map((customer: Customer) => (
                 <option key={customer.id} value={customer.id}>
-                  {customer.name} - {customer.email} (Lifetime Value: {formatCurrency(customer.lifetime_value)})
+                  {customer.name}{customer.email ? ` - ${customer.email}` : ''}{customer.phone ? ` - ${customer.phone}` : ''}
                 </option>
               ))}
             </select>
             {customers.length === 0 && (
-              <p className="text-sm text-slate-500 mt-1">No customers available. Add customers in the Customers section first.</p>
+              <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
+                ⚠️ No customers found. Add customers in the Customers 360 section first.
+              </p>
+            )}
+            {customers.length > 0 && (
+              <p className="text-sm text-green-600 mt-2">
+                ✓ {customers.length} customer{customers.length !== 1 ? 's' : ''} available
+              </p>
             )}
           </div>
 
