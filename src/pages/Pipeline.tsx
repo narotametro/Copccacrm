@@ -101,13 +101,13 @@ export const Pipeline: React.FC = () => {
       if (!userData?.user) return;
 
       // Get current user's company_id first
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
+      const { data: currentUser } = await supabase
+        .from('users')
         .select('company_id')
         .eq('id', userData.user.id)
         .single();
 
-      if (!currentUserProfile?.company_id) {
+      if (!currentUser?.company_id) {
         toast.error('User company not found');
         return;
       }
@@ -129,9 +129,9 @@ export const Pipeline: React.FC = () => {
           .eq('created_by', userData.user.id)
           .order('name'),
         supabase
-          .from('profiles')
+          .from('users')
           .select('id, full_name, email')
-          .eq('company_id', currentUserProfile.company_id)
+          .eq('company_id', currentUser.company_id)
           .order('full_name')
       ]);
 
