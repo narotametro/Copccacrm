@@ -3836,6 +3836,12 @@ const SalesHub: React.FC = () => {
 
       const total = subtotal + taxAmount - actualDiscountAmount;
       
+      console.log('💰 Order totals breakdown:');
+      console.log('  Subtotal:', subtotal);
+      console.log('  Tax (18%):', taxAmount);
+      console.log('  Discount:', actualDiscountAmount);
+      console.log('  TOTAL:', total);
+      
       // Generate truly unique invoice number using timestamp + crypto random
       const timestamp = Date.now();
       const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -4095,7 +4101,8 @@ const SalesHub: React.FC = () => {
             } else {
               console.log('✓ Auto-created debt record for credit order:', invoiceNumber);
               console.log('  Customer:', debtData.company_name);
-              console.log('  Amount:', formatCurrency(debtData.amount));
+              console.log('  RAW Amount (what we inserted):', debtData.amount);
+              console.log('  Formatted Amount:', formatCurrency(debtData.amount));
               console.log('  Due Date:', debtData.due_date);
               toast.success('📋 Debt record created for credit order', { duration: 3000 });
             }
