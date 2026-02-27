@@ -2531,6 +2531,7 @@ const SalesHub: React.FC = () => {
   const discountInputRef = useRef<HTMLInputElement>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
   const [customDueDate, setCustomDueDate] = useState<string>('');
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   
   // Warehouse/Location selection state
   const [locations, setLocations] = useState<Array<{ id: string; name: string; type: string }>>([]);
@@ -3811,10 +3812,18 @@ const SalesHub: React.FC = () => {
 
   const handleCompleteOrder = async () => {
     try {
+      // Prevent double-clicks
+      if (isProcessingOrder) {
+        console.warn('⚠️ Order already being processed, ignoring duplicate click');
+        return;
+      }
+
       if ((customerSelectionMode !== 'walk-in' && !selectedCustomer) || cart.length === 0) {
         toast.error('Please select a customer and add items to cart');
         return;
       }
+
+      setIsProcessingOrder(true);
 
       // Calculate totals
       const subtotal = getTotal();
@@ -3826,7 +3835,14 @@ const SalesHub: React.FC = () => {
         : Math.min(committedDiscountAmount, subtotal);
 
       const total = subtotal + taxAmount - actualDiscountAmount;
-      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      
+      // Generate truly unique invoice number using timestamp + crypto random
+      const timestamp = Date.now();
+      const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const uniqueId = `${timestamp}${randomPart}`;
+      const invoiceNumber = `INV-${uniqueId}`;
+      
+      console.log('🆔 Generated unique invoice number:', invoiceNumber);
 
       // IMMEDIATE UI UPDATE - Clear cart and show success modal right away
       const orderSnapshot = {
@@ -3842,6 +3858,7 @@ const SalesHub: React.FC = () => {
       setCustomDueDate(''); // Reset due date after order completion
       setCompletedOrderData(orderSnapshot);
       setShowPostOrderModal(true);
+      setIsProcessingOrder(false); // Reset processing state after UI update
       toast.success('Order completed successfully!');
 
       // OPTIMISTIC UPDATE: Add order to history immediately for instant visual feedback
@@ -4000,8 +4017,18 @@ const SalesHub: React.FC = () => {
           
           if (orderError) {
             console.error('❌ Failed to save order to database:', orderError);
+            console.error('Error code:', orderError.code);
+            console.error('Error details:', orderError.details);
+            console.error('Error hint:', orderError.hint);
             console.error('Order data:', orderData);
-            toast.error(`Failed to save order: ${orderError.message}`);
+            
+            // Handle specific error types
+            if (orderError.code === '23505') {
+              // Unique constraint violation (duplicate invoice number)
+              toast.error('Order number conflict. Please try again.');
+            } else {
+              toast.error(`Failed to save order: ${orderError.message}`);
+            }
             // Continue with other operations but notify user
           } else {
             console.log('✓ Order saved to database:', insertedOrder?.id);
@@ -4105,6 +4132,7 @@ const SalesHub: React.FC = () => {
     } catch (error) {
       console.error('Error completing order:', error);
       toast.error('Failed to complete order. Please try again.');
+      setIsProcessingOrder(false); // Reset processing state on error
     }
   };
 
@@ -6542,9 +6570,10 @@ const CustomerBuyingPatternsSection = () => {
                 </Button>
                 <Button
                   onClick={handleCompleteOrder}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                  disabled={isProcessingOrder || cart.length === 0}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  🛒 Checkout & Complete Sale
+                  {isProcessingOrder ? '⏳ Processing...' : '🛒 Checkout & Complete Sale'}
                 </Button>
               </div>
             )}
