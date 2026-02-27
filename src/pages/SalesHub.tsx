@@ -3844,6 +3844,42 @@ const SalesHub: React.FC = () => {
       setShowPostOrderModal(true);
       toast.success('Order completed successfully!');
 
+      // OPTIMISTIC UPDATE: Add order to history immediately for instant visual feedback
+      const optimisticOrder: any = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        order_number: invoiceNumber,
+        customer_id: customerSelectionMode === 'walk-in' ? null : (selectedCustomer?.customer_id || selectedCustomer?.id),
+        subtotal: subtotal,
+        tax_amount: taxAmount,
+        discount_type: discountType,
+        discount_value: discountType === 'percentage' ? committedDiscountPercent : committedDiscountAmount,
+        discount_amount: actualDiscountAmount,
+        total_amount: total,
+        payment_method: paymentMethod,
+        items: orderSnapshot.items.map(item => ({
+          product_id: item.product.id,
+          name: item.product.name,
+          sku: item.product.sku,
+          brand: item.product.brands?.name || '',
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.subtotal
+        })),
+        status: 'completed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sales_hub_customers: customerSelectionMode === 'walk-in' 
+          ? { id: null, name: 'Walk-in Customer', company_name: null }
+          : { 
+              id: selectedCustomer?.id, 
+              name: selectedCustomer?.name, 
+              company_name: selectedCustomer?.company_name 
+            }
+      };
+
+      // Prepend the new order to show it at the top instantly
+      setOrderHistory(prev => [optimisticOrder, ...prev]);
+
       // Process backend operations asynchronously without blocking UI
       (async () => {
         try {
