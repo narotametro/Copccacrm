@@ -3964,7 +3964,7 @@ const SalesHub: React.FC = () => {
           // Save order
           const orderData = {
             order_number: invoiceNumber,
-            customer_id: salesHubCustomerId,
+            customer_id: salesHubCustomerId || null,
             subtotal: subtotal,
             tax_amount: taxAmount,
             discount_type: discountType,
@@ -3972,6 +3972,7 @@ const SalesHub: React.FC = () => {
             discount_amount: actualDiscountAmount,
             total_amount: total,
             payment_method: paymentMethod,
+            status: 'completed',
             items: orderSnapshot.items.map(item => ({
               product_id: item.product.id,
               name: item.product.name,
@@ -3984,15 +3985,30 @@ const SalesHub: React.FC = () => {
             created_by: (await supabase.auth.getUser()).data.user?.id
           };
 
-          const { error: orderError } = await supabase.from('sales_hub_orders').insert(orderData);
+          console.log('📝 Inserting order:', { 
+            invoice: invoiceNumber, 
+            customer_id: salesHubCustomerId,
+            total: total,
+            payment_method: paymentMethod
+          });
+
+          const { data: insertedOrder, error: orderError } = await supabase
+            .from('sales_hub_orders')
+            .insert(orderData)
+            .select()
+            .single();
           
           if (orderError) {
-            console.error('Failed to save order:', orderError);
-            // Order failed but UI already updated - continue with stock updates
+            console.error('❌ Failed to save order to database:', orderError);
+            console.error('Order data:', orderData);
+            toast.error(`Failed to save order: ${orderError.message}`);
+            // Continue with other operations but notify user
+          } else {
+            console.log('✓ Order saved to database:', insertedOrder?.id);
           }
 
-          // AUTO-CREATE DEBT RECORD for credit orders
-          if (paymentMethod === 'credit') {
+          // AUTO-CREATE DEBT RECORD for credit orders (only if order was saved successfully)
+          if (paymentMethod === 'credit' && !orderError && insertedOrder) {
             // Use custom due date if provided, otherwise default to +30 days
             let dueDate: string;
             if (customDueDate) {
@@ -4031,6 +4047,8 @@ const SalesHub: React.FC = () => {
               console.log('  Due Date:', debtData.due_date);
               toast.success('📋 Debt record created for credit order', { duration: 3000 });
             }
+          } else if (paymentMethod === 'credit' && orderError) {
+            console.warn('⚠️ Skipping debt creation because order save failed');
           }
 
           // Get selected warehouse/location name
