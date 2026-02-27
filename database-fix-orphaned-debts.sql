@@ -96,7 +96,7 @@ SELECT
   END,
   CASE 
     WHEN (o.created_at::date + INTERVAL '30 days')::date < CURRENT_DATE 
-    THEN EXTRACT(DAY FROM CURRENT_DATE - (o.created_at::date + INTERVAL '30 days')::date)::integer
+    THEN (CURRENT_DATE - (o.created_at::date + INTERVAL '30 days')::date)
     ELSE 0
   END,
   70,
