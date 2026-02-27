@@ -71,7 +71,7 @@ export const DebtCollection: React.FC = () => {
     } else if (absNum >= 10000) {
       return `${(num / 1000).toFixed(0)}K`; // Thousands (only for 10K+)
     }
-    return formatCurrency(convertAmount(num)); // Regular format for smaller amounts
+    return formatCurrency(num); // Regular format - amounts already in local currency
   };
 
   // Load customers from database
@@ -468,7 +468,7 @@ export const DebtCollection: React.FC = () => {
     // Generate AI insights
     const insights = [
       `Collection rate of ${collectionRate}% with ${paidDebts} out of ${totalDebts} debts collected`,
-      `Outstanding balance of ${formatCurrency(convertAmount(totalOutstanding))}`,
+      `Outstanding balance of ${formatCurrency(totalOutstanding)}`,
       `${overdueDebts} debts are currently overdue requiring immediate attention`,
       `${highRiskDebts} high-risk debts need escalation`,
       `Average payment probability: ${avgPaymentProbability}%`,
@@ -699,12 +699,11 @@ export const DebtCollection: React.FC = () => {
           <p className="text-xl lg:text-2xl font-bold text-slate-900 break-words">
             {(() => {
               const total = debts.filter(d => d.status !== 'paid').reduce((sum, d) => sum + d.amount, 0);
-              const convertedTotal = convertAmount(total);
               // Use abbreviation for very large numbers (> 1 billion)
-              if (convertedTotal >= 1000000000) {
+              if (total >= 1000000000) {
                 return `TSh${formatLargeNumber(total)}`;
               }
-              return formatCurrency(convertedTotal);
+              return formatCurrency(total);
             })()}
           </p>
         </Card>
@@ -830,7 +829,7 @@ export const DebtCollection: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3 px-4 font-medium">{debt.invoice_number}</td>
-                  <td className="py-3 px-4">{formatCurrency(convertAmount(debt.amount))}</td>
+                  <td className="py-3 px-4">{formatCurrency(debt.amount)}</td>
                   <td className="py-3 px-4">
                     <div>
                       <p>{new Date(debt.due_date).toLocaleDateString()}</p>
