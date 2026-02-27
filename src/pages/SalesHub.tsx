@@ -3932,25 +3932,38 @@ const SalesHub: React.FC = () => {
 
             if (existingWalkIn) {
               salesHubCustomerId = existingWalkIn.id;
+              console.log('✓ Found existing walk-in customer:', existingWalkIn.id);
             } else {
-              const { data: newWalkInCustomer } = await supabase
+              console.log('📝 Creating new walk-in customer');
+              const { data: newWalkInCustomer, error: walkInError } = await supabase
                 .from('sales_hub_customers')
                 .insert(walkInCustomerData)
                 .select('id')
                 .single();
+              
+              if (walkInError) {
+                console.error('❌ Failed to create walk-in customer:', walkInError);
+                throw new Error(`Failed to create walk-in customer: ${walkInError.message}`);
+              }
               salesHubCustomerId = newWalkInCustomer?.id;
+              console.log('✓ Created walk-in customer:', salesHubCustomerId);
             }
           } else {
-            salesHubCustomerId = selectedCustomer!.id;
-
+            // Look up or create customer in sales_hub_customers
             const { data: existingCustomer } = await supabase
               .from('sales_hub_customers')
               .select('id')
               .eq('customer_id', selectedCustomer!.customer_id)
               .single();
 
-            if (!existingCustomer) {
-              const { data: newCustomer } = await supabase
+            if (existingCustomer) {
+              // Customer already exists in sales_hub_customers
+              salesHubCustomerId = existingCustomer.id;
+              console.log('✓ Found existing customer in sales_hub:', existingCustomer.id);
+            } else {
+              // Create new customer in sales_hub_customers
+              console.log('📝 Creating new sales_hub_customer for:', selectedCustomer!.name);
+              const { data: newCustomer, error: customerError } = await supabase
                 .from('sales_hub_customers')
                 .insert({
                   customer_id: selectedCustomer!.customer_id,
@@ -3974,14 +3987,26 @@ const SalesHub: React.FC = () => {
                 })
                 .select('id')
                 .single();
+              
+              if (customerError) {
+                console.error('❌ Failed to create sales_hub_customer:', customerError);
+                throw new Error(`Failed to create customer: ${customerError.message}`);
+              }
               salesHubCustomerId = newCustomer?.id;
+              console.log('✓ Created new sales_hub_customer:', salesHubCustomerId);
             }
+          }
+
+          // Validate customer ID before creating order
+          if (!salesHubCustomerId) {
+            console.error('❌ No valid customer ID for order');
+            throw new Error('Failed to get or create customer record');
           }
 
           // Save order
           const orderData = {
             order_number: invoiceNumber,
-            customer_id: salesHubCustomerId || null,
+            customer_id: salesHubCustomerId,
             subtotal: subtotal,
             tax_amount: taxAmount,
             discount_type: discountType,
