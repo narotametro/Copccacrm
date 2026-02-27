@@ -102,7 +102,7 @@ SELECT
   70,
   'medium',
   true,
-  c.customer_id,
+  c.customer_id::uuid,
   c.name,
   c.email,
   COALESCE(c.mobile, c.phone),
