@@ -32,7 +32,7 @@ type Debt = {
 };
 
 export const DebtCollection: React.FC = () => {
-  const { formatCurrency, convertAmount } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const { customers: contextCustomers } = useSharedData();
   const [customers, setCustomers] = useState<Customer[]>(contextCustomers);
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -51,9 +51,6 @@ export const DebtCollection: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAddDebtModal, setShowAddDebtModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [invoiceSource, setInvoiceSource] = useState<'sales_hub' | 'manual'>('manual');
-  const [salesHubOrders, setSalesHubOrders] = useState<any[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [debtForm, setDebtForm] = useState({
     invoice_number: '',
     amount: '',
@@ -83,13 +80,6 @@ export const DebtCollection: React.FC = () => {
   useEffect(() => {
     loadDebts();
   }, []);
-
-  // Load Sales Hub orders when modal opens
-  useEffect(() => {
-    if (showAddDebtModal) {
-      loadSalesHubOrders();
-    }
-  }, [showAddDebtModal]);
 
   // Auto-refresh debts when page becomes visible (user returns from another page)
   useEffect(() => {
@@ -146,36 +136,6 @@ export const DebtCollection: React.FC = () => {
     } catch (error) {
       console.error('Failed to load customers:', error);
       toast.error('Failed to load customers');
-    }
-  };
-
-  // Load Sales Hub orders (ONLY CREDIT/PENDING invoices)
-  const loadSalesHubOrders = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) return;
-
-      // Load ONLY credit invoices (unpaid/pending payment)
-      const { data, error } = await supabase
-        .from('sales_hub_orders')
-        .select(`
-          *,
-          companies:customer_id(id, name, email, phone)
-        `)
-        .eq('created_by', userData.user.id)
-        .eq('status', 'completed')
-        .eq('payment_method', 'credit')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Failed to load Sales Hub orders:', error);
-        return;
-      }
-
-      setSalesHubOrders(data || []);
-      console.log('Loaded Sales Hub orders:', data?.length || 0);
-    } catch (error) {
-      console.error('Failed to load Sales Hub orders:', error);
     }
   };
 
@@ -585,8 +545,6 @@ export const DebtCollection: React.FC = () => {
         risk_score: 'medium',
       });
       setSelectedCustomer(null);
-      setSelectedOrder(null);
-      setInvoiceSource('manual');
       setShowAddDebtModal(false);
     }
   };
@@ -912,8 +870,6 @@ export const DebtCollection: React.FC = () => {
         isOpen={showAddDebtModal}
         onClose={() => {
           setShowAddDebtModal(false);
-          setInvoiceSource('manual');
-          setSelectedOrder(null);
           setSelectedCustomer(null);
           setDebtForm({
             invoice_number: '',
@@ -925,113 +881,7 @@ export const DebtCollection: React.FC = () => {
         title="Add Debt Record"
       >
         <form onSubmit={handleAddDebt} className="space-y-4">
-          {/* Invoice Source Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-3">
-              Invoice Source <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setInvoiceSource('sales_hub');
-                  setSelectedCustomer(null);
-                  setDebtForm({ ...debtForm, invoice_number: '', amount: '' });
-                }}
-                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                  invoiceSource === 'sales_hub'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="font-semibold">Sales Hub</div>
-                  <div className="text-xs mt-1">Select existing invoice</div>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setInvoiceSource('manual');
-                  setSelectedOrder(null);
-                  setSelectedCustomer(null);
-                  setDebtForm({ ...debtForm, invoice_number: '', amount: '' });
-                }}
-                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                  invoiceSource === 'manual'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
-                }`}
-              >
-                <div className="text-center">
-                  <div className="font-semibold">Manual Entry</div>
-                  <div className="text-xs mt-1">External POS system</div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Sales Hub Invoice Selection */}
-          {invoiceSource === 'sales_hub' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Select Invoice <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedOrder?.id || ''}
-                onChange={(e) => {
-                  const orderId = e.target.value;
-                  const order = salesHubOrders.find((o) => o.id === orderId);
-                  if (order) {
-                    setSelectedOrder(order);
-                    setDebtForm({
-                      ...debtForm,
-                      invoice_number: order.order_number,
-                      amount: order.total_amount.toString(),
-                    });
-                    // Auto-select customer if available
-                    console.log('Looking for customer with ID:', order.customer_id);
-                    console.log('Available customers:', customers.length);
-                    const customer = customers.find((c) => c.id === order.customer_id);
-                    if (customer) {
-                      console.log('Found customer:', customer.name);
-                      setSelectedCustomer(customer);
-                      toast.success(`Auto-filled customer: ${customer.name}`);
-                    } else {
-                      console.warn('Customer not found in list. Order customer_id:', order.customer_id);
-                      console.warn('Available customer IDs:', customers.map(c => c.id));
-                      toast.warning('Customer not found. Please select manually.');
-                      setSelectedCustomer(null);
-                    }
-                  } else {
-                    setSelectedOrder(null);
-                    setSelectedCustomer(null);
-                  }
-                }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                required
-              >
-                <option value="">Select an invoice...</option>
-                {salesHubOrders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.order_number} - {formatCurrency(order.total_amount)} - {order.companies?.name || 'Unknown Customer'} - {new Date(order.created_at).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-              {salesHubOrders.length === 0 && (
-                <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                  ⚠️ No pending credit invoices found. Use Manual Entry for external POS invoices.
-                </p>
-              )}
-              {salesHubOrders.length > 0 && (
-                <p className="text-sm text-green-600 mt-2">
-                  ✓ {salesHubOrders.length} pending credit invoice{salesHubOrders.length !== 1 ? 's' : ''} available
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Customer Selection - Auto-filled for Sales Hub, manual for external */}
+          {/* Customer Selection */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Customer <span className="text-red-500">*</span>
@@ -1048,7 +898,6 @@ export const DebtCollection: React.FC = () => {
               }}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               required
-              disabled={invoiceSource === 'sales_hub' && !!selectedOrder}
             >
               <option value="">Select a customer...</option>
               {customers.map((customer: Customer) => (
@@ -1057,21 +906,16 @@ export const DebtCollection: React.FC = () => {
                 </option>
               ))}
             </select>
-            {invoiceSource === 'sales_hub' && selectedOrder && selectedCustomer && (
-              <p className="text-sm text-blue-600 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
-                ✓ Auto-filled: <strong>{selectedCustomer.name}</strong>
-              </p>
-            )}
-            {invoiceSource === 'sales_hub' && selectedOrder && !selectedCustomer && (
-              <p className="text-sm text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-200">
-                ⚠️ Customer not found. Please add this customer in Customers 360 first.
-              </p>
-            )}
           </div>
 
-          {/* Manual Invoice Details */}
-          {invoiceSource === 'manual' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Invoice Details */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Enter invoice details from your external POS system or manual records.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Invoice Number"
                 placeholder="INV-001"
@@ -1088,31 +932,7 @@ export const DebtCollection: React.FC = () => {
                 required
               />
             </div>
-          )}
-
-          {/* Sales Hub - Show read-only invoice details */}
-          {invoiceSource === 'sales_hub' && selectedOrder && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Invoice Number</label>
-                <input
-                  type="text"
-                  value={debtForm.invoice_number}
-                  readOnly
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Amount</label>
-                <input
-                  type="text"
-                  value={formatCurrency(parseFloat(debtForm.amount))}
-                  readOnly
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
-                />
-              </div>
-            </div>
-          )}
+          )
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
