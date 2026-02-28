@@ -155,17 +155,120 @@ export const Products: React.FC = () => {
     }
   };
 
-  const handleSalesHubProductSelect = (productId: string) => {
+  const handleSalesHubProductSelect = async (productId: string) => {
     setSelectedSalesHubProduct(productId);
     const selected = salesHubProducts.find(p => p.id === productId);
     
-    if (selected) {
+    if (!selected) return;
+
+    try {
+      // Show loading notification
+      toast.info('📊 Calculating sales metrics from Sales Hub data...');
+
+      // Query all sales_hub_orders to calculate metrics
+      const { data: orders, error } = await supabase
+        .from('sales_hub_orders')
+        .select('items, total_amount, created_at, status')
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Calculate metrics from order items
+      let totalUnits = 0;
+      let monthlyRevenue = 0;
+      let totalRevenue = 0;
+      let previousMonthRevenue = 0;
+      let totalMarketRevenue = 0;
+
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+      orders?.forEach((order: any) => {
+        const orderDate = new Date(order.created_at);
+        const items = order.items || [];
+
+        items.forEach((item: any) => {
+          const itemRevenue = (item.quantity || 0) * (item.unit_price || 0);
+
+          // For this specific product
+          if (item.product_id === productId) {
+            totalUnits += item.quantity || 0;
+            totalRevenue += itemRevenue;
+
+            // Last 30 days revenue
+            if (orderDate >= thirtyDaysAgo) {
+              monthlyRevenue += itemRevenue;
+            }
+
+            // 30-60 days ago revenue (for growth calculation)
+            if (orderDate >= sixtyDaysAgo && orderDate < thirtyDaysAgo) {
+              previousMonthRevenue += itemRevenue;
+            }
+          }
+
+          // Total market revenue (all products, last 30 days)
+          if (orderDate >= thirtyDaysAgo) {
+            totalMarketRevenue += itemRevenue;
+          }
+        });
+      });
+
+      // Calculate derived metrics
+      const marketShare = totalMarketRevenue > 0 
+        ? ((monthlyRevenue / totalMarketRevenue) * 100).toFixed(1)
+        : '0';
+
+      const growthRate = previousMonthRevenue > 0
+        ? (((monthlyRevenue - previousMonthRevenue) / previousMonthRevenue) * 100).toFixed(1)
+        : monthlyRevenue > 0 ? '100' : '0';
+
+      // Determine market position based on performance
+      let marketPosition: 'leader' | 'growing' | 'stable' | 'declining' = 'stable';
+      if (totalUnits > 100) marketPosition = 'leader';
+      else if (totalUnits > 50) marketPosition = 'growing';
+      else if (parseFloat(growthRate) < -10) marketPosition = 'declining';
+
+      // Calculate AI score based on multiple factors
+      const revenueScore = Math.min((monthlyRevenue / 1000000) * 20, 30); // Up to 30 points
+      const volumeScore = Math.min((totalUnits / 100) * 20, 25); // Up to 25 points
+      const marketShareScore = parseFloat(marketShare) * 2; // Up to 20 points
+      const growthScore = Math.max(0, Math.min(parseFloat(growthRate) / 5, 25)); // Up to 25 points
+      const aiScore = Math.min(
+        Math.round(revenueScore + volumeScore + marketShareScore + growthScore),
+        100
+      );
+
+      // Auto-populate ALL fields from Sales Hub data
       setProductForm(prev => ({
         ...prev,
         name: selected.name,
         category: selected.categories?.name || '',
         price: selected.price.toString(),
-        // Keep other fields for user to fill
+        units_sold: totalUnits.toString(),
+        monthly_revenue: monthlyRevenue.toFixed(2),
+        market_share: marketShare,
+        market_position: marketPosition,
+        growth_rate: growthRate,
+        ai_score: aiScore.toString(),
+        // These fields remain editable for user input
+        usp: prev.usp,
+        package_design: prev.package_design,
+        key_features: prev.key_features,
+      }));
+
+      toast.success(`✅ All sales data loaded: ${totalUnits} units sold, TSh ${monthlyRevenue.toFixed(0)} monthly revenue`);
+    } catch (error) {
+      console.error('Error calculating sales metrics:', error);
+      toast.error('Failed to calculate sales metrics. Using basic product info only.');
+      
+      // Fallback to basic info if calculation fails
+      setProductForm(prev => ({
+        ...prev,
+        name: selected.name,
+        category: selected.categories?.name || '',
+        price: selected.price.toString(),
       }));
     }
   };
@@ -558,7 +661,7 @@ export const Products: React.FC = () => {
                 ))}
               </select>
               <p className="text-xs text-blue-600 mt-2">
-                💡 Product name, category, and price will be auto-filled. You can still edit them.
+                💡 All product data including sales metrics will be automatically calculated from Sales Hub. You can still edit any field.
               </p>
             </div>
           )}
