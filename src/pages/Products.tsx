@@ -672,7 +672,8 @@ export const Products: React.FC = () => {
                       icon={Edit}
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/app/products/${product.id}/edit`);
+                        // TODO: Implement edit modal with pre-filled data
+                        toast.info('Product editing: Open Add Product modal with product data pre-filled');
                       }}
                     >
                       Edit

@@ -203,13 +203,10 @@ export const ProductDetailPage: React.FC = () => {
                 icon={Edit}
                 variant="outline"
                 onClick={() => {
-                  // Navigate to edit mode or open edit modal
-                  const saved = localStorage.getItem('copcca-products');
-                  if (saved) {
-                    // For now, allow inline editing by updating localStorage
-                    toast.info('Edit mode: Update product details in Add Product modal');
-                    navigate('/app/products');
-                  }
+                  // Navigate back to products page
+                  // TODO: Implement opening Add Product modal with this product's data pre-filled
+                  navigate('/app/products');
+                  toast.info('Tip: Use Add Product button and Pull from Sales Hub to update product data');
                 }}
               >
                 Edit
