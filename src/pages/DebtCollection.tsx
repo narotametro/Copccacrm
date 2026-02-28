@@ -619,57 +619,56 @@ export const DebtCollection: React.FC = () => {
   return (
     <FeatureGate feature="debt_collection">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
-            <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="secondary"
-              size="sm"
-              icon={RefreshCw}
-              onClick={handleRefresh}
-              disabled={isRefreshing || isSendingReminders || isGeneratingReport}
-              className={isRefreshing ? 'animate-spin' : ''}
-            >
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            <Button 
-              variant={automationEnabled ? "default" : "secondary"} 
-              icon={Zap}
-              onClick={() => {
-              setAutomationEnabled(!automationEnabled);
-              toast.success(automationEnabled ? 'Automation paused' : 'Automation activated');
-            }}
-            disabled={isSendingReminders || isGeneratingReport}
-          >
-            {automationEnabled ? 'Automation ON' : 'Automation OFF'}
-          </Button>
-          <Button 
-            variant="secondary" 
-            icon={Send} 
-            onClick={handleSendAllReminders}
-            disabled={isSendingReminders || isGeneratingReport || !automationEnabled}
-          >
-            {isSendingReminders ? 'Sending...' : 'Send All Reminders'}
-          </Button>
-          <Button 
-            icon={TrendingUp} 
-            onClick={handleGenerateAIReport}
-            disabled={isSendingReminders || isGeneratingReport}
-          >
-            {isGeneratingReport ? 'Generating...' : 'AI Report'}
-          </Button>
-          <Button 
-            variant="ghost"
-            icon={Settings} 
-            onClick={() => navigate('/app/settings', { state: { openTab: 'sms' } })}
-            disabled={isSendingReminders || isGeneratingReport}
-          >
-            Configure SMS
-          </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">AI Debt Collection</h1>
+          <p className="text-slate-600 mt-1">Automated reminders, risk scoring & payment prediction</p>
         </div>
+        
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            variant="secondary"
+            size="sm"
+            icon={RefreshCw}
+            onClick={handleRefresh}
+            disabled={isRefreshing || isSendingReminders || isGeneratingReport}
+            className={isRefreshing ? 'animate-spin' : ''}
+          >
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button 
+            variant={automationEnabled ? "default" : "secondary"} 
+            icon={Zap}
+            onClick={() => {
+            setAutomationEnabled(!automationEnabled);
+            toast.success(automationEnabled ? 'Automation paused' : 'Automation activated');
+          }}
+          disabled={isSendingReminders || isGeneratingReport}
+        >
+          {automationEnabled ? 'Automation ON' : 'Automation OFF'}
+        </Button>
+        <Button 
+          variant="secondary" 
+          icon={Send} 
+          onClick={handleSendAllReminders}
+          disabled={isSendingReminders || isGeneratingReport || !automationEnabled}
+        >
+          {isSendingReminders ? 'Sending...' : 'Send All Reminders'}
+        </Button>
+        <Button 
+          icon={TrendingUp} 
+          onClick={handleGenerateAIReport}
+          disabled={isSendingReminders || isGeneratingReport}
+        >
+          {isGeneratingReport ? 'Generating...' : 'AI Report'}
+        </Button>
+        <Button 
+          variant="ghost"
+          icon={Settings} 
+          onClick={() => navigate('/app/settings', { state: { openTab: 'sms' } })}
+          disabled={isSendingReminders || isGeneratingReport}
+        >
+          Configure SMS
+        </Button>
       </div>
 
       {/* AI Automation Status */}
