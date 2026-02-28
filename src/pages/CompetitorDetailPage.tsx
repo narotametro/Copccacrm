@@ -384,9 +384,11 @@ export const CompetitorDetailPage: React.FC = () => {
                 <span className="text-2xl font-bold text-slate-900">{competitor.ai_threat_score}/100</span>
               </div>
               <p className="text-sm text-slate-600 mt-2">
-                {competitor.ai_threat_score > 70 ? 'High threat - requires immediate attention' :
-                 competitor.ai_threat_score > 50 ? 'Medium threat - monitor closely' :
-                 'Low threat - maintain awareness'}
+                {competitor.ai_threat_score >= 85 && '🚨 Critical threat - requires immediate strategic response and counter-measures'}
+                {competitor.ai_threat_score >= 70 && competitor.ai_threat_score < 85 && '⚠️ High threat - requires immediate attention and active monitoring'}
+                {competitor.ai_threat_score >= 50 && competitor.ai_threat_score < 70 && '👁️ Medium threat - monitor closely and prepare contingency plans'}
+                {competitor.ai_threat_score >= 30 && competitor.ai_threat_score < 50 && '✅ Moderate threat - periodic monitoring recommended'}
+                {competitor.ai_threat_score < 30 && '🟢 Low threat - maintain basic awareness'}
               </p>
             </Card>
           </div>

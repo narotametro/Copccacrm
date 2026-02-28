@@ -20,6 +20,142 @@ import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 
+// Helper function to generate AI recommendations based on competitor data
+const generateCompetitorRecommendations = (data: {
+  threat_level: string;
+  market_share: number;
+  market_position: string;
+  product_quality: number;
+  pricing_strategy: string;
+  innovation_level: number;
+  customer_satisfaction: number;
+  weaknesses: string;
+  key_features?: string[];
+}): string[] => {
+  const recommendations: string[] = [];
+
+  // Threat level based recommendations
+  if (data.threat_level === 'critical') {
+    recommendations.push('🚨 Critical threat - immediate strategic response required');
+    recommendations.push('📊 Conduct urgent competitive analysis and war-gaming exercises');
+  } else if (data.threat_level === 'high') {
+    recommendations.push('⚠️ High priority monitoring - weekly competitive intelligence reviews');
+  } else if (data.threat_level === 'medium') {
+    recommendations.push('👁️ Monitor pricing changes and marketing campaigns closely');
+  } else {
+    recommendations.push('✅ Low threat - maintain awareness and periodic monitoring');
+  }
+
+  // Market share based recommendations
+  if (data.market_share > 30) {
+    recommendations.push('👑 Dominant market leader - focus on differentiation and niche opportunities');
+  } else if (data.market_share > 15) {
+    recommendations.push('🎯 Significant market player - identify weaknesses and underserved segments');
+  } else if (data.market_share < 5) {
+    recommendations.push('🌱 Limited market presence - opportunity to capture their target segments');
+  }
+
+  // Quality & innovation based recommendations
+  if (data.product_quality >= 8 && data.innovation_level >= 8) {
+    recommendations.push('⚡ High quality + innovation threat - invest in R&D and feature development');
+  } else if (data.product_quality >= 8) {
+    recommendations.push('💎 Premium quality positioning - compete on value, service, or specialization');
+  } else if (data.product_quality <= 5) {
+    recommendations.push('📈 Quality gap opportunity - emphasize your superior quality in marketing');
+  }
+
+  // Pricing strategy recommendations
+  if (data.pricing_strategy === 'premium' && data.customer_satisfaction >= 8) {
+    recommendations.push('💰 Successful premium positioning - justify your value proposition clearly');
+  } else if (data.pricing_strategy === 'budget') {
+    recommendations.push('🎯 Budget competitor - compete on quality, service, and total value');
+  } else if (data.pricing_strategy === 'competitive') {
+    recommendations.push('⚖️ Direct price competition - focus on differentiation and added value');
+  }
+
+  // Customer satisfaction analysis
+  if (data.customer_satisfaction < 6) {
+    recommendations.push(`🎁 Low customer satisfaction (${data.customer_satisfaction}/10) - highlight your superior service`);
+  } else if (data.customer_satisfaction >= 9) {
+    recommendations.push('🌟 High customer loyalty - focus on distinctive features they lack');
+  }
+
+  // Weakness-based opportunities
+  if (data.weaknesses && data.weaknesses.length > 20) {
+    const weaknessLower = data.weaknesses.toLowerCase();
+    if (weaknessLower.includes('price') || weaknessLower.includes('cost') || weaknessLower.includes('expensive')) {
+      recommendations.push('💵 Price sensitivity weakness - position value proposition competitively');
+    }
+    if (weaknessLower.includes('service') || weaknessLower.includes('support') || weaknessLower.includes('customer')) {
+      recommendations.push('🤝 Service weakness identified - emphasize your customer support excellence');
+    }
+    if (weaknessLower.includes('feature') || weaknessLower.includes('functionality')) {
+      recommendations.push('✨ Feature gap opportunity - promote your advanced capabilities');
+    }
+  }
+
+  // Market position strategies
+  if (data.market_position === 'leader') {
+    recommendations.push('🎖️ Market leader status - disrupt with innovation or capture underserved niches');
+  } else if (data.market_position === 'challenger') {
+    recommendations.push('⚔️ Aggressive challenger - monitor expansion plans and counter-strategies');
+  }
+
+  // Feature analysis
+  if (data.key_features && data.key_features.length > 0) {
+    const features = data.key_features.map(f => f.toLowerCase()).join(' ');
+    if (features.includes('smart') || features.includes('ai')) {
+      recommendations.push('🤖 AI/Smart features detected - accelerate digital capabilities');
+    }
+    if (features.includes('eco') || features.includes('green') || features.includes('sustain')) {
+      recommendations.push('🌿 Sustainability positioning - consider eco-friendly improvements');
+    }
+    if (data.key_features.length > 6) {
+      recommendations.push(`🔧 Feature-rich product (${data.key_features.length} features) - simplify and focus messaging`);
+    }
+  }
+
+  return recommendations.slice(0, 6); // Return top 6 recommendations
+};
+
+const calculateThreatScore = (data: {
+  threat_level: string;
+  market_share: number;
+  product_quality: number;
+  pricing_strategy: string;
+  innovation_level: number;
+  customer_satisfaction: number;
+  market_position: string;
+}): number => {
+  let score = 0;
+
+  // Threat level base score (30 points)
+  const threatScores = { critical: 30, high: 25, medium: 20, low: 10 };
+  score += threatScores[data.threat_level as keyof typeof threatScores] || 15;
+
+  // Market share contribution (25 points)
+  score += Math.min(data.market_share * 0.8, 25);
+
+  // Product quality impact (15 points)
+  score += (data.product_quality / 10) * 15;
+
+  // Innovation level (15 points)
+  score += (data.innovation_level / 10) * 15;
+
+  // Customer satisfaction (10 points)
+  score += (data.customer_satisfaction / 10) * 10;
+
+  // Pricing strategy modifier (5 points)
+  const pricingScores = { premium: 5, competitive: 4, value: 3, budget: 2 };
+  score += pricingScores[data.pricing_strategy as keyof typeof pricingScores] || 3;
+
+  // Market position modifier (bonus)
+  if (data.market_position === 'leader') score += 5;
+  else if (data.market_position === 'challenger') score += 3;
+
+  return Math.min(Math.round(score), 100);
+};
+
 interface Competitor {
   id: string;
   name: string;
@@ -403,28 +539,29 @@ export const Competitors: React.FC = () => {
       return;
     }
 
-    const aiThreatScore = Math.floor(Math.random() * 40) + 60; // 60-100
-    const aiRecommendations = [
-      'Monitor pricing changes closely',
-      'Track their marketing campaigns',
-      'Analyze customer feedback for weaknesses',
-      'Consider partnership opportunities',
-      'Develop counter-marketing strategies'
-    ];
+    // Calculate real threat score based on competitor data
+    const aiThreatScore = calculateThreatScore({
+      threat_level: form.threat_level,
+      market_share: Number(form.market_share) || 0,
+      product_quality: form.product_quality,
+      pricing_strategy: form.pricing_strategy,
+      innovation_level: form.innovation_level,
+      customer_satisfaction: form.customer_satisfaction,
+      market_position: form.market_position,
+    });
 
-    // Add feature-specific recommendations
-    if (form.key_features && form.key_features.length > 0) {
-      if (form.key_features.some(f => f.toLowerCase().includes('smart') || f.toLowerCase().includes('ai'))) {
-        aiRecommendations.push('Competitor has smart/AI features - accelerate your digital transformation');
-      }
-      if (form.key_features.some(f => f.toLowerCase().includes('4k') || f.toLowerCase().includes('ultra'))) {
-        aiRecommendations.push('High-quality display features detected - focus on premium positioning');
-      }
-      if (form.key_features.length > 5) {
-        aiRecommendations.push('Feature-rich product - consider simplifying your offering for better usability');
-      }
-      aiRecommendations.push(`Analyze ${form.key_features.length} key features for competitive advantage opportunities`);
-    }
+    // Generate real AI recommendations based on competitor analysis
+    const aiRecommendations = generateCompetitorRecommendations({
+      threat_level: form.threat_level,
+      market_share: Number(form.market_share) || 0,
+      market_position: form.market_position,
+      product_quality: form.product_quality,
+      pricing_strategy: form.pricing_strategy,
+      innovation_level: form.innovation_level,
+      customer_satisfaction: form.customer_satisfaction,
+      weaknesses: form.weaknesses || '',
+      key_features: form.key_features,
+    });
 
     const newCompetitor: Competitor = {
       id: crypto.randomUUID(),
