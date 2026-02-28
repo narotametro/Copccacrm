@@ -203,10 +203,8 @@ export const ProductDetailPage: React.FC = () => {
                 icon={Edit}
                 variant="outline"
                 onClick={() => {
-                  // Navigate back to products page
-                  // TODO: Implement opening Add Product modal with this product's data pre-filled
-                  navigate('/app/products');
-                  toast.info('Tip: Use Add Product button and Pull from Sales Hub to update product data');
+                  // Navigate back to products page with edit state
+                  navigate('/app/products', { state: { editProductId: product.id } });
                 }}
               >
                 Edit

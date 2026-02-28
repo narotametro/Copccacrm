@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Package,
   Brain,
@@ -196,7 +196,21 @@ export const Products: React.FC = () => {
   });
   const [salesHubProducts, setSalesHubProducts] = useState<any[]>([]);
   const [selectedSalesHubProduct, setSelectedSalesHubProduct] = useState<string>('');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle edit from ProductDetailPage navigation state
+  useEffect(() => {
+    if (location.state?.editProductId) {
+      const productToEdit = products.find(p => p.id === location.state.editProductId);
+      if (productToEdit) {
+        handleEditProduct(productToEdit);
+      }
+      // Clear the state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   // Save products to localStorage whenever they change
   useEffect(() => {
@@ -354,6 +368,31 @@ export const Products: React.FC = () => {
       }));
     }
   };
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      category: product.category,
+      price: product.price.toString(),
+      pricing_strategy: product.pricing_strategy,
+      units_sold: product.units_sold.toString(),
+      monthly_revenue: product.monthly_revenue.toString(),
+      market_share: product.market_share.toString(),
+      market_position: product.market_position,
+      ai_score: product.ai_score.toString(),
+      growth_rate: product.growth_rate.toString(),
+      usp: product.usp || '',
+      package_design: product.package_design || '',
+      key_features: product.key_features || [],
+      target_audience: product.target_audience || '',
+      pain_points: product.pain_points || '',
+      strengths: product.strengths || '',
+      weaknesses: product.weaknesses || '',
+      dataSource: 'manual',
+    });
+    setShowAddModal(true);
+  };
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) {
@@ -365,8 +404,8 @@ export const Products: React.FC = () => {
     const unitsSold = Number(productForm.units_sold) || 0;
     const growthRate = Number(productForm.growth_rate) || 0;
 
-    const newProduct: Product = {
-      id: crypto.randomUUID(),
+    const productData: Product = {
+      id: editingProduct ? editingProduct.id : crypto.randomUUID(),
       name: productForm.name.trim(),
       category: productForm.category.trim() || 'General',
       price: Number(productForm.price) || 0,
@@ -385,8 +424,8 @@ export const Products: React.FC = () => {
       pain_points: productForm.pain_points.trim() || '',
       strengths: productForm.strengths.trim() || '',
       weaknesses: productForm.weaknesses.trim() || '',
-      competitor_products: [],
-      feedback_summary: {
+      competitor_products: editingProduct?.competitor_products || [],
+      feedback_summary: editingProduct?.feedback_summary || {
         positive_count: 0,
         negative_count: 0,
         top_praise: 'Awaiting feedback',
@@ -417,17 +456,33 @@ export const Products: React.FC = () => {
       revenue_trend: Array(6).fill(monthlyRevenue ? Math.max(Math.round(monthlyRevenue / 6), 1) : 0),
     } as Product;
 
-    await toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 800)),
-      {
-        loading: 'Adding product...',
-        success: 'Product added (demo only)',
-        error: 'Failed to add product',
-      }
-    );
+    if (editingProduct) {
+      // Update existing product
+      await toast.promise(
+        new Promise((resolve) => setTimeout(resolve, 800)),
+        {
+          loading: 'Updating product...',
+          success: 'Product updated successfully',
+          error: 'Failed to update product',
+        }
+      );
 
-    setProducts((prev) => [newProduct, ...prev]);
+      setProducts((prev) => prev.map(p => p.id === editingProduct.id ? productData : p));
+    } else {
+      // Add new product
+      await toast.promise(
+        new Promise((resolve) => setTimeout(resolve, 800)),
+        {
+          loading: 'Adding product...',
+          success: 'Product added successfully',
+          error: 'Failed to add product',
+        }
+      );
+
+      setProducts((prev) => [productData, ...prev]);
+    }
     setShowAddModal(false);
+    setEditingProduct(null);
     setProductForm({
       name: '',
       category: '',
@@ -672,8 +727,7 @@ export const Products: React.FC = () => {
                       icon={Edit}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // TODO: Implement edit modal with pre-filled data
-                        toast.info('Product editing: Open Add Product modal with product data pre-filled');
+                        handleEditProduct(product);
                       }}
                     >
                       Edit
@@ -701,11 +755,11 @@ export const Products: React.FC = () => {
       <Modal
         isOpen={showAddModal}
         onClose={() => {
-          setShowAddModal(false);
+          setShowAddModal(false);editingProduct(null);
           setProductForm({ ...productForm, dataSource: 'manual' });
           setSelectedSalesHubProduct('');
         }}
-        title="Add New Product"
+        title={editingProduct ? "Edit Product" : "Add New Product"}
         size="lg"
       >
         <form className="space-y-4" onSubmit={handleAddProduct}>
