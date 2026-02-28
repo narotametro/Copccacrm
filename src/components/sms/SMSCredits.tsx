@@ -271,22 +271,18 @@ interface PaymentModalProps {
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ package: pkg, onClose, onSuccess, getPackagePrice }) => {
-  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'bank_transfer'>('mpesa');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const paymentMethod = 'mpesa'; // Manual M-Pesa payment only
+  const [paymentToken, setPaymentToken] = useState('');
   const [processing, setProcessing] = useState(false);
 
   const handlePayment = async () => {
+    if (!paymentToken.trim()) {
+      toast.error('Please enter the M-Pesa confirmation code');
+      return;
+    }
+
     setProcessing(true);
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // In production, integrate with:
-      // - M-Pesa API (for Tanzania/Kenya)
-      // - Stripe/PayPal (for cards)
-      // - Bank transfer verification
-
-      // For now, just add credits (demo mode)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -298,21 +294,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ package: pkg, onClose, onSu
 
       if (!userData?.company_id) throw new Error('Company not found');
 
-      // Add credits
+      // Add credits with the payment reference token
       const { error } = await supabase.rpc('add_sms_credits', {
         p_company_id: userData.company_id,
         p_credits_amount: pkg.price_usd,
         p_payment_method: paymentMethod,
-        p_payment_reference: `PAY-${Date.now()}`,
+        p_payment_reference: paymentToken.toUpperCase(),
         p_package_id: pkg.id
       });
 
       if (error) throw error;
 
+      toast.success('Payment verified! SMS credits added to your account.');
       onSuccess();
     } catch (error) {
-      console.error('Payment failed:', error);
-      toast.error('Payment failed. Please try again.');
+      console.error('Payment verification failed:', error);
+      toast.error('Payment verification failed. Please check your confirmation code and try again.');
     } finally {
       setProcessing(false);
     }
@@ -352,68 +349,66 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ package: pkg, onClose, onSu
         {/* Payment Method */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-700 mb-3">
-            Payment Method
+            Payment Instructions
           </label>
-          <div className="space-y-2">
-            <button
-              onClick={() => setPaymentMethod('mpesa')}
-              className={`w-full p-3 border-2 rounded-lg text-left ${
-                paymentMethod === 'mpesa' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'
-              }`}
-            >
-              <div className="font-semibold">M-Pesa</div>
-              <div className="text-xs text-slate-500">Pay via M-Pesa mobile money</div>
-            </button>
-            <button
-              onClick={() => setPaymentMethod('card')}
-              className={`w-full p-3 border-2 rounded-lg text-left ${
-                paymentMethod === 'card' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'
-              }`}
-            >
-              <div className="font-semibold">Credit/Debit Card</div>
-              <div className="text-xs text-slate-500">Pay with Visa, Mastercard</div>
-            </button>
-            <button
-              onClick={() => setPaymentMethod('bank_transfer')}
-              className={`w-full p-3 border-2 rounded-lg text-left ${
-                paymentMethod === 'bank_transfer' ? 'border-primary-500 bg-primary-50' : 'border-slate-200'
-              }`}
-            >
-              <div className="font-semibold">Bank Transfer</div>
-              <div className="text-xs text-slate-500">Direct bank transfer</div>
-            </button>
+          <div className="bg-primary-50 border-2 border-primary-200 rounded-lg p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900 mb-1">Step 1: Send M-Pesa Payment</p>
+              <p className="text-xs text-slate-600">Send <strong>{getPackagePrice(pkg)}</strong> to:</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 border border-primary-300">
+              <p className="text-xs text-slate-600 mb-1">M-Pesa Number</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold text-primary-600">0795003415</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText('0795003415');
+                    toast.success('Number copied!');
+                  }}
+                  className="px-3 py-1 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded text-xs font-medium"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 mb-1">Step 2: Get Confirmation Code</p>
+              <p className="text-xs text-slate-600">After sending payment, you'll receive an M-Pesa confirmation SMS with a code (e.g., RG12345678)</p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 mb-1">Step 3: Enter Code Below</p>
+              <p className="text-xs text-slate-600">Enter the confirmation code to verify your payment</p>
+            </div>
           </div>
         </div>
 
-        {/* M-Pesa Phone Number */}
-        {paymentMethod === 'mpesa' && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              M-Pesa Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+255 XXX XXX XXX"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-            <p className="text-xs text-slate-500 mt-1">Enter your M-Pesa number to receive STK push</p>
-          </div>
-        )}
+        {/* Payment Token Input */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            M-Pesa Confirmation Code <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={paymentToken}
+            onChange={(e) => setPaymentToken(e.target.value.toUpperCase())}
+            placeholder="Enter M-Pesa code (e.g., RG12345678)"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+          />
+          <p className="text-xs text-slate-500 mt-1">This code is in your M-Pesa confirmation SMS</p>
+        </div>
 
         {/* Actions */}
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onClose} className="flex-1" disabled={processing}>
             Cancel
           </Button>
-          <Button onClick={handlePayment} className="flex-1" disabled={processing}>
-            {processing ? 'Processing...' : `Pay ${getPackagePrice(pkg)}`}
+          <Button onClick={handlePayment} className="flex-1" disabled={processing || !paymentToken.trim()}>
+            {processing ? 'Verifying...' : 'Verify Payment'}
           </Button>
         </div>
 
         <p className="text-xs text-slate-500 text-center mt-4">
-          🔒 Secure payment powered by COPCCA. Your credits will be added instantly.
+          🔒 Your credits will be added immediately after verification. Contact support if you have issues.
         </p>
       </Card>
     </div>
