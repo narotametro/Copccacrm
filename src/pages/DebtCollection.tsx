@@ -47,6 +47,7 @@ export const DebtCollection: React.FC = () => {
     }
   });
   const [isSendingReminders, setIsSendingReminders] = useState(false);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAddDebtModal, setShowAddDebtModal] = useState(false);
@@ -454,12 +455,76 @@ export const DebtCollection: React.FC = () => {
   };
 
   const handleAutoRemind = async (debtId: string) => {
-    const updatedDebt = await updateDebt(debtId, { status: 'reminded' });
-    if (updatedDebt) {
-      setDebts(prev => prev.map(debt =>
-        debt.id === debtId ? { ...debt, status: 'reminded' as const } : debt
-      ));
-      toast.success('AI-generated reminder sent successfully!');
+    // Prevent multiple simultaneous sends
+    if (sendingReminderId) return;
+
+    setSendingReminderId(debtId);
+    const debt = debts.find(d => d.id === debtId);
+
+    if (!debt) {
+      toast.error('Debt record not found');
+      setSendingReminderId(null);
+      return;
+    }
+
+    // Check if phone number exists
+    if (!debt.company_contact_phone) {
+      toast.error('No phone number available for this customer', {
+        description: 'Please add a phone number in Customers 360 to send reminders'
+      });
+      setSendingReminderId(null);
+      return;
+    }
+
+    // Check SMS configuration
+    const smsConfig = await loadSMSConfig();
+
+    try {
+      // Generate SMS message with configured language
+      const message = generateDebtReminderMessage(
+        debt.company_name,
+        debt.invoice_number,
+        formatCurrency(debt.amount),
+        debt.days_overdue,
+        smsConfig.language || 'en'
+      );
+
+      // Send SMS
+      const result = await sendSMS({
+        to: debt.company_contact_phone,
+        body: message,
+        debtId: debt.id,
+        invoiceNumber: debt.invoice_number
+      });
+
+      if (result.success) {
+        // Update debt status to 'reminded'
+        await supabase
+          .from('debts')
+          .update({ status: 'reminded' })
+          .eq('id', debt.id);
+
+        setDebts(prev => prev.map(d =>
+          d.id === debt.id ? { ...d, status: 'reminded' as const } : d
+        ));
+
+        toast.success(`✅ Reminder sent to ${debt.company_name}`, {
+          description: smsConfig.enabled 
+            ? `SMS delivered to ${debt.company_contact_phone} via Twilio`
+            : 'Demo mode - SMS logged (configure Twilio in Settings to send real SMS)'
+        });
+      } else {
+        toast.error('Failed to send SMS reminder', {
+          description: result.error || 'Please check SMS configuration in Settings'
+        });
+      }
+    } catch (error) {
+      console.error('Error sending SMS reminder:', error);
+      toast.error('Failed to send reminder', {
+        description: 'An unexpected error occurred. Please try again.'
+      });
+    } finally {
+      setSendingReminderId(null);
     }
   };
 
@@ -834,8 +899,9 @@ export const DebtCollection: React.FC = () => {
                         size="sm" 
                         icon={Send}
                         onClick={() => handleAutoRemind(debt.id)}
+                        disabled={sendingReminderId === debt.id}
                       >
-                        Remind
+                        {sendingReminderId === debt.id ? 'Sending...' : 'Remind'}
                       </Button>
                       {debt.risk_score === 'high' && (
                         <>
