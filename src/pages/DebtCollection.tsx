@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target, Plus, RefreshCw } from 'lucide-react';
+import { Banknote, AlertTriangle, CheckCircle, Clock, Zap, Brain, Send, TrendingUp, Target, Plus, RefreshCw, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -32,6 +33,7 @@ type Debt = {
 };
 
 export const DebtCollection: React.FC = () => {
+  const navigate = useNavigate();
   const { formatCurrency } = useCurrency();
   const { customers: contextCustomers } = useSharedData();
   const [customers, setCustomers] = useState<Customer[]>(contextCustomers);
@@ -658,6 +660,14 @@ export const DebtCollection: React.FC = () => {
             disabled={isSendingReminders || isGeneratingReport}
           >
             {isGeneratingReport ? 'Generating...' : 'AI Report'}
+          </Button>
+          <Button 
+            variant="ghost"
+            icon={Settings} 
+            onClick={() => navigate('/app/settings', { state: { openTab: 'sms' } })}
+            disabled={isSendingReminders || isGeneratingReport}
+          >
+            Configure SMS
           </Button>
         </div>
       </div>
