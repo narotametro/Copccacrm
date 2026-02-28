@@ -77,6 +77,88 @@ interface Product {
   revenue_trend: number[];
 }
 
+// Helper function to generate AI recommendations based on product data
+const generateAIRecommendations = (data: {
+  growth_rate: number;
+  market_share: number;
+  market_position: string;
+  units_sold: number;
+  monthly_revenue: number;
+  ai_score: number;
+}): string[] => {
+  const recommendations: string[] = [];
+
+  // Growth-based recommendations
+  if (data.growth_rate > 50) {
+    recommendations.push('🚀 Capitalize on momentum - increase inventory and marketing budget');
+  } else if (data.growth_rate > 20) {
+    recommendations.push('📈 Sustain growth - maintain current strategy and monitor trends');
+  } else if (data.growth_rate < -10) {
+    recommendations.push('⚠️ Address declining sales - review pricing and customer feedback');
+  } else {
+    recommendations.push('📊 Stable performance - focus on efficiency and customer retention');
+  }
+
+  // Market share recommendations
+  if (data.market_share < 5) {
+    recommendations.push('🎯 Low market share - increase visibility through targeted marketing');
+  } else if (data.market_share > 20) {
+    recommendations.push('👑 Strong market position - protect market share and innovate');
+  }
+
+  // Position-based recommendations
+  if (data.market_position === 'leader') {
+    recommendations.push('🏆 Market leader - maintain quality and explore premium positioning');
+  } else if (data.market_position === 'growing') {
+    recommendations.push('🌱 Growing product - scale operations and strengthen brand presence');
+  } else if (data.market_position === 'declining') {
+    recommendations.push('🔧 Revitalize product - consider rebranding or feature enhancements');
+  }
+
+  // Revenue-based recommendations
+  if (data.monthly_revenue < 1000000) {
+    recommendations.push('💰 Boost revenue - optimize pricing or increase sales volume');
+  } else if (data.monthly_revenue > 10000000) {
+    recommendations.push('💎 High revenue generator - invest in quality and customer experience');
+  }
+
+  return recommendations.slice(0, 5); // Return top 5 recommendations
+};
+
+const generatePricingRecommendation = (data: {
+  price: number;
+  market_position: string;
+  market_share: number;
+  growth_rate: number;
+}): string => {
+  if (data.growth_rate > 30 && data.market_share > 15) {
+    return `Current pricing at TSh ${data.price.toLocaleString()} is optimal. Consider premium positioning with value-added services.`;
+  } else if (data.growth_rate < 0) {
+    return `Consider competitive pricing review. Current TSh ${data.price.toLocaleString()} may need adjustment based on market feedback.`;
+  } else if (data.market_position === 'leader') {
+    return `Premium pricing justified by market leadership. Maintain TSh ${data.price.toLocaleString()} with focus on value differentiation.`;
+  } else {
+    return `Price point of TSh ${data.price.toLocaleString()} is competitive. Monitor competitor pricing and customer perceived value.`;
+  }
+};
+
+const generatePositioningRecommendation = (data: {
+  market_position: string;
+  growth_rate: number;
+  market_share: number;
+  units_sold: number;
+}): string => {
+  if (data.market_position === 'leader') {
+    return 'Position as premium market leader emphasizing quality, reliability, and proven track record.';
+  } else if (data.market_position === 'growing' && data.growth_rate > 50) {
+    return 'Position as innovative, fast-growing alternative with strong customer momentum and modern features.';
+  } else if (data.market_position === 'declining') {
+    return 'Reposition with renewed focus on core strengths, customer success stories, and product improvements.';
+  } else {
+    return 'Position as reliable, value-focused option with consistent performance and customer satisfaction.';
+  }
+};
+
 export const Products: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [products, setProducts] = useState<Product[]>(() => {
@@ -311,9 +393,26 @@ export const Products: React.FC = () => {
         top_complaint: 'Awaiting feedback',
       },
       ai_score: Number(productForm.ai_score) || 60,
-      ai_recommendations: ['Start tracking usage and feedback'],
-      pricing_recommendation: 'Price review pending (demo)',
-      positioning_recommendation: 'Positioning will be generated after data intake',
+      ai_recommendations: generateAIRecommendations({
+        growth_rate: growthRate,
+        market_share: Number(productForm.market_share) || 0,
+        market_position: productForm.market_position,
+        units_sold: unitsSold,
+        monthly_revenue: monthlyRevenue,
+        ai_score: Number(productForm.ai_score) || 60,
+      }),
+      pricing_recommendation: generatePricingRecommendation({
+        price: Number(productForm.price) || 0,
+        market_position: productForm.market_position,
+        market_share: Number(productForm.market_share) || 0,
+        growth_rate: growthRate,
+      }),
+      positioning_recommendation: generatePositioningRecommendation({
+        market_position: productForm.market_position,
+        growth_rate: growthRate,
+        market_share: Number(productForm.market_share) || 0,
+        units_sold: unitsSold,
+      }),
       sales_trend: Array(6).fill(unitsSold ? Math.max(Math.round(unitsSold / 6), 1) : 0),
       revenue_trend: Array(6).fill(monthlyRevenue ? Math.max(Math.round(monthlyRevenue / 6), 1) : 0),
     } as Product;
@@ -573,8 +672,7 @@ export const Products: React.FC = () => {
                       icon={Edit}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Edit functionality would go here
-                        toast.info('Edit functionality coming soon!');
+                        navigate(`/app/products/${product.id}/edit`);
                       }}
                     >
                       Edit

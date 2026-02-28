@@ -76,6 +76,11 @@ export const ProductDetailPage: React.FC = () => {
   const { formatCurrency, convertAmount } = useCurrency();
   const [product, setProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'competitive' | 'feedback' | 'ai-insights'>('overview');
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState({
+    type: 'positive' as 'positive' | 'negative',
+    comment: '',
+  });
 
   useEffect(() => {
     // Load product from localStorage
@@ -88,6 +93,44 @@ export const ProductDetailPage: React.FC = () => {
       }
     }
   }, [id]);
+
+  const handleAddFeedback = () => {
+    if (!product || !feedbackForm.comment.trim()) {
+      toast.error('Please enter feedback comment');
+      return;
+    }
+
+    const saved = localStorage.getItem('copcca-products');
+    if (saved) {
+      const products: Product[] = JSON.parse(saved);
+      const updatedProducts = products.map(p => {
+        if (p.id === id) {
+          const updatedFeedback = { ...p.feedback_summary };
+          
+          if (feedbackForm.type === 'positive') {
+            updatedFeedback.positive_count += 1;
+            if (updatedFeedback.top_praise === 'Awaiting feedback') {
+              updatedFeedback.top_praise = feedbackForm.comment;
+            }
+          } else {
+            updatedFeedback.negative_count += 1;
+            if (updatedFeedback.top_complaint === 'Awaiting feedback') {
+              updatedFeedback.top_complaint = feedbackForm.comment;
+            }
+          }
+
+          return { ...p, feedback_summary: updatedFeedback };
+        }
+        return p;
+      });
+
+      localStorage.setItem('copcca-products', JSON.stringify(updatedProducts));
+      setProduct(updatedProducts.find(p => p.id === id) || product);
+      setFeedbackForm({ type: 'positive', comment: '' });
+      setShowFeedbackForm(false);
+      toast.success('Feedback added successfully');
+    }
+  };
 
   const getPositionColor = (position: string) => {
     const colors = {
@@ -160,7 +203,13 @@ export const ProductDetailPage: React.FC = () => {
                 icon={Edit}
                 variant="outline"
                 onClick={() => {
-                  toast.info('Edit functionality coming soon!');
+                  // Navigate to edit mode or open edit modal
+                  const saved = localStorage.getItem('copcca-products');
+                  if (saved) {
+                    // For now, allow inline editing by updating localStorage
+                    toast.info('Edit mode: Update product details in Add Product modal');
+                    navigate('/app/products');
+                  }
                 }}
               >
                 Edit
@@ -387,6 +436,84 @@ export const ProductDetailPage: React.FC = () => {
               </Card>
             </div>
 
+            {/* Add Feedback Button */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">Customer Feedback</h3>
+                <Button
+                  size="sm"
+                  icon={MessageSquare}
+                  onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+                >
+                  {showFeedbackForm ? 'Cancel' : 'Add Feedback'}
+                </Button>
+              </div>
+
+              {showFeedbackForm && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Feedback Type
+                      </label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setFeedbackForm(prev => ({ ...prev, type: 'positive' }))}
+                          className={`flex-1 px-4 py-2 rounded-lg border-2 transition-colors ${
+                            feedbackForm.type === 'positive'
+                              ? 'border-green-500 bg-green-50 text-green-700'
+                              : 'border-slate-300 hover:border-green-300'
+                          }`}
+                        >
+                          <ThumbsUp size={16} className="inline mr-2" />
+                          Positive
+                        </button>
+                        <button
+                          onClick={() => setFeedbackForm(prev => ({ ...prev, type: 'negative' }))}
+                          className={`flex-1 px-4 py-2 rounded-lg border-2 transition-colors ${
+                            feedbackForm.type === 'negative'
+                              ? 'border-red-500 bg-red-50 text-red-700'
+                              : 'border-slate-300 hover:border-red-300'
+                          }`}
+                        >
+                          <ThumbsDown size={16} className="inline mr-2" />
+                          Negative
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Feedback Comment
+                      </label>
+                      <textarea
+                        value={feedbackForm.comment}
+                        onChange={(e) => setFeedbackForm(prev => ({ ...prev, comment: e.target.value }))}
+                        placeholder="Enter customer feedback..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleAddFeedback}
+                      disabled={!feedbackForm.comment.trim()}
+                      className="w-full"
+                    >
+                      Submit Feedback
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-sm text-slate-600 mb-4">
+                {showFeedbackForm 
+                  ? 'Enter customer feedback to help improve product insights and AI recommendations'
+                  : 'Click "Add Feedback" to record customer comments, praise, or complaints'
+                }
+              </p>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -413,7 +540,7 @@ export const ProductDetailPage: React.FC = () => {
                 <Brain className="text-purple-600" size={20} />
                 AI Strategic Recommendations
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-3 mb-6">
                 {product.ai_recommendations.map((recommendation, index) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                     <Sparkles className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
@@ -421,11 +548,29 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Pricing & Positioning Insights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-slate-200">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                    <Banknote size={16} className="text-blue-600" />
+                    Pricing Strategy
+                  </h4>
+                  <p className="text-sm text-blue-800">{product.pricing_recommendation}</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                    <Target size={16} className="text-green-600" />
+                    Market Positioning
+                  </h4>
+                  <p className="text-sm text-green-800">{product.positioning_recommendation}</p>
+                </div>
+              </div>
             </Card>
 
             <Card>
               <h3 className="text-lg font-semibold text-slate-900 mb-4">AI Performance Score</h3>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1 bg-slate-200 rounded-full h-4">
                   <div
                     className="bg-gradient-to-r from-purple-500 to-blue-500 h-4 rounded-full transition-all duration-300"
@@ -434,6 +579,12 @@ export const ProductDetailPage: React.FC = () => {
                 </div>
                 <span className="text-2xl font-bold text-slate-900">{product.ai_score}/100</span>
               </div>
+              <p className="text-sm text-slate-600">
+                {product.ai_score >= 80 && '🌟 Excellent performance - product is exceeding expectations'}
+                {product.ai_score >= 60 && product.ai_score < 80 && '✅ Good performance - product is meeting targets'}
+                {product.ai_score >= 40 && product.ai_score < 60 && '⚠️ Moderate performance - room for improvement'}
+                {product.ai_score < 40 && '🔴 Needs attention - consider strategic improvements'}
+              </p>
             </Card>
           </div>
         )}
