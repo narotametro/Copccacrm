@@ -225,7 +225,6 @@ export const SMSCredits: React.FC = () => {
 
               <div className="text-center mb-4">
                 <p className="text-2xl font-bold text-slate-900">{getPackagePrice(pkg)}</p>
-                <p className="text-xs text-slate-500 mt-1">${(getPackagePriceValue(pkg) / pkg.sms_count).toFixed(4)}/SMS</p>
               </div>
 
               <p className="text-xs text-slate-600 text-center mb-4">{pkg.description}</p>
