@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Lightbulb, Save, Sparkles, Link as LinkIcon, Target } from 'lucide-react';
+import { Lightbulb, Save, Sparkles, Link as LinkIcon, Target, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
@@ -77,6 +78,7 @@ export const ValueProposition: React.FC = () => {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showBuilderModal, setShowBuilderModal] = useState(false);
 
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
@@ -291,6 +293,7 @@ export const ValueProposition: React.FC = () => {
       toast.success('Value proposition saved successfully!', {
         description: 'Available for use in marketing campaigns and sales materials.',
       });
+      setShowBuilderModal(false);
     } catch (error) {
       console.error('Failed to save value proposition:', error);
       toast.error('Failed to save value proposition');
@@ -307,6 +310,7 @@ export const ValueProposition: React.FC = () => {
     toast.success('AI-generated value proposition created!', {
       description: 'Based on customer data and market analysis.',
     });
+    setShowBuilderModal(false);
   };
 
   const aiAnalysis = selectedCustomer ? generateAIAnalysis(selectedCustomer, competitors) : null;
@@ -344,13 +348,28 @@ export const ValueProposition: React.FC = () => {
         </div>
       </Card>
 
-      {/* Value Proposition Form */}
+      {/* Value Proposition Builder Button */}
       <Card>
-        <div className="flex items-center gap-3 mb-6">
-          <Lightbulb className="text-purple-600" size={24} />
-          <h3 className="text-xl font-semibold text-slate-900">Value Proposition Builder</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Lightbulb className="text-purple-600" size={24} />
+            <h3 className="text-xl font-semibold text-slate-900">Value Proposition Builder</h3>
+          </div>
         </div>
+        <p className="text-slate-600 mb-4">
+          Create compelling value propositions tailored to your customers' specific pain points and needs.
+        </p>
+        <Button icon={Plus} onClick={() => setShowBuilderModal(true)}>
+          Open Value Proposition Builder
+        </Button>
+      </Card>
 
+      {/* Value Proposition Builder Modal */}
+      <Modal 
+        isOpen={showBuilderModal} 
+        onClose={() => setShowBuilderModal(false)} 
+        title="Value Proposition Builder"
+      >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -466,7 +485,7 @@ export const ValueProposition: React.FC = () => {
             Improve with AI
           </Button>
         </div>
-      </Card>
+      </Modal>
 
       {/* Competitor Comparison */}
       <Card>
