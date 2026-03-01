@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 const downloadText = (filename: string, content: string) => {
   const blob = new Blob([content], { type: 'text/plain' });
@@ -117,19 +118,129 @@ export const LeadsAttribution: React.FC = () => {
   };
 
   const exportData = () => {
-    const data = {
-      sources,
-      conversionPaths,
-      settings: attributionSettings,
-      exportDate: new Date().toISOString(),
-    };
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let yPos = 20;
 
-    const content = JSON.stringify(data, null, 2);
-    downloadText(
-      `leads_attribution_${new Date().toISOString().split('T')[0]}.json`,
-      content
-    );
-    toast.success('Attribution data exported');
+    // Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Leads Attribution Report', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 15;
+
+    // Export Date
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Export Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 15;
+
+    // Lead Sources Section
+    if (sources.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Lead Sources Attribution', 15, yPos);
+      yPos += 10;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+
+      sources.forEach((source, idx) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${idx + 1}. ${toTitleCase(source.source)}`, 15, yPos);
+        yPos += 7;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(`   Quality Score: ${source.quality}/10`, 15, yPos);
+        yPos += 6;
+        doc.text(`   First Touch Leads: ${source.firstTouch}`, 15, yPos);
+        yPos += 6;
+        doc.text(`   Last Touch Leads: ${source.lastTouch}`, 15, yPos);
+        yPos += 6;
+        doc.text(`   Revenue Generated: ${formatCurrency(source.revenue)}`, 15, yPos);
+        yPos += 10;
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.text('No lead sources available.', 15, yPos);
+      yPos += 10;
+    }
+
+    // Attribution Settings Section
+    yPos += 5;
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Attribution Settings', 15, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Model: ${attributionSettings.model.charAt(0).toUpperCase() + attributionSettings.model.slice(1)}`, 15, yPos);
+    yPos += 6;
+    doc.text(`First Touch Weight: ${attributionSettings.firstTouchWeight}%`, 15, yPos);
+    yPos += 6;
+    doc.text(`Last Touch Weight: ${attributionSettings.lastTouchWeight}%`, 15, yPos);
+    yPos += 6;
+    doc.text(`Middle Touch Weight: ${attributionSettings.middleTouchWeight}%`, 15, yPos);
+    yPos += 10;
+
+    // Summary Statistics
+    if (sources.length > 0) {
+      yPos += 5;
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary Statistics', 15, yPos);
+      yPos += 10;
+
+      const totalFirstTouch = sources.reduce((sum, s) => sum + s.firstTouch, 0);
+      const totalLastTouch = sources.reduce((sum, s) => sum + s.lastTouch, 0);
+      const totalRevenue = sources.reduce((sum, s) => sum + s.revenue, 0);
+      const avgQuality = (sources.reduce((sum, s) => sum + s.quality, 0) / sources.length).toFixed(1);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total First Touch Leads: ${totalFirstTouch}`, 15, yPos);
+      yPos += 6;
+      doc.text(`Total Last Touch Leads: ${totalLastTouch}`, 15, yPos);
+      yPos += 6;
+      doc.text(`Total Revenue: ${formatCurrency(totalRevenue)}`, 15, yPos);
+      yPos += 6;
+      doc.text(`Average Quality Score: ${avgQuality}/10`, 15, yPos);
+      yPos += 6;
+      doc.text(`Number of Sources: ${sources.length}`, 15, yPos);
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+
+    // Save PDF
+    doc.save(`leads_attribution_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Attribution data exported as PDF');
   };
 
   return (
