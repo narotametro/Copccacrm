@@ -295,6 +295,13 @@ export const MarketingAnalytics: React.FC = () => {
 
     if (supabaseReady && user) {
       try {
+        // Get user profile to access company_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
         const { data, error } = await supabase
           .from('marketing_budgets')
           .insert({
@@ -303,6 +310,7 @@ export const MarketingAnalytics: React.FC = () => {
             target_leads: Number(form.target_leads) || 0,
             target_roi: Number(form.target_roi) || 0,
             created_by: user.id,
+            company_id: userData?.company_id || null,
           })
           .select()
           .single();

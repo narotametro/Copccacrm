@@ -164,13 +164,12 @@ CREATE TABLE IF NOT EXISTS loss_reasons (
 -- Create marketing_budgets table
 CREATE TABLE IF NOT EXISTS marketing_budgets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  amount DECIMAL NOT NULL,
-  spent DECIMAL DEFAULT 0,
-  category TEXT,
-  start_date DATE NOT NULL,
-  end_date DATE,
+  channel TEXT NOT NULL,
+  monthly_budget DECIMAL NOT NULL DEFAULT 0,
+  target_leads INTEGER NOT NULL DEFAULT 0,
+  target_roi DECIMAL NOT NULL DEFAULT 0,
   created_by UUID REFERENCES users(id),
+  company_id UUID REFERENCES companies(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -230,7 +229,13 @@ CREATE POLICY "Authenticated users can access win_reasons" ON win_reasons FOR AL
 DROP POLICY IF EXISTS "Authenticated users can access loss_reasons" ON loss_reasons;
 CREATE POLICY "Authenticated users can access loss_reasons" ON loss_reasons FOR ALL USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Authenticated users can access marketing_budgets" ON marketing_budgets;
-CREATE POLICY "Authenticated users can access marketing_budgets" ON marketing_budgets FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can access marketing_budgets" ON marketing_budgets FOR ALL USING (
+  auth.uid() = created_by OR
+  company_id IN (
+    SELECT company_id FROM users WHERE id = auth.uid()
+  ) OR
+  company_id IS NULL
+);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status);
