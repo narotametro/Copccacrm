@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS marketing_strategies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   strategy_type TEXT NOT NULL CHECK (strategy_type IN ('4ps', 'growth', 'retention', 'brand', 'competitive', 'content', 'product-launch')),
   content JSONB NOT NULL DEFAULT '{}'::jsonb,
-  customer_id UUID REFERENCES customers(id),
-  created_by UUID REFERENCES users(id),
-  company_id UUID REFERENCES companies(id),
+  customer_id UUID,
+  created_by UUID,
+  company_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS marketing_kpis (
   change TEXT NOT NULL DEFAULT '+0%',
   trend TEXT NOT NULL DEFAULT 'up' CHECK (trend IN ('up', 'down')),
   color TEXT NOT NULL DEFAULT 'blue',
-  created_by UUID REFERENCES users(id),
-  company_id UUID REFERENCES companies(id),
+  created_by UUID,
+  company_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
