@@ -19,6 +19,15 @@ const downloadText = (filename: string, content: string) => {
   window.URL.revokeObjectURL(url);
 };
 
+// Utility function to convert text to title case
+const toTitleCase = (text: string): string => {
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export const LeadsAttribution: React.FC = () => {
   const { formatCurrency } = useCurrency();
 
@@ -71,7 +80,7 @@ export const LeadsAttribution: React.FC = () => {
     }
 
     const newSource = {
-      source: sourceForm.source,
+      source: toTitleCase(sourceForm.source),
       firstTouch: parseInt(sourceForm.firstTouch) || 0,
       lastTouch: parseInt(sourceForm.lastTouch) || 0,
       revenue: parseFloat(sourceForm.revenue) || 0,
@@ -174,7 +183,7 @@ export const LeadsAttribution: React.FC = () => {
               sources.map((item, idx) => (
                 <div key={idx}>
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium text-slate-700">{item.source}</span>
+                    <span className="font-medium text-slate-700">{toTitleCase(item.source)}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-600">Quality: {item.quality}/10</span>
                       <button
@@ -217,7 +226,7 @@ export const LeadsAttribution: React.FC = () => {
               sources.map((item, idx) => (
                 <div key={idx}>
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium text-slate-700">{item.source}</span>
+                    <span className="font-medium text-slate-700">{toTitleCase(item.source)}</span>
                     <span className="font-semibold text-slate-900">{formatCurrency(item.revenue)}</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
@@ -445,7 +454,7 @@ export const LeadsAttribution: React.FC = () => {
                 return (
                   <div key={idx} className="p-4 bg-white border border-slate-200 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-slate-900">{source.source}</h4>
+                      <h4 className="font-semibold text-slate-900">{toTitleCase(source.source)}</h4>
                       <span className={`text-sm font-medium ${qualityColor}`}>
                         {qualityRating} ({source.quality}/10)
                       </span>
@@ -460,12 +469,12 @@ export const LeadsAttribution: React.FC = () => {
                       <p>
                         <strong>AI Insight:</strong> {
                           source.quality >= 8 
-                            ? `${source.source} shows excellent lead quality. Consider increasing investment in this channel.`
+                            ? `${toTitleCase(source.source)} shows excellent lead quality. Consider increasing investment in this channel.`
                             : source.quality >= 6
-                            ? `${source.source} performs well. Monitor conversion trends and optimize targeting.`
+                            ? `${toTitleCase(source.source)} performs well. Monitor conversion trends and optimize targeting.`
                             : source.quality >= 4
-                            ? `${source.source} has moderate quality. Review lead qualification criteria.`
-                            : `${source.source} needs improvement. Consider refining targeting or reducing spend.`
+                            ? `${toTitleCase(source.source)} has moderate quality. Review lead qualification criteria.`
+                            : `${toTitleCase(source.source)} needs improvement. Consider refining targeting or reducing spend.`
                         }
                       </p>
                     </div>
