@@ -180,18 +180,122 @@ export const FourPsStrategy: React.FC = () => {
     }
   };
 
-  // Load customers from localStorage
-  const loadCustomers = () => {
+  // Load customers from Supabase sales_hub_customers table
+  const loadCustomers = async () => {
     try {
-      const saved = localStorage.getItem('copcca-customers');
-      const customerData = saved ? JSON.parse(saved) : [];
-      setCustomers(customerData);
-      // Select first customer as default
-      if (customerData.length > 0) {
-        setSelectedCustomer(customerData[0]);
+      if (supabaseReady) {
+        const { data: customersData, error } = await supabase
+          .from('sales_hub_customers')
+          .select('*')
+          .eq('status', 'active')
+          .order('name');
+
+        if (error) {
+          console.error('Supabase customers error:', error);
+          // Fall back to localStorage
+          const saved = localStorage.getItem('copcca-customers');
+          const customerData = saved ? JSON.parse(saved) : [];
+          setCustomers(customerData);
+          if (customerData.length > 0) {
+            setSelectedCustomer(customerData[0]);
+          }
+          return;
+        }
+
+        if (customersData && customersData.length > 0) {
+          // Map sales_hub_customers to Customer interface
+          const mappedCustomers: Customer[] = customersData.map((c: any) => ({
+            id: c.id,
+            name: c.name || c.company_name || 'Unknown',
+            contactPerson: c.name || null,
+            status: c.status,
+            customer_type: mapCustomerType(c.customer_type, c.tier),
+            health_score: c.health_score || 50,
+            churn_risk: mapChurnRisk(c.churn_risk),
+            upsell_potential: mapUpsellPotential(c.upsell_potential),
+            email: c.email || null,
+            phone: c.phone || c.mobile || null,
+            website: null,
+            total_revenue: c.total_revenue || 0,
+            purchases: c.total_orders || 0,
+            avg_order_value: c.avg_order_value || 0,
+            last_purchase: c.last_order_date || 'N/A',
+            tier: (c.tier || 'bronze') as 'bronze' | 'silver' | 'gold' | 'platinum',
+            sentiment: 'neutral' as 'positive' | 'neutral' | 'negative',
+            feedback_count: 0,
+            jtbd: c.custom_fields?.jtbd || c.notes?.substring(0, 100) || 'Improve business operations',
+            pain_points: c.tags || [],
+            feedback_history: [],
+            priority_actions: [],
+          }));
+          
+          setCustomers(mappedCustomers);
+          
+          // Select first customer as default
+          if (mappedCustomers.length > 0) {
+            setSelectedCustomer(mappedCustomers[0]);
+          }
+          
+          // Also save to localStorage for offline access
+          localStorage.setItem('copcca-customers', JSON.stringify(mappedCustomers));
+          
+          toast.success(`Loaded ${mappedCustomers.length} customers from Customer 360`);
+        } else {
+          // Try localStorage if Supabase returns empty
+          const saved = localStorage.getItem('copcca-customers');
+          const customerData = saved ? JSON.parse(saved) : [];
+          setCustomers(customerData);
+          if (customerData.length > 0) {
+            setSelectedCustomer(customerData[0]);
+          }
+        }
+      } else {
+        // Supabase not configured, use localStorage only
+        const saved = localStorage.getItem('copcca-customers');
+        const customerData = saved ? JSON.parse(saved) : [];
+        setCustomers(customerData);
+        if (customerData.length > 0) {
+          setSelectedCustomer(customerData[0]);
+        }
       }
     } catch (error) {
       console.error('Failed to load customers:', error);
+      // Fall back to localStorage
+      const saved = localStorage.getItem('copcca-customers');
+      const customerData = saved ? JSON.parse(saved) : [];
+      setCustomers(customerData);
+      if (customerData.length > 0) {
+        setSelectedCustomer(customerData[0]);
+      }
+    }
+  };
+
+  // Helper function to map customer_type from sales_hub to Customer interface
+  const mapCustomerType = (type: string, tier: string): 'lead' | 'active' | 'vip' | 'at-risk' => {
+    if (tier === 'platinum') return 'vip';
+    if (type === 'enterprise') return 'vip';
+    if (type === 'business') return 'active';
+    return 'active';
+  };
+
+  // Helper function to map churn_risk string to number
+  const mapChurnRisk = (risk: string): number => {
+    switch (risk) {
+      case 'critical': return 90;
+      case 'high': return 70;
+      case 'medium': return 40;
+      case 'low': return 20;
+      default: return 20;
+    }
+  };
+
+  // Helper function to map upsell_potential string to number
+  const mapUpsellPotential = (potential: string): number => {
+    switch (potential) {
+      case 'high': return 80;
+      case 'medium': return 50;
+      case 'low': return 20;
+      default: return 50;
     }
   };
 
