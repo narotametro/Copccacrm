@@ -11,6 +11,8 @@ import {
   Plus,
   Download,
   Filter,
+  Users,
+  DollarSign,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -122,9 +124,32 @@ export const MarketingOverview: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  const initialKpis = useMemo<KpiData[]>(() => ([]), []);
+  // Generate sample KPI data with realistic marketing metrics
+  const generateSampleKpis = (): KpiData[] => {
+    return [
+      { label: 'Total Leads', value: '2,847', change: '+12%', trend: 'up', icon: Users, color: 'blue' },
+      { label: 'Conversion Rate', value: '4.2%', change: '+0.8%', trend: 'up', icon: TrendingUp, color: 'green' },
+      { label: 'Marketing ROI', value: '285%', change: '+15%', trend: 'up', icon: Target, color: 'purple' },
+      { label: 'Total Spend', value: formatCurrency(8500000), change: '+5%', trend: 'up', icon: Banknote, color: 'orange' },
+      { label: 'Avg. CAC', value: formatCurrency(125000), change: '-8%', trend: 'down', icon: DollarSign, color: 'pink' },
+      { label: 'Campaign Active', value: '12', change: '+3', trend: 'up', icon: Sparkles, color: 'indigo' },
+    ];
+  };
 
-  const initialChannels = useMemo<ChannelData[]>(() => ([]), []);
+  // Generate sample channel performance data
+  const generateSampleChannels = (): ChannelData[] => {
+    return [
+      { channel: 'Social Media', leads: 1247, conversion: 4.8, revenue: 15600000 },
+      { channel: 'Email Marketing', leads: 856, conversion: 5.2, revenue: 11200000 },
+      { channel: 'Google Ads', leads: 542, conversion: 3.9, revenue: 9800000 },
+      { channel: 'Content Marketing', leads: 384, conversion: 4.1, revenue: 6500000 },
+      { channel: 'Referral', leads: 218, conversion: 6.3, revenue: 4800000 },
+    ];
+  };
+
+  const initialKpis = useMemo<KpiData[]>(() => generateSampleKpis(), [formatCurrency]);
+
+  const initialChannels = useMemo<ChannelData[]>(() => generateSampleChannels(), []);
 
   const mapRowToKpi = (row: Database['public']['Tables']['marketing_kpis']['Row']): KpiData => {
     const getIcon = (label: string): LucideIcon => {
@@ -153,9 +178,99 @@ export const MarketingOverview: React.FC = () => {
   const [filterForm, setFilterForm] = useState({ channel: '', minConversion: '' });
   const maxLeads = channelPerformance.length ? Math.max(...channelPerformance.map((c) => c.leads)) : 1;
 
+  // Generate sample campaigns for alignment calculation
+  const generateSampleCampaigns = (): MarketingCampaignRow[] => {
+    return [
+      { 
+        id: '1', 
+        name: 'Summer Product Launch', 
+        strategy: 'Product Launch - 4Ps Strategy', 
+        budget: 2500000, 
+        leads_generated: 452, 
+        conversions: 21,
+        channels: ['Social Media', 'Email Marketing']
+      },
+      { 
+        id: '2', 
+        name: 'Email Nurture Campaign', 
+        strategy: '4Ps Marketing Strategy', 
+        budget: 850000, 
+        leads_generated: 328, 
+        conversions: 17,
+        channels: ['Email Marketing']
+      },
+      { 
+        id: '3', 
+        name: 'Google Search Ads', 
+        strategy: '4Ps Marketing Strategy', 
+        budget: 1800000, 
+        leads_generated: 289, 
+        conversions: 11,
+        channels: ['Google Ads']
+      },
+      { 
+        id: '4', 
+        name: 'Content Marketing Q2', 
+        strategy: 'Content Strategy 2024', 
+        budget: 1200000, 
+        leads_generated: 194, 
+        conversions: 8,
+        channels: ['Content Marketing']
+      },
+      { 
+        id: '5', 
+        name: 'Referral Program', 
+        strategy: 'Growth Strategy', 
+        budget: 650000, 
+        leads_generated: 126, 
+        conversions: 8,
+        channels: ['Referral']
+      },
+      { 
+        id: '6', 
+        name: 'Social Media Engagement', 
+        strategy: '', 
+        budget: 950000, 
+        leads_generated: 412, 
+        conversions: 19,
+        channels: ['Social Media']
+      },
+      {
+        id: '7',
+        name: 'Retargeting Campaign',
+        strategy: '',
+        budget: 550000,
+        leads_generated: 156,
+        conversions: 7,
+        channels: ['Google Ads', 'Social Media']
+      }
+    ];
+  };
+
   // Real data state
-  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
-  const [strategies, setStrategies] = useState<StrategyData[]>([]);
+  const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>(generateSampleCampaigns());
+  const [strategies, setStrategies] = useState<MarketingStrategyRow[]>([
+    { 
+      id: '1', 
+      content: {
+        product: { items: [], benefits: [], quality: '', differentiators: [] },
+        price: { model: '', basePrice: 0, discounts: [], sensitivity: '', competitorComparison: [] },
+        place: { channels: [], coverage: [] },
+        promotion: { messages: [], tone: 'professional', channels: [], themes: [] }
+      }, 
+      strategy_type: '4ps' 
+    },
+    { 
+      id: '2', 
+      content: {
+        product: { items: [], benefits: [], quality: '', differentiators: [] },
+        price: { model: '', basePrice: 0, discounts: [], sensitivity: '', competitorComparison: [] },
+        place: { channels: [], coverage: [] },
+        promotion: { messages: [], tone: 'casual', channels: [], themes: [] }
+      }, 
+      strategy_type: '4ps' 
+    }
+  ]);
 
   const handleAddKpi = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,7 +466,7 @@ export const MarketingOverview: React.FC = () => {
             .select('*')
             .eq('strategy_type', '4ps')
             .order('created_at', { ascending: false });
-          if (strategyData) setStrategies(strategyData.map((s: MarketingStrategyRow) => s.content));
+          if (strategyData) setStrategies(strategyData as MarketingStrategyRow[]);
         }
       } catch (error) {
         console.error('Failed to load strategies:', error);
@@ -364,37 +479,90 @@ export const MarketingOverview: React.FC = () => {
   }, [supabaseReady, initialKpis, user]);
 
   const generateAIInsights = (): string => {
-    if (campaigns.length === 0 && strategies.length === 0 && kpis.length === 0) {
-      return 'Create your first marketing campaign or strategy to receive AI-powered insights based on your data.';
-    }
-
     const insights: string[] = [];
 
+    // Analyze KPI trends
+    const positiveKpis = kpis.filter(k => k.trend === 'up').length;
+    const totalKpis = kpis.length;
+    
+    if (totalKpis > 0) {
+      const positivePercentage = (positiveKpis / totalKpis) * 100;
+      
+      if (positivePercentage >= 70) {
+        insights.push('📈 Strong performance: ' + positiveKpis + ' of ' + totalKpis + ' KPIs trending upward.');
+      } else if (positivePercentage >= 50) {
+        insights.push('⚖️ Mixed signals: Review underperforming KPIs for optimization opportunities.');
+      } else {
+        insights.push('⚠️ Action needed: Only ' + positiveKpis + ' of ' + totalKpis + ' KPIs trending positively.');
+      }
+    }
+
+    // Analyze channel performance
+    if (channelPerformance.length > 0) {
+      const topChannel = channelPerformance.reduce((max, ch) => 
+        ch.leads > max.leads ? ch : max, channelPerformance[0]
+      );
+      const topConversionChannel = channelPerformance.reduce((max, ch) => 
+        ch.conversion > max.conversion ? ch : max, channelPerformance[0]
+      );
+      
+      insights.push(`🎯 Top performer: ${topChannel.channel} with ${topChannel.leads.toLocaleString()} leads.`);
+      
+      if (topConversionChannel.channel !== topChannel.channel) {
+        insights.push(`💎 Best conversion: ${topConversionChannel.channel} at ${topConversionChannel.conversion}%.`);
+      }
+
+      // Analyze low performers
+      const avgConversion = channelPerformance.reduce((sum, ch) => sum + ch.conversion, 0) / channelPerformance.length;
+      const lowPerformers = channelPerformance.filter(ch => ch.conversion < avgConversion * 0.7);
+      
+      if (lowPerformers.length > 0) {
+        insights.push(`🔧 Optimize: ${lowPerformers.map(ch => ch.channel).join(', ')} showing below-average conversion.`);
+      }
+    }
+
+    // Campaign and strategy alignment insights
+    const alignment = calculateAlignmentScore();
+    
     if (campaigns.length > 0) {
       const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
-      const activeChannels = [...new Set(campaigns.flatMap(c => c.channels || []))];
-      insights.push(`You have ${campaigns.length} active campaigns with a total budget of ${formatCurrency(totalBudget)}.`);
-      if (activeChannels.length > 0) {
-        insights.push(`Your campaigns span ${activeChannels.length} different channels: ${activeChannels.join(', ')}.`);
+      insights.push(`💰 Active spend: ${formatCurrency(totalBudget)} across ${campaigns.length} campaigns.`);
+      
+      if (alignment.score < 70) {
+        insights.push(`🎨 ${alignment.needsReview} campaigns need strategy alignment for better ROI.`);
+      } else if (alignment.score >= 90) {
+        insights.push(`✨ Excellent: ${alignment.score}% campaign-strategy alignment.`);
       }
     }
 
-    if (strategies.length > 0) {
-      insights.push(`Your marketing strategy includes ${strategies.length} key initiatives.`);
-    }
-
-    if (kpis.length > 0) {
-      const positiveKpis = kpis.filter(k => k.trend === 'up').length;
-      const totalKpis = kpis.length;
-      if (positiveKpis > totalKpis / 2) {
-        insights.push('Most of your KPIs are trending positively - great job!');
-      } else if (positiveKpis < totalKpis / 2) {
-        insights.push('Some KPIs need attention - consider adjusting your marketing strategy.');
+    // Provide actionable recommendations
+    const recommendations: string[] = [];
+    
+    if (channelPerformance.length > 1) {
+      const totalRevenue = channelPerformance.reduce((sum, ch) => sum + ch.revenue, 0);
+      const topRevenueChannel = channelPerformance.reduce((max, ch) => 
+        ch.revenue > max.revenue ? ch : max, channelPerformance[0]
+      );
+      
+      if ((topRevenueChannel.revenue / totalRevenue) > 0.4) {
+        recommendations.push(`📊 Consider diversifying: ${topRevenueChannel.channel} generates ${Math.round((topRevenueChannel.revenue / totalRevenue) * 100)}% of revenue.`);
       }
     }
 
+    if (kpis.some(k => k.label.toLowerCase().includes('cac'))) {
+      const cacKpi = kpis.find(k => k.label.toLowerCase().includes('cac'));
+      if (cacKpi && cacKpi.trend === 'down') {
+        recommendations.push('💡 CAC improving - good time to scale winning channels.');
+      }
+    }
+
+    if (recommendations.length > 0) {
+      insights.push(...recommendations);
+    }
+
+    // Fallback AI insight
     if (insights.length === 0) {
-      return 'Start building your marketing data to unlock personalized AI insights.';
+      return '🚀 AI Marketing Intelligence: Build your marketing strategy with data-driven campaigns. Track KPIs, optimize channels, and maximize ROI with real-time insights.';
     }
 
     return insights.join(' ');
