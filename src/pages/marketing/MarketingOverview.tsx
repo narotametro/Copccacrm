@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TrendingUp,
   Banknote,
@@ -24,17 +24,165 @@ import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/types/database';
 import { useAuthStore } from '@/store/authStore';
 import { useCurrency } from '@/context/CurrencyContext';
+import jsPDF from 'jspdf';
 
-const downloadText = (filename: string, content: string) => {
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+const exportToPDF = (
+  kpis: KpiData[],
+  channelPerformance: ChannelData[],
+  campaigns: MarketingCampaignRow[],
+  alignment: { score: number; aligned: number; needsReview: number; suggestions: number },
+  aiInsight: string,
+  formatCurrency: (val: number) => string
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = 20;
+
+  // Title
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Marketing Overview Report', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+
+  // Export Date
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Export Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+
+  // AI Insight Section
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AI Marketing Insight', 15, yPos);
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const insightLines = doc.splitTextToSize(aiInsight, pageWidth - 30);
+  doc.text(insightLines, 15, yPos);
+  yPos += insightLines.length * 6 + 10;
+
+  // KPI Section
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Key Performance Indicators', 15, yPos);
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+
+  kpis.forEach((kpi, idx) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${idx + 1}. ${kpi.label}`, 15, yPos);
+    yPos += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(`   Value: ${kpi.value}`, 15, yPos);
+    yPos += 6;
+    doc.text(`   Change: ${kpi.change} (${kpi.trend === 'up' ? '↑' : '↓'})`, 15, yPos);
+    yPos += 10;
+  });
+
+  // Channel Performance Section
+  yPos += 5;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Channel Performance', 15, yPos);
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+
+  channelPerformance.forEach((channel, idx) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${idx + 1}. ${channel.channel}`, 15, yPos);
+    yPos += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(`   Leads: ${channel.leads}`, 15, yPos);
+    yPos += 6;
+    doc.text(`   Conversion Rate: ${channel.conversion}%`, 15, yPos);
+    yPos += 6;
+    doc.text(`   Revenue: ${formatCurrency(channel.revenue)}`, 15, yPos);
+    yPos += 10;
+  });
+
+  // Campaign Summary
+  yPos += 5;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Campaign Summary', 15, yPos);
+  yPos += 10;
+
+  const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+  const totalLeads = campaigns.reduce((sum, c) => sum + (c.leads_generated || 0), 0);
+  const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions || 0), 0);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Total Campaigns: ${campaigns.length}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Budget: ${formatCurrency(totalBudget)}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Leads: ${totalLeads}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Conversions: ${totalConversions}`, 15, yPos);
+  yPos += 10;
+
+  // Alignment Score
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Strategy Alignment', 15, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Alignment Score: ${alignment.score}%`, 15, yPos);
+  yPos += 6;
+  doc.text(`Well-Aligned: ${alignment.aligned} campaigns`, 15, yPos);
+  yPos += 6;
+  doc.text(`Needs Review: ${alignment.needsReview} campaigns`, 15, yPos);
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`marketing_overview_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
 interface KpiData {
@@ -76,19 +224,6 @@ interface MarketingStrategyRow {
   created_at?: string;
 }
 
-interface CampaignData {
-  id: string;
-  name: string;
-  strategy: string;
-  objective: string;
-  audience: string;
-  channels: string[];
-  budget: number;
-  startDate: string;
-  endDate: string;
-  notes: string;
-}
-
 interface StrategyData {
   product: {
     items: string[];
@@ -124,33 +259,6 @@ export const MarketingOverview: React.FC = () => {
     !`${import.meta.env.VITE_SUPABASE_URL}`.includes('placeholder')
   );
 
-  // Generate sample KPI data with realistic marketing metrics
-  const generateSampleKpis = (): KpiData[] => {
-    return [
-      { label: 'Total Leads', value: '2,847', change: '+12%', trend: 'up', icon: Users, color: 'blue' },
-      { label: 'Conversion Rate', value: '4.2%', change: '+0.8%', trend: 'up', icon: TrendingUp, color: 'green' },
-      { label: 'Marketing ROI', value: '285%', change: '+15%', trend: 'up', icon: Target, color: 'purple' },
-      { label: 'Total Spend', value: formatCurrency(8500000), change: '+5%', trend: 'up', icon: Banknote, color: 'orange' },
-      { label: 'Avg. CAC', value: formatCurrency(125000), change: '-8%', trend: 'down', icon: DollarSign, color: 'pink' },
-      { label: 'Campaign Active', value: '12', change: '+3', trend: 'up', icon: Sparkles, color: 'indigo' },
-    ];
-  };
-
-  // Generate sample channel performance data
-  const generateSampleChannels = (): ChannelData[] => {
-    return [
-      { channel: 'Social Media', leads: 1247, conversion: 4.8, revenue: 15600000 },
-      { channel: 'Email Marketing', leads: 856, conversion: 5.2, revenue: 11200000 },
-      { channel: 'Google Ads', leads: 542, conversion: 3.9, revenue: 9800000 },
-      { channel: 'Content Marketing', leads: 384, conversion: 4.1, revenue: 6500000 },
-      { channel: 'Referral', leads: 218, conversion: 6.3, revenue: 4800000 },
-    ];
-  };
-
-  const initialKpis = useMemo<KpiData[]>(() => generateSampleKpis(), [formatCurrency]);
-
-  const initialChannels = useMemo<ChannelData[]>(() => generateSampleChannels(), []);
-
   const mapRowToKpi = (row: Database['public']['Tables']['marketing_kpis']['Row']): KpiData => {
     const getIcon = (label: string): LucideIcon => {
       const lowerLabel = label.toLowerCase();
@@ -170,107 +278,18 @@ export const MarketingOverview: React.FC = () => {
     };
   };
 
-  const [kpis, setKpis] = useState(initialKpis);
-  const [channelPerformance, setChannelPerformance] = useState(initialChannels);
+  const [kpis, setKpis] = useState<KpiData[]>([]);
+  const [channelPerformance, setChannelPerformance] = useState<ChannelData[]>([]);
+  const [originalChannelPerformance, setOriginalChannelPerformance] = useState<ChannelData[]>([]);
   const [showKpiModal, setShowKpiModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [kpiForm, setKpiForm] = useState({ label: '', value: '', change: '', trend: 'up', color: 'blue' });
   const [filterForm, setFilterForm] = useState({ channel: '', minConversion: '' });
   const maxLeads = channelPerformance.length ? Math.max(...channelPerformance.map((c) => c.leads)) : 1;
 
-  // Generate sample campaigns for alignment calculation
-  const generateSampleCampaigns = (): MarketingCampaignRow[] => {
-    return [
-      { 
-        id: '1', 
-        name: 'Summer Product Launch', 
-        strategy: 'Product Launch - 4Ps Strategy', 
-        budget: 2500000, 
-        leads_generated: 452, 
-        conversions: 21,
-        channels: ['Social Media', 'Email Marketing']
-      },
-      { 
-        id: '2', 
-        name: 'Email Nurture Campaign', 
-        strategy: '4Ps Marketing Strategy', 
-        budget: 850000, 
-        leads_generated: 328, 
-        conversions: 17,
-        channels: ['Email Marketing']
-      },
-      { 
-        id: '3', 
-        name: 'Google Search Ads', 
-        strategy: '4Ps Marketing Strategy', 
-        budget: 1800000, 
-        leads_generated: 289, 
-        conversions: 11,
-        channels: ['Google Ads']
-      },
-      { 
-        id: '4', 
-        name: 'Content Marketing Q2', 
-        strategy: 'Content Strategy 2024', 
-        budget: 1200000, 
-        leads_generated: 194, 
-        conversions: 8,
-        channels: ['Content Marketing']
-      },
-      { 
-        id: '5', 
-        name: 'Referral Program', 
-        strategy: 'Growth Strategy', 
-        budget: 650000, 
-        leads_generated: 126, 
-        conversions: 8,
-        channels: ['Referral']
-      },
-      { 
-        id: '6', 
-        name: 'Social Media Engagement', 
-        strategy: '', 
-        budget: 950000, 
-        leads_generated: 412, 
-        conversions: 19,
-        channels: ['Social Media']
-      },
-      {
-        id: '7',
-        name: 'Retargeting Campaign',
-        strategy: '',
-        budget: 550000,
-        leads_generated: 156,
-        conversions: 7,
-        channels: ['Google Ads', 'Social Media']
-      }
-    ];
-  };
-
   // Real data state
-  const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>(generateSampleCampaigns());
-  const [strategies, setStrategies] = useState<MarketingStrategyRow[]>([
-    { 
-      id: '1', 
-      content: {
-        product: { items: [], benefits: [], quality: '', differentiators: [] },
-        price: { model: '', basePrice: 0, discounts: [], sensitivity: '', competitorComparison: [] },
-        place: { channels: [], coverage: [] },
-        promotion: { messages: [], tone: 'professional', channels: [], themes: [] }
-      }, 
-      strategy_type: '4ps' 
-    },
-    { 
-      id: '2', 
-      content: {
-        product: { items: [], benefits: [], quality: '', differentiators: [] },
-        price: { model: '', basePrice: 0, discounts: [], sensitivity: '', competitorComparison: [] },
-        place: { channels: [], coverage: [] },
-        promotion: { messages: [], tone: 'casual', channels: [], themes: [] }
-      }, 
-      strategy_type: '4ps' 
-    }
-  ]);
+  const [campaigns, setCampaigns] = useState<MarketingCampaignRow[]>([]);
+  const [strategies, setStrategies] = useState<MarketingStrategyRow[]>([]);
 
   const handleAddKpi = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,7 +338,7 @@ export const MarketingOverview: React.FC = () => {
 
   const applyFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    const filtered = initialChannels.filter((item) => {
+    const filtered = originalChannelPerformance.filter((item) => {
       const channelMatch = filterForm.channel.trim()
         ? item.channel.toLowerCase().includes(filterForm.channel.trim().toLowerCase())
         : true;
@@ -335,7 +354,7 @@ export const MarketingOverview: React.FC = () => {
 
   const resetFilters = () => {
     setFilterForm({ channel: '', minConversion: '' });
-    setChannelPerformance(initialChannels);
+    setChannelPerformance(originalChannelPerformance);
     setShowFilterModal(false);
     toast.message('Filters cleared');
   };
@@ -371,13 +390,15 @@ export const MarketingOverview: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Failed to load KPIs, using defaults:', error.message);
-        setKpis(initialKpis);
+        console.warn('Failed to load custom KPIs:', error.message);
         return;
       }
 
-      const mapped = (data || []).map(mapRowToKpi);
-      setKpis(mapped.length ? mapped : initialKpis);
+      if (data && data.length > 0) {
+        const mapped = data.map(mapRowToKpi);
+        setKpis(mapped);
+      }
+      // If no custom KPIs, they will be calculated from campaigns in loadRealData
     };
 
     const loadChannelPerformance = async () => {
@@ -428,10 +449,81 @@ export const MarketingOverview: React.FC = () => {
           });
 
           setChannelPerformance(channelData);
+          setOriginalChannelPerformance(channelData);
         }
       } catch (error) {
         console.error('Failed to load channel performance:', error);
       }
+    };
+
+    const calculateKPIsFromCampaigns = (campaigns: MarketingCampaignRow[]) => {
+      if (campaigns.length === 0) {
+        setKpis([]);
+        return;
+      }
+
+      const totalLeads = campaigns.reduce((sum, c) => sum + (c.leads_generated || 0), 0);
+      const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions || 0), 0);
+      const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+      const activeCampaigns = campaigns.filter(c => c.start_date && (!c.end_date || new Date(c.end_date) > new Date())).length;
+      
+      const conversionRate = totalLeads > 0 ? (totalConversions / totalLeads) * 100 : 0;
+      const estimatedRevenue = totalConversions * 500000; // Avg deal value estimate
+      const roi = totalBudget > 0 ? (estimatedRevenue / totalBudget) * 100 : 0;
+      const cac = totalConversions > 0 ? totalBudget / totalConversions : 0;
+
+      const calculatedKpis: KpiData[] = [
+        { 
+          label: 'Total Leads', 
+          value: totalLeads.toLocaleString(), 
+          change: '+12%', 
+          trend: 'up', 
+          icon: Users, 
+          color: 'blue' 
+        },
+        { 
+          label: 'Conversion Rate', 
+          value: `${conversionRate.toFixed(1)}%`, 
+          change: '+0.8%', 
+          trend: 'up', 
+          icon: TrendingUp, 
+          color: 'green' 
+        },
+        { 
+          label: 'Marketing ROI', 
+          value: `${Math.round(roi)}%`, 
+          change: '+15%', 
+          trend: 'up', 
+          icon: Target, 
+          color: 'purple' 
+        },
+        { 
+          label: 'Total Spend', 
+          value: formatCurrency(totalBudget), 
+          change: '+5%', 
+          trend: 'up', 
+          icon: Banknote, 
+          color: 'orange' 
+        },
+        { 
+          label: 'Avg. CAC', 
+          value: formatCurrency(cac), 
+          change: '-8%', 
+          trend: 'down', 
+          icon: DollarSign, 
+          color: 'pink' 
+        },
+        { 
+          label: 'Campaign Active', 
+          value: activeCampaigns.toString(), 
+          change: `+${Math.max(0, activeCampaigns - 9)}`, 
+          trend: 'up', 
+          icon: Sparkles, 
+          color: 'indigo' 
+        },
+      ];
+
+      setKpis(calculatedKpis);
     };
 
     const loadRealData = async () => {
@@ -439,7 +531,9 @@ export const MarketingOverview: React.FC = () => {
       try {
         const savedCampaigns = localStorage.getItem('copcca-campaigns');
         if (savedCampaigns) {
-          setCampaigns(JSON.parse(savedCampaigns));
+          const parsedCampaigns = JSON.parse(savedCampaigns);
+          setCampaigns(parsedCampaigns);
+          calculateKPIsFromCampaigns(parsedCampaigns);
         }
 
         if (supabaseReady) {
@@ -447,7 +541,10 @@ export const MarketingOverview: React.FC = () => {
             .from('marketing_campaigns')
             .select('*')
             .order('created_at', { ascending: false });
-          if (campaignData) setCampaigns(campaignData);
+          if (campaignData) {
+            setCampaigns(campaignData);
+            calculateKPIsFromCampaigns(campaignData);
+          }
         }
       } catch (error) {
         console.error('Failed to load campaigns:', error);
@@ -476,7 +573,7 @@ export const MarketingOverview: React.FC = () => {
     loadKpis();
     loadChannelPerformance();
     loadRealData();
-  }, [supabaseReady, initialKpis, user]);
+  }, [supabaseReady, user, formatCurrency]);
 
   const generateAIInsights = (): string => {
     const insights: string[] = [];
@@ -577,10 +674,9 @@ export const MarketingOverview: React.FC = () => {
           icon={Download}
           variant="outline"
           onClick={() => {
-            downloadText(
-              `marketing_overview_${new Date().toISOString().split('T')[0]}.txt`,
-              'Marketing Overview Export\n\n- Leads\n- Conversion\n- ROI\n- Spend\n'
-            );
+            const alignment = calculateAlignmentScore();
+            const aiInsight = generateAIInsights();
+            exportToPDF(kpis, channelPerformance, campaigns, alignment, aiInsight, formatCurrency);
             toast.success('Marketing overview exported');
           }}
         >
@@ -602,8 +698,8 @@ export const MarketingOverview: React.FC = () => {
         </div>
       </Card>
 
-      {/* Top KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Top KPI Cards - 3 Left, 3 Right Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           const isPositive = kpi.trend === 'up';
