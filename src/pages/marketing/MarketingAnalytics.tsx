@@ -3,21 +3,255 @@ import { BarChart3, TrendingUp, AlertCircle, CheckCircle, XCircle, Download, Ref
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import jsPDF from 'jspdf';
 
-const downloadText = (filename: string, content: string) => {
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+const exportToPDF = (
+  budgets: any[],
+  recommendations: { stop: string[]; scale: string[]; fix: string[]; competitor: string[] },
+  performanceMetrics: { strategy: number; campaign: number; customer: number },
+  formatCurrency: (val: number) => string,
+  campaigns: any[]
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = 20;
+
+  // Title
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Marketing Analytics Report', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+
+  // Export Date
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Export Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+
+  // Budget & Targets Section
+  if (budgets.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Budget & Targets', 15, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    budgets.forEach((budget, idx) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${idx + 1}. ${budget.channel}`, 15, yPos);
+      yPos += 7;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`   Monthly Budget: ${formatCurrency(budget.monthly_budget)}`, 15, yPos);
+      yPos += 6;
+      doc.text(`   Target Leads: ${budget.target_leads}`, 15, yPos);
+      yPos += 6;
+      doc.text(`   Target ROI: ${budget.target_roi}x`, 15, yPos);
+      yPos += 10;
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.text('No budget targets configured.', 15, yPos);
+    yPos += 10;
+  }
+
+  // AI Recommendations Section
+  yPos += 5;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AI Recommendations', 15, yPos);
+  yPos += 10;
+
+  // Stop Recommendations
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Stop:', 15, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (recommendations.stop.length > 0) {
+    recommendations.stop.forEach((rec) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      const lines = doc.splitTextToSize(`- ${rec}`, pageWidth - 35);
+      doc.text(lines, 20, yPos);
+      yPos += lines.length * 6;
+    });
+  } else {
+    doc.text('- No stop recommendations', 20, yPos);
+    yPos += 6;
+  }
+  yPos += 5;
+
+  // Scale Recommendations
+  if (yPos > 260) {
+    doc.addPage();
+    yPos = 20;
+  }
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Scale:', 15, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (recommendations.scale.length > 0) {
+    recommendations.scale.forEach((rec) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      const lines = doc.splitTextToSize(`- ${rec}`, pageWidth - 35);
+      doc.text(lines, 20, yPos);
+      yPos += lines.length * 6;
+    });
+  } else {
+    doc.text('- No scale recommendations', 20, yPos);
+    yPos += 6;
+  }
+  yPos += 5;
+
+  // Fix Recommendations
+  if (yPos > 260) {
+    doc.addPage();
+    yPos = 20;
+  }
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Fix:', 15, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (recommendations.fix.length > 0) {
+    recommendations.fix.forEach((rec) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      const lines = doc.splitTextToSize(`- ${rec}`, pageWidth - 35);
+      doc.text(lines, 20, yPos);
+      yPos += lines.length * 6;
+    });
+  } else {
+    doc.text('- No fix recommendations', 20, yPos);
+    yPos += 6;
+  }
+  yPos += 5;
+
+  // Competitor Insights
+  if (yPos > 260) {
+    doc.addPage();
+    yPos = 20;
+  }
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Competitor Insights:', 15, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (recommendations.competitor.length > 0) {
+    recommendations.competitor.forEach((rec) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      const lines = doc.splitTextToSize(`- ${rec}`, pageWidth - 35);
+      doc.text(lines, 20, yPos);
+      yPos += lines.length * 6;
+    });
+  } else {
+    doc.text('- No competitor insights', 20, yPos);
+    yPos += 6;
+  }
+
+  // Performance Metrics Section
+  yPos += 10;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Performance Metrics', 15, yPos);
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Strategy Performance: ${performanceMetrics.strategy}%`, 15, yPos);
+  yPos += 6;
+  doc.text(`Campaign Performance: ${performanceMetrics.campaign}%`, 15, yPos);
+  yPos += 6;
+  doc.text(`Customer Response: ${performanceMetrics.customer}%`, 15, yPos);
+  yPos += 10;
+
+  // Summary Statistics
+  yPos += 5;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Summary Statistics', 15, yPos);
+  yPos += 10;
+
+  const totalBudget = budgets.reduce((sum, b) => sum + (b.monthly_budget || 0), 0);
+  const totalCampaigns = campaigns.length;
+  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+  const totalLeads = campaigns.reduce((sum, c) => sum + (c.leads || 0), 0);
+  const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions || 0), 0);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Total Monthly Budget: ${formatCurrency(totalBudget)}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Campaigns: ${totalCampaigns}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Active Campaigns: ${activeCampaigns}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Leads Generated: ${totalLeads}`, 15, yPos);
+  yPos += 6;
+  doc.text(`Total Conversions: ${totalConversions}`, 15, yPos);
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`marketing_analytics_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
 interface MarketingCampaignRow {
@@ -54,6 +288,13 @@ export const MarketingAnalytics: React.FC = () => {
     Array<{ id: string; channel: string; monthly_budget: number; target_leads: number; target_roi: number }>
   >([]);
   const [form, setForm] = useState({ channel: '', monthly_budget: '', target_leads: '', target_roi: '' });
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [configSettings, setConfigSettings] = useState({
+    minConversionRate: '2',
+    targetROI: '3',
+    minLeadVolume: '10',
+  });
 
   const supabaseReady = Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
@@ -115,30 +356,25 @@ export const MarketingAnalytics: React.FC = () => {
       stop: [] as string[],
       scale: [] as string[],
       fix: [] as string[],
-      competitors: [] as string[],
+      competitor: [] as string[],
     };
 
     if (campaigns.length === 0) {
-      // Default recommendations when no data
+      // No campaigns yet - provide actionable startup recommendations
       recommendations.stop = [
-        'Low-performing channels (below 2% conversion rate)',
-        'Generic content without targeting',
-        'Ineffective timing for campaigns',
+        'No campaigns running yet - start by creating your first campaign',
       ];
       recommendations.scale = [
-        'High-converting channels (above 5% conversion)',
-        'Successful campaign strategies',
-        'Peak performance time slots',
+        'Create campaigns to identify high-performing channels',
+        'Set budget targets to track ROI effectively',
       ];
       recommendations.fix = [
-        'Content optimization needed',
-        'Audience targeting improvements',
-        'Landing page performance',
+        'Add your first marketing campaign to begin analysis',
+        'Define budget targets for at least 2-3 channels',
       ];
-      recommendations.competitors = [
-        'Competitors using advanced analytics',
-        'Social media presence gaps',
-        'Missing channel opportunities',
+      recommendations.competitor = [
+        'Add campaigns with channel data to identify gaps',
+        'Track competitor channels for strategic opportunities',
       ];
       return recommendations;
     }
@@ -160,90 +396,141 @@ export const MarketingAnalytics: React.FC = () => {
       }
     });
 
-    // Generate stop recommendations
+    // Generate stop recommendations based on real data
     Object.entries(channelPerformance).forEach(([channel, stats]) => {
       const conversionRate = stats.leads > 0 ? (stats.conversions / stats.leads) * 100 : 0;
-      if (conversionRate < 2) {
-        recommendations.stop.push(`${channel} campaigns (${conversionRate.toFixed(1)}% conversion, below 2% threshold)`);
+      const roi = stats.spent > 0 ? ((stats.conversions * 1000) / stats.spent) : 0;
+      
+      if (conversionRate < 2 && stats.campaigns > 0) {
+        recommendations.stop.push(`${channel}: ${conversionRate.toFixed(1)}% conversion rate is below 2% threshold - consider pausing`);
+      } else if (roi < 1 && stats.spent > 10000) {
+        recommendations.stop.push(`${channel}: ROI of ${roi.toFixed(1)}x is negative - review or stop`);
       }
     });
 
-    // Generate scale recommendations
+    // Generate scale recommendations based on high performers
     Object.entries(channelPerformance).forEach(([channel, stats]) => {
       const conversionRate = stats.leads > 0 ? (stats.conversions / stats.leads) * 100 : 0;
-      const roi = stats.spent > 0 ? (stats.conversions * 1000) / stats.spent : 0; // Simple ROI calculation
-      if (conversionRate > 5) {
-        recommendations.scale.push(`${channel} campaigns (${conversionRate.toFixed(1)}% conversion, ${roi.toFixed(1)}x ROI)`);
+      const roi = stats.spent > 0 ? ((stats.conversions * 1000) / stats.spent) : 0;
+      const costPerLead = stats.leads > 0 ? stats.spent / stats.leads : 0;
+      
+      if (conversionRate > 5 && stats.leads > 10) {
+        recommendations.scale.push(`${channel}: Strong ${conversionRate.toFixed(1)}% conversion with ${stats.leads} leads - scale budget`);
+      } else if (roi > 3 && stats.campaigns > 0) {
+        recommendations.scale.push(`${channel}: ${roi.toFixed(1)}x ROI is excellent - increase investment`);
+      } else if (costPerLead > 0 && costPerLead < 50000 && stats.leads > 20) {
+        recommendations.scale.push(`${channel}: Low cost per lead (${formatCurrency(costPerLead)}) - expand reach`);
       }
     });
 
     // Generate fix recommendations
     const totalCampaigns = campaigns.length;
     const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
-    if (activeCampaigns < totalCampaigns * 0.5) {
-      recommendations.fix.push('Increase active campaign ratio (currently ' + Math.round((activeCampaigns / totalCampaigns) * 100) + '%)');
+    const draftCampaigns = campaigns.filter(c => c.status === 'draft').length;
+    
+    if (activeCampaigns < totalCampaigns * 0.3 && totalCampaigns > 2) {
+      recommendations.fix.push(`Only ${activeCampaigns} of ${totalCampaigns} campaigns are active (${Math.round((activeCampaigns / totalCampaigns) * 100)}%) - activate more campaigns`);
+    }
+    
+    if (draftCampaigns > 3) {
+      recommendations.fix.push(`${draftCampaigns} campaigns stuck in draft - review and launch or delete`);
     }
 
-    // Generate competitor insights
-    const usedChannels = new Set();
+    // Budget vs actual spend analysis
+    const totalBudgetAllocated = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+    const totalSpent = campaigns.reduce((sum, c) => sum + (c.spent || 0), 0);
+    const spendRate = totalBudgetAllocated > 0 ? (totalSpent / totalBudgetAllocated) * 100 : 0;
+    
+    if (spendRate < 30 && totalCampaigns > 2) {
+      recommendations.fix.push(`Low budget utilization (${spendRate.toFixed(0)}%) - campaigns may be under-resourced`);
+    } else if (spendRate > 95 && activeCampaigns > 0) {
+      recommendations.fix.push(`Budget nearly exhausted (${spendRate.toFixed(0)}% spent) - allocate additional funds or pause campaigns`);
+    }
+
+    // Generate competitor insights based on channel gaps
+    const usedChannels = new Set<string>();
     campaigns.forEach(campaign => {
       if (campaign.channels) {
-        campaign.channels.forEach((channel: string) => usedChannels.add(channel));
+        campaign.channels.forEach((channel: string) => usedChannels.add(channel.toLowerCase()));
       }
     });
 
-    const commonChannels = ['Email', 'SMS', 'Social Media', 'Paid Ads', 'Content Marketing'];
-    const missingChannels = commonChannels.filter(channel => !usedChannels.has(channel));
+    const keyChannels = ['email', 'sms', 'social media', 'paid ads', 'content marketing', 'influencer', 'seo'];
+    const missingChannels = keyChannels.filter(channel => !Array.from(usedChannels).some(used => used.toLowerCase().includes(channel)));
+    
     if (missingChannels.length > 0) {
-      recommendations.competitors.push(`Missing channels: ${missingChannels.slice(0, 2).join(', ')}`);
+      const missing = missingChannels.slice(0, 3).map(c => c.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+      recommendations.competitor.push(`Untapped channels: ${missing.join(', ')} - competitors may be winning here`);
     }
 
-    // Fill with defaults if no specific recommendations
+    // Channel diversification
+    if (usedChannels.size < 3 && totalCampaigns > 3) {
+      recommendations.competitor.push(`Only ${usedChannels.size} channels in use - competitors with 4+ channels often outperform`);
+    }
+
+    // If still no specific data-driven recommendations, provide context-aware suggestions
     if (recommendations.stop.length === 0) {
-      recommendations.stop = ['Review underperforming campaigns regularly', 'Monitor conversion rates weekly', 'Optimize budget allocation'];
+      recommendations.stop.push('All channels performing above minimum thresholds - continue monitoring weekly');
     }
     if (recommendations.scale.length === 0) {
-      recommendations.scale = ['Identify top-performing channels', 'Increase budget for successful campaigns', 'Replicate winning strategies'];
+      recommendations.scale.push(`Add lead and conversion data to ${campaigns.length} campaigns to identify scale opportunities`);
     }
     if (recommendations.fix.length === 0) {
-      recommendations.fix = ['A/B test campaign messaging', 'Improve audience targeting', 'Optimize landing pages'];
+      recommendations.fix.push('Campaign structure is healthy - focus on optimizing messaging and targeting');
     }
-    if (recommendations.competitors.length === 0) {
-      recommendations.competitors = ['Monitor competitor social media activity', 'Track competitor content strategies', 'Analyze competitor channel mix'];
+    if (recommendations.competitor.length === 0) {
+      recommendations.competitor.push(`Good channel coverage with ${usedChannels.size} active channels - monitor competitor campaigns for new trends`);
     }
 
     return recommendations;
-  }, [campaigns]);
+  }, [campaigns, formatCurrency]);
 
   // Calculate real performance metrics
   const performanceMetrics = useMemo(() => {
     if (campaigns.length === 0) {
       return {
-        strategy: 75,
-        campaign: 82,
-        customer: 68,
+        strategy: 0,
+        campaign: 0,
+        customer: 0,
       };
     }
 
-    // Strategy performance: based on campaign success rate
+    // Strategy performance: based on campaign completion and strategy alignment
     const completedCampaigns = campaigns.filter(c => c.status === 'completed').length;
+    const campaignsWithStrategy = campaigns.filter(c => c.strategy && c.strategy.trim() !== '').length;
     const totalCampaigns = campaigns.length;
-    const strategyScore = totalCampaigns > 0 ? Math.round((completedCampaigns / totalCampaigns) * 100) : 75;
+    
+    const completionRate = totalCampaigns > 0 ? (completedCampaigns / totalCampaigns) * 100 : 0;
+    const strategyAlignment = totalCampaigns > 0 ? (campaignsWithStrategy / totalCampaigns) * 100 : 0;
+    const strategyScore = Math.round((completionRate * 0.5) + (strategyAlignment * 0.5));
 
-    // Campaign performance: based on conversion rates
+    // Campaign performance: based on actual conversion rates and lead generation
     const totalLeads = campaigns.reduce((sum, c) => sum + (c.leads_generated || 0), 0);
     const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions || 0), 0);
     const avgConversionRate = totalLeads > 0 ? (totalConversions / totalLeads) * 100 : 0;
-    const campaignScore = Math.min(100, Math.max(60, avgConversionRate * 2)); // Scale conversion rate
+    
+    // Score based on conversion rate: 5% = 100, 2% = 40, 0% = 0
+    const conversionScore = Math.min(100, Math.max(0, avgConversionRate * 20));
+    
+    // Factor in lead volume: campaigns generating leads score higher
+    const leadsPerCampaign = totalCampaigns > 0 ? totalLeads / totalCampaigns : 0;
+    const volumeBonus = Math.min(20, leadsPerCampaign / 5); // Max 20 point bonus
+    
+    const campaignScore = Math.round(Math.min(100, conversionScore + volumeBonus));
 
-    // Customer response: based on leads vs budget efficiency
-    const costPerLead = totalBudget > 0 && totalLeads > 0 ? totalBudget / totalLeads : 0;
-    const customerScore = costPerLead > 0 ? Math.max(50, Math.min(95, 1000 / costPerLead)) : 70;
+    // Customer response: based on ROI and cost efficiency
+    const totalSpent = campaigns.reduce((sum, c) => sum + (c.spent || c.budget || 0), 0);
+    const avgRevenue = totalConversions > 0 ? (totalConversions * 500000) : 0; // Estimate average deal value
+    const roi = totalSpent > 0 ? (avgRevenue / totalSpent) : 0;
+    
+    // Score: ROI > 3x = 90+, ROI > 2x = 70+, ROI > 1x = 50+
+    const roiScore = roi > 3 ? 90 : roi > 2 ? 70 : roi > 1 ? 50 : Math.round(roi * 50);
+    const customerScore = Math.min(100, Math.max(0, roiScore));
 
     return {
       strategy: strategyScore,
-      campaign: Math.round(campaignScore),
-      customer: Math.round(customerScore),
+      campaign: campaignScore,
+      customer: customerScore,
     };
   }, [campaigns, totalBudget]);
 
@@ -284,6 +571,35 @@ export const MarketingAnalytics: React.FC = () => {
     loadCampaigns();
     loadBudgets();
   }, [loadCampaigns, loadBudgets]);
+
+  // Refresh AI Analysis handler
+  const handleRefreshAI = async () => {
+    setRefreshing(true);
+    await Promise.all([loadCampaigns(), loadBudgets()]);
+    setRefreshing(false);
+    toast.success('AI analysis refreshed', {
+      description: 'Recommendations and metrics updated with latest data',
+    });
+  };
+
+  // Configure Metrics handler
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('copcca-marketing-config', JSON.stringify(configSettings));
+    setShowConfigModal(false);
+    toast.success('Metrics configuration saved', {
+      description: 'Thresholds will be applied to AI recommendations',
+    });
+  };
+
+  // Export PDF handler
+  const handleExportPDF = () => {
+    exportToPDF(budgets, generateRecommendations, performanceMetrics, formatCurrency, campaigns);
+    toast.success('Marketing analytics exported', {
+      description: 'PDF report generated successfully',
+    });
+  };
+
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.channel.trim()) {
@@ -356,24 +672,24 @@ export const MarketingAnalytics: React.FC = () => {
     <div className="space-y-6">
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
-        <Button icon={RefreshCw} onClick={() => toast.success('AI analysis refreshed')}>Refresh AI Analysis</Button>
+        <Button 
+          icon={RefreshCw} 
+          onClick={handleRefreshAI}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing...' : 'Refresh AI Analysis'}
+        </Button>
         <Button
           icon={Download}
           variant="outline"
-          onClick={() => {
-            downloadText(
-              `marketing_intelligence_${new Date().toISOString().split('T')[0]}.txt`,
-              'Marketing Intelligence Export\n\nStop/Scale/Fix recommendations + competitor insights.\n'
-            );
-            toast.success('Marketing intelligence exported');
-          }}
+          onClick={handleExportPDF}
         >
           Export Report
         </Button>
         <Button
           icon={Settings}
           variant="outline"
-          onClick={() => toast.message('Configure metrics', { description: 'Demo: choose KPI set + thresholds.' })}
+          onClick={() => setShowConfigModal(true)}
         >
           Configure Metrics
         </Button>
@@ -510,7 +826,7 @@ export const MarketingAnalytics: React.FC = () => {
             What Competitors Do Better
           </h3>
           <ul className="space-y-2">
-            {generateRecommendations.competitors.slice(0, 3).map((item, index) => (
+            {generateRecommendations.competitor.slice(0, 3).map((item, index) => (
               <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
                 <span className="text-blue-600">→</span>
                 <span>{item}</span>
@@ -544,6 +860,57 @@ export const MarketingAnalytics: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Configure Metrics Modal */}
+      <Modal 
+        isOpen={showConfigModal} 
+        onClose={() => setShowConfigModal(false)} 
+        title="Configure Metrics"
+      >
+        <form className="space-y-4" onSubmit={handleSaveConfig}>
+          <div className="space-y-4">
+            <Input
+              label="Minimum Conversion Rate (%)"
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={configSettings.minConversionRate}
+              onChange={(e) => setConfigSettings({ ...configSettings, minConversionRate: e.target.value })}
+              placeholder="e.g., 2"
+            />
+            <Input
+              label="Target ROI (x)"
+              type="number"
+              step="0.1"
+              min="0"
+              value={configSettings.targetROI}
+              onChange={(e) => setConfigSettings({ ...configSettings, targetROI: e.target.value })}
+              placeholder="e.g., 3"
+            />
+            <Input
+              label="Minimum Lead Volume"
+              type="number"
+              min="0"
+              value={configSettings.minLeadVolume}
+              onChange={(e) => setConfigSettings({ ...configSettings, minLeadVolume: e.target.value })}
+              placeholder="e.g., 10"
+            />
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowConfigModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Configuration
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

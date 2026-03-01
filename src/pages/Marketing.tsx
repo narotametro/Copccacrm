@@ -5,7 +5,6 @@ import {
   Megaphone,
   Users as UsersIcon,
   BarChart3,
-  Zap,
   ChevronRight,
 } from 'lucide-react';
 import { MarketingOverview } from './marketing/MarketingOverview';
@@ -13,7 +12,6 @@ import { MarketingStrategy } from './marketing/MarketingStrategy';
 import { MarketingCampaigns } from './marketing/MarketingCampaigns';
 import { LeadsAttribution } from './marketing/LeadsAttribution';
 import { MarketingAnalytics } from './marketing/MarketingAnalytics';
-import { AutomationRules } from './marketing/AutomationRules';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 
 type MarketingSection = 
@@ -21,8 +19,7 @@ type MarketingSection =
   | 'strategy' 
   | 'campaigns' 
   | 'leads' 
-  | 'analytics' 
-  | 'automation';
+  | 'analytics';
 
 const sections = [
   { id: 'overview', label: 'Marketing Overview', icon: LayoutDashboard, color: 'blue' },
@@ -30,7 +27,6 @@ const sections = [
   { id: 'campaigns', label: 'Marketing Campaigns', icon: Megaphone, color: 'green' },
   { id: 'leads', label: 'Leads & Attribution', icon: UsersIcon, color: 'orange' },
   { id: 'analytics', label: 'Marketing Analytics', icon: BarChart3, color: 'pink' },
-  { id: 'automation', label: 'Automation & Rules', icon: Zap, color: 'yellow' },
 ];
 
 export const Marketing: React.FC = () => {
@@ -48,8 +44,6 @@ export const Marketing: React.FC = () => {
         return <LeadsAttribution />;
       case 'analytics':
         return <MarketingAnalytics />;
-      case 'automation':
-        return <AutomationRules />;
       default:
         return <MarketingOverview />;
     }
