@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 import { useCurrency } from '@/context/CurrencyContext';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 
 interface Product {
   id: string;
@@ -298,12 +299,28 @@ export const FourPsStrategy: React.FC = () => {
 
       // Save to Supabase if available
       if (supabaseReady) {
+        const user = useAuthStore.getState().user;
+        
+        if (!user) {
+          toast.error('User not authenticated');
+          return;
+        }
+
+        // Get user's company_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user.id)
+          .single();
+
         const { error } = await supabase
           .from('marketing_strategies')
           .upsert({
             strategy_type: '4ps',
             content: fourPs,
             customer_id: selectedCustomer?.id || null,
+            created_by: user.id,
+            company_id: userData?.company_id || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
