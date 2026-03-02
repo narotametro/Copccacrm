@@ -326,6 +326,9 @@ export const UserManagement: React.FC = () => {
           role: formData.role,
           created_by: user.id,
           expires_at: expiresAt,
+          inviter_name: user.full_name || user.email?.split('@')[0] || 'Admin',
+          inviter_company_id: companyInfo?.id || user.company_id || null,
+          inviter_company_name: companyInfo?.name || 'Your Company',
         })
         .select()
         .single();
