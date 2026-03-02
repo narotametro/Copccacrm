@@ -102,6 +102,25 @@ export const AcceptInvite: React.FC = () => {
       // Get company_id from invitation record (no queries needed!)
       const companyId = (invite as any).inviter_company_id || null;
 
+      // Check if user already exists in auth
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', invite.email.toLowerCase())
+        .maybeSingle();
+
+      // If user already exists, show error and direct to login
+      if (existingUsers) {
+        toast.error('This email is already registered. Please login instead.', {
+          duration: 5000,
+        });
+        setTimeout(() => {
+          navigate('/login?email=' + encodeURIComponent(invite.email), { replace: true });
+        }, 2000);
+        setLoading(false);
+        return;
+      }
+
       // Sign up the user
       const signup = await supabase.auth.signUp({
         email: invite.email,
@@ -115,7 +134,19 @@ export const AcceptInvite: React.FC = () => {
         },
       });
 
-      if (signup.error) throw signup.error;
+      if (signup.error) {
+        // Handle "User already registered" error from Supabase Auth
+        if (signup.error.message?.includes('already registered') || signup.error.status === 422) {
+          toast.error('This email is already registered. Please login instead.', {
+            duration: 5000,
+          });
+          setTimeout(() => {
+            navigate('/login?email=' + encodeURIComponent(invite.email), { replace: true });
+          }, 2000);
+          return;
+        }
+        throw signup.error;
+      }
 
       const userId = signup.data.user?.id;
 
@@ -214,6 +245,17 @@ export const AcceptInvite: React.FC = () => {
               icon={User}
               required
             />
+            
+            {/* Info message for existing users */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>New to COPCCA?</strong> Set your password below to create your account.
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Already have an account? <Link to="/login" className="underline font-semibold">Login here</Link> instead.
+              </p>
+            </div>
+
             <Input
               type="password"
               label="Password"
@@ -242,6 +284,10 @@ export const AcceptInvite: React.FC = () => {
                 Cancel
               </Button>
             </div>
+            
+            <p className="text-sm text-center text-slate-600">
+              Wrong email? <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold">Go to login</Link>
+            </p>
           </form>
         )}
 
