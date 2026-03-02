@@ -90,13 +90,15 @@ export const StockTransfers: React.FC = () => {
 
       if (!userData?.company_id) return;
 
-      const { data: subscription } = await supabase
+      // Try to fetch subscription, fallback to 'start' plan if table doesn't exist
+      const { data: subscription, error: subError } = await supabase
         .from('subscriptions')
         .select('plan')
         .eq('company_id', userData.company_id)
         .eq('status', 'active')
         .single();
 
+      // Default to 'start' plan if table doesn't exist or no subscription found
       const plan = (subscription?.plan || 'start').toLowerCase();
       setUserPlan(plan);
 

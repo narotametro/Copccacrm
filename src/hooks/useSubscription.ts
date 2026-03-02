@@ -75,8 +75,9 @@ export function useSubscription() {
         .single();
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          // No subscription found
+        // Handle missing table or no subscription gracefully
+        if (fetchError.code === 'PGRST116' || fetchError.code === '406' || fetchError.message?.includes('does not exist')) {
+          // No subscription found or table doesn't exist
           setSubscription(null);
         } else {
           throw fetchError;
@@ -85,8 +86,12 @@ export function useSubscription() {
         setSubscription(data as UserSubscription);
       }
     } catch (err) {
-      console.error('Error fetching subscription:', err);
+      // Only log unexpected errors
+      if (!(err instanceof Error && err.message?.includes('does not exist'))) {
+        console.error('Error fetching subscription:', err);
+      }
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
+      setSubscription(null);
     }
   }
 

@@ -80,7 +80,16 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
       .limit(1)
       .single();
 
-    if (error || !data) return null;
+    // Handle missing table gracefully (406 error = table doesn't exist)
+    if (error) {
+      if (error.code === '406' || error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+        return null; // Silently return null for missing tables
+      }
+      console.error('Error fetching subscription:', error);
+      return null;
+    }
+    
+    if (!data) return null;
 
     // Type assertion since Supabase returns nested objects correctly
     const subscriptionData = data as any;

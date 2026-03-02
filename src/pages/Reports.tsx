@@ -82,7 +82,7 @@ export const Reports: React.FC = () => {
       const { data: competitorsData } = await supabase
         .from('competitors')
         .select('*')
-        .order('ai_threat_score', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (competitorsData) {
         setCompetitors(competitorsData);
