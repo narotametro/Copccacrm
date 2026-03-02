@@ -68,54 +68,14 @@ export const AcceptInvite: React.FC = () => {
 
       setInvite(data);
 
-      // Fetch inviter's company and plan information
-      const { data: inviterData, error: inviterError } = await supabase
-        .from('users')
-        .select('company_id, full_name, email, companies(name)')
-        .eq('id', data.created_by)
-        .single();
-
-      if (inviterData) {
-        // Use full name, or fall back to email prefix, or 'Admin'
-        const inviterName = inviterData.full_name || 
-                           inviterData.email?.split('@')[0] || 
-                           'Admin';
-        setAdminName(inviterName);
-        
-        const companyInfo = inviterData.companies as any;
-        setCompanyName(companyInfo?.name || 'the company');
-
-        // Get inviter's subscription plan
-        const { data: subscriptionData } = await supabase
-          .from('user_subscriptions')
-          .select('subscription_plans(display_name)')
-          .eq('user_id', data.created_by)
-          .in('status', ['trial', 'active'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (subscriptionData) {
-          const planInfo = subscriptionData.subscription_plans as any;
-          setPlanName(planInfo?.display_name || 'START');
-        }
-      } else {
-        // If we can't fetch inviter data, try to get just the basic info
-        const { data: basicInviterData } = await supabase
-          .from('users')
-          .select('full_name, email')
-          .eq('id', data.created_by)
-          .single();
-        
-        if (basicInviterData) {
-          const inviterName = basicInviterData.full_name || 
-                             basicInviterData.email?.split('@')[0] || 
-                             'Admin';
-          setAdminName(inviterName);
-        } else {
-          setAdminName('System Administrator');
-        }
-      }
+      // Use inviter info directly from invitation record (no queries needed!)
+      // This avoids RLS policy issues when accepting invitations
+      const inviterName = (data as any).inviter_name || 'System Administrator';
+      const companyNameValue = (data as any).inviter_company_name || 'the company';
+      
+      setAdminName(inviterName);
+      setCompanyName(companyNameValue);
+      setPlanName('START'); // Default plan name
 
       setStatus('ready');
     };
@@ -139,65 +99,10 @@ export const AcceptInvite: React.FC = () => {
 
     setLoading(true);
     try {
-      // Get the inviting admin's company_id
-      const { data: inviterData, error: inviterError } = await supabase
-        .from('users')
-        .select('company_id')
-        .eq('id', invite.created_by)
-        .single();
+      // Get company_id from invitation record (no queries needed!)
+      const companyId = (invite as any).inviter_company_id || null;
 
-      if (inviterError) {
-        console.error('Error getting inviter data:', inviterError);
-      }
-
-      console.log('Inviter data:', inviterData);
-
-      let companyId = inviterData?.company_id;
-
-      // If inviter doesn't have a company, create one
-      if (!companyId) {
-        console.log('Inviter has no company, creating one...');
-        const { data: inviterUserData } = await supabase
-          .from('users')
-          .select('full_name, email')
-          .eq('id', invite.created_by)
-          .single();
-
-        const companyName = inviterUserData?.full_name 
-          ? `${inviterUserData.full_name}'s Company`
-          : `${inviterUserData?.email?.split('@')[0] || 'Company'}`;
-
-        const { data: newCompany, error: createError } = await supabase
-          .from('companies')
-          .insert({
-            name: companyName,
-            email: inviterUserData?.email,
-            status: 'active',
-            subscription_plan: 'starter',
-            subscription_status: 'trial',
-            max_users: 10,
-            created_by: invite.created_by,
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating company for inviter:', createError);
-        } else if (newCompany) {
-          companyId = newCompany.id;
-          console.log('Created company for inviter:', companyId);
-
-          // Update the inviter with the company_id
-          await supabase
-            .from('users')
-            .update({
-              company_id: companyId,
-              is_company_owner: true,
-            })
-            .eq('id', invite.created_by);
-        }
-      }
-
+      // Sign up the user
       const signup = await supabase.auth.signUp({
         email: invite.email,
         password,
@@ -215,26 +120,24 @@ export const AcceptInvite: React.FC = () => {
       const userId = signup.data.user?.id;
 
       if (userId) {
-        console.log('Creating user record for invited user:', userId, 'with company_id:', companyId);
-        // Create user record - automatically inherit admin's company
+        // Create user record - automatically inherit company from inviter
         const { error: upsertError } = await supabase.from('users').upsert({
           id: userId,
           email: invite.email,
           full_name: fullName || invite.email,
           role: invite.role,
           status: 'active',
-          company_id: companyId, // Inherit admin's company
-          invited_by: invite.created_by, // Track who invited them
-          is_company_owner: false, // Invited users are not company owners
+          company_id: companyId, // Inherit company from inviter
+          invited_by: invite.created_by,
+          is_company_owner: false,
         });
 
         if (upsertError) {
           console.error('Error upserting user:', upsertError);
           throw upsertError;
-        } else {
-          console.log('Successfully created user record with company_id');
         }
 
+        // Mark invitation as used
         const { error: updateError } = await supabase
           .from('invitation_links')
           .update({ used: true, used_at: new Date().toISOString() })
@@ -298,7 +201,7 @@ export const AcceptInvite: React.FC = () => {
                 <p>✓ Invited by: <span className="font-semibold">{adminName}</span></p>
                 <p>✓ Your role: <span className="font-semibold">{invite.role.toUpperCase()}</span></p>
                 {planName && <p>✓ Subscription: <span className="font-semibold">{planName} Plan</span></p>}
-                {invite.department && <p>✓ Department: <span className="font-semibold">{invite.department}</span></p>}
+                {(invite as any).department && <p>✓ Department: <span className="font-semibold">{(invite as any).department}</span></p>}
               </div>
             </div>
 
