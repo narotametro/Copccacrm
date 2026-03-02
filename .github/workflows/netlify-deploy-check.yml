@@ -1,0 +1,38 @@
+# Netlify Deployment Status Check
+# This workflow monitors Netlify deployments and provides status
+# Your actual deployment happens automatically via Netlify's GitHub integration
+
+name: Netlify Deploy Check
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build verification
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Build Success
+        run: |
+          echo "✅ Build successful! Netlify will auto-deploy from this commit."
+          echo "📦 Commit: ${{ github.sha }}"
+          echo "🌐 Check deployment status at: https://app.netlify.com"
