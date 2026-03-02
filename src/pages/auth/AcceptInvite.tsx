@@ -69,14 +69,19 @@ export const AcceptInvite: React.FC = () => {
       setInvite(data);
 
       // Fetch inviter's company and plan information
-      const { data: inviterData } = await supabase
+      const { data: inviterData, error: inviterError } = await supabase
         .from('users')
-        .select('company_id, full_name, companies(name)')
+        .select('company_id, full_name, email, companies(name)')
         .eq('id', data.created_by)
         .single();
 
       if (inviterData) {
-        setAdminName(inviterData.full_name || 'Admin');
+        // Use full name, or fall back to email prefix, or 'Admin'
+        const inviterName = inviterData.full_name || 
+                           inviterData.email?.split('@')[0] || 
+                           'Admin';
+        setAdminName(inviterName);
+        
         const companyInfo = inviterData.companies as any;
         setCompanyName(companyInfo?.name || 'the company');
 
@@ -93,6 +98,22 @@ export const AcceptInvite: React.FC = () => {
         if (subscriptionData) {
           const planInfo = subscriptionData.subscription_plans as any;
           setPlanName(planInfo?.display_name || 'START');
+        }
+      } else {
+        // If we can't fetch inviter data, try to get just the basic info
+        const { data: basicInviterData } = await supabase
+          .from('users')
+          .select('full_name, email')
+          .eq('id', data.created_by)
+          .single();
+        
+        if (basicInviterData) {
+          const inviterName = basicInviterData.full_name || 
+                             basicInviterData.email?.split('@')[0] || 
+                             'Admin';
+          setAdminName(inviterName);
+        } else {
+          setAdminName('System Administrator');
         }
       }
 
