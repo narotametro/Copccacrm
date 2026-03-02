@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { COPCCAProtectedRoute } from '@/components/auth/COPCCAProtectedRoute';
+import { SubscriptionGuard } from '@/components/auth/SubscriptionGuard';
 import { COPCCAAdminLayout } from '@/components/layout/COPCCAAdminLayout';
 import { CurrencyProvider } from '@/context/CurrencyContext';
 import { SharedDataProvider } from '@/context/SharedDataContext';
@@ -16,6 +17,7 @@ const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword').then(mod
 const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword').then(module => ({ default: module.ResetPassword })));
 const COPCCAAdminLogin = lazy(() => import('@/pages/auth/COPCCAAdminLogin').then(module => ({ default: module.COPCCAAdminLogin })));
 const AcceptInvite = lazy(() => import('@/pages/auth/AcceptInvite').then(module => ({ default: module.AcceptInvite })));
+const PlanSelection = lazy(() => import('@/pages/auth/PlanSelection').then(module => ({ default: module.PlanSelection })));
 
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Customers = lazy(() => import('@/pages/Customers').then(module => ({ default: module.Customers })));
@@ -125,6 +127,16 @@ const AppRoutes = () => {
           path="/reset-password"
           element={user ? <Navigate to="/app/dashboard" replace /> : <ResetPassword />}
         />
+        
+        {/* Plan Selection - Required before app access */}
+        <Route
+          path="/select-plan"
+          element={
+            <ProtectedRoute>
+              <PlanSelection />
+            </ProtectedRoute>
+          }
+        />
 
         {/* COPCCA Admin Routes - Completely Separate */}
         <Route path="/copcca-admin/login" element={<COPCCAAdminLogin />} />
@@ -149,7 +161,9 @@ const AppRoutes = () => {
           path="/app/*"
           element={
             <ProtectedRoute>
-              <AppLayout />
+              <SubscriptionGuard>
+                <AppLayout />
+              </SubscriptionGuard>
             </ProtectedRoute>
           }
         >

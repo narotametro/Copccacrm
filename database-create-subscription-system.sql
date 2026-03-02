@@ -87,52 +87,17 @@ INSERT INTO subscription_plans (name, display_name, description, price_monthly, 
  -1, -1, -1);
 
 -- ================================================================
--- STEP 4: Assign START plan to ALL existing users
+-- STEP 4: DO NOT auto-assign plans - Force users to select
 -- ================================================================
 
+-- Users MUST select a plan through /select-plan page
+-- This prevents bypassing payment/plan selection
+
 DO $$
-DECLARE
-  start_plan_id UUID;
-  user_record RECORD;
-  assigned_count INTEGER := 0;
 BEGIN
-  -- Get START plan ID
-  SELECT id INTO start_plan_id 
-  FROM subscription_plans 
-  WHERE name = 'start'
-  LIMIT 1;
-  
-  IF start_plan_id IS NULL THEN
-    RAISE EXCEPTION 'START plan not found';
-  END IF;
-  
-  -- Assign START plan to all users who don't have a subscription
-  FOR user_record IN 
-    SELECT au.id, au.email
-    FROM auth.users au
-    LEFT JOIN user_subscriptions us ON us.user_id = au.id
-    WHERE us.id IS NULL
-  LOOP
-    INSERT INTO user_subscriptions (
-      user_id,
-      plan_id,
-      status,
-      billing_cycle,
-      current_period_start,
-      current_period_end
-    ) VALUES (
-      user_record.id,
-      start_plan_id,
-      'active',
-      'monthly',
-      NOW(),
-      NOW() + INTERVAL '30 days'
-    );
-    
-    assigned_count := assigned_count + 1;
-  END LOOP;
-  
-  RAISE NOTICE '✅ Assigned START plan to % users', assigned_count;
+  RAISE NOTICE '⚠️  No plans auto-assigned!';
+  RAISE NOTICE 'Users will be prompted to select a plan on first login';
+  RAISE NOTICE 'This ensures proper plan selection and prevents bypassing';
 END $$;
 
 -- ================================================================
@@ -223,13 +188,17 @@ BEGIN
   RAISE NOTICE '📋 What was done:';
   RAISE NOTICE '1. Created subscription_plans table with START, GROW, PRO plans';
   RAISE NOTICE '2. Created user_subscriptions table';
-  RAISE NOTICE '3. Assigned START plan to all existing users';
-  RAISE NOTICE '4. Created has_feature_access function';
-  RAISE NOTICE '5. Set up RLS policies';
+  RAISE NOTICE '3. Created has_feature_access function';
+  RAISE NOTICE '4. Set up RLS policies';
   RAISE NOTICE '';
   RAISE NOTICE '🎯 Impact:';
-  RAISE NOTICE '✅ All users now have START plan by default';
-  RAISE NOTICE '✅ Feature gates will work based on actual plan';
-  RAISE NOTICE '✅ Users only see features in their plan';
-  RAISE NOTICE '✅ Users can upgrade plans in Settings';
+  RAISE NOTICE '✅ Users will see plan selection page on first login';
+  RAISE NOTICE '✅ Users MUST select a plan to continue';
+  RAISE NOTICE '✅ No bypassing plan selection';
+  RAISE NOTICE '✅ Feature gates work based on selected plan';
+  RAISE NOTICE '✅ Clean upgrade path in Settings';
+  RAISE NOTICE '';
+  RAISE NOTICE '⚠️  IMPORTANT:';
+  RAISE NOTICE 'All existing users will be redirected to /select-plan';
+  RAISE NOTICE 'They must choose START, GROW, or PRO before accessing the app';
 END $$;
