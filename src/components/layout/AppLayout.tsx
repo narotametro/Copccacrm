@@ -28,12 +28,14 @@ import {
   Activity,
   AlertCircle,
   Phone,
+  CreditCard,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { TrialBanner } from '@/components/ui/FeatureGate';
 import { hasModuleAccess } from '@/lib/subscription';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', feature: 'dashboard' },
@@ -56,6 +58,7 @@ export const AppLayout: React.FC = () => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
+  const { subscription, getPlanName } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -528,6 +531,23 @@ export const AppLayout: React.FC = () => {
                             <span className="text-xs font-semibold text-white/90">{formatRole(displayProfile?.role || '')}</span>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                    {/* Current Plan Badge */}
+                    <div className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border-y border-green-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-600">Current Plan</p>
+                          <p className="font-bold text-green-700">{getPlanName()}</p>
+                        </div>
+                        <Link
+                          to="/app/settings"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                        >
+                          <CreditCard size={12} />
+                          Upgrade
+                        </Link>
                       </div>
                     </div>
                     {/* Profile Details */}
