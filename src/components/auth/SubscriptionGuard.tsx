@@ -9,40 +9,41 @@ interface SubscriptionGuardProps {
 }
 
 /**
- * SubscriptionGuard - Ensures user has selected a plan before accessing app
- * Redirects to /select-plan if no subscription exists
+ * SubscriptionGuard - Ensures user has selected a plan OR inherits from inviter
+ * Company owners must select a plan
+ * Invited users automatically inherit their inviter's plan
  */
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
-  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    checkSubscription();
+    checkSubscriptionAccess();
   }, [user]);
 
-  const checkSubscription = async () => {
+  const checkSubscriptionAccess = async () => {
     if (!user) {
       setChecking(false);
       return;
     }
 
     try {
+      // Use the get_user_subscription function which checks both own and inherited subscriptions
       const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .rpc('get_user_subscription', { user_uuid: user.id });
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error checking subscription:', error);
+        setHasAccess(false);
+      } else {
+        // User has access if they have own subscription OR inherited from inviter
+        setHasAccess(data && data.length > 0);
       }
-
-      setHasSubscription(!!data);
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setHasSubscription(false);
+      setHasAccess(false);
     } finally {
       setChecking(false);
     }
@@ -60,8 +61,8 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
     );
   }
 
-  // If no subscription, redirect to plan selection
-  if (hasSubscription === false) {
+  // If no access (no own subscription and not invited), redirect to plan selection
+  if (hasAccess === false) {
     return <Navigate to="/select-plan" state={{ from: location }} replace />;
   }
 

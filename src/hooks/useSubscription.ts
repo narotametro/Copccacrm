@@ -21,6 +21,7 @@ interface UserSubscription {
   current_period_end: string;
   cancel_at_period_end: boolean;
   plan: SubscriptionPlan;
+  is_inherited?: boolean;
 }
 
 export function useSubscription() {
@@ -62,29 +63,40 @@ export function useSubscription() {
     try {
       setError(null);
 
+      // Use get_user_subscription to check for own or inherited subscription
+      const { data: subscriptionData, error: rpcError } = await supabase
+        .rpc('get_user_subscription', { user_uuid: user!.id });
+
+      if (rpcError) {
+        throw rpcError;
+      }
+
+      if (!subscriptionData || subscriptionData.length === 0) {
+        setSubscription(null);
+        return;
+      }
+
+      const subInfo = subscriptionData[0];
+
+      // Fetch full subscription details including plan
       const { data, error: fetchError } = await supabase
         .from('user_subscriptions')
         .select(`
           *,
           plan:subscription_plans(*)
         `)
-        .eq('user_id', user!.id)
-        .in('status', ['trial', 'active'])
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .eq('id', subInfo.subscription_id)
         .single();
 
       if (fetchError) {
-        // Handle missing table or no subscription gracefully
-        if (fetchError.code === 'PGRST116' || fetchError.code === '406' || fetchError.message?.includes('does not exist')) {
-          // No subscription found or table doesn't exist
-          setSubscription(null);
-        } else {
-          throw fetchError;
-        }
-      } else {
-        setSubscription(data as UserSubscription);
+        throw fetchError;
       }
+
+      // Add is_inherited flag
+      setSubscription({
+        ...data,
+        is_inherited: subInfo.is_inherited,
+      } as UserSubscription);
     } catch (err) {
       // Only log unexpected errors
       if (!(err instanceof Error && err.message?.includes('does not exist'))) {
@@ -111,7 +123,8 @@ export function useSubscription() {
 
   function getPlanName(): string {
     if (!subscription) return 'Free';
-    return subscription.plan.display_name || subscription.plan.name.toUpperCase();
+    const planName = subscription.plan.display_name || subscription.plan.name.toUpperCase();
+    return subscription.is_inherited ? `${planName} (Team)` : planName;
   }
 
   function isOnTrial(): boolean {

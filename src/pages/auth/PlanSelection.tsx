@@ -39,15 +39,23 @@ export const PlanSelection: React.FC = () => {
   const checkExistingSubscription = async () => {
     if (!user) return;
 
-    const { data } = await supabase
-      .from('user_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    try {
+      // Check if user has own subscription OR inherits from inviter
+      const { data } = await supabase
+        .rpc('get_user_subscription', { user_uuid: user.id });
 
-    // If user already has subscription, redirect to dashboard
-    if (data) {
-      navigate('/app/dashboard', { replace: true });
+      // If user has subscription (own or inherited), redirect to dashboard
+      if (data && data.length > 0) {
+        const subscriptionInfo = data[0];
+        
+        if (subscriptionInfo.is_inherited) {
+          toast.success(`Welcome! You're using your team's ${subscriptionInfo.plan_display_name} plan`);
+        }
+        
+        navigate('/app/dashboard', { replace: true });
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
     }
   };
 
