@@ -553,14 +553,6 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
               <span className="text-sm text-slate-600">
                 Stock: {product.stock_quantity} units
               </span>
-              {product.location && (
-                <span className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                  📍 {product.location.name} 
-                  <span className="ml-1 text-slate-500">
-                    ({product.location.type === 'pos' ? 'POS' : 'Inventory'})
-                  </span>
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-2 relative">
               <div className={`flex items-center gap-3 bg-blue-50 p-3 rounded-lg ${inputState.isVisible ? '' : 'hidden'}`}>
@@ -6849,7 +6841,6 @@ const CustomerBuyingPatternsSection = () => {
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 px-3 font-medium text-slate-700">Product</th>
-                <th className="text-center py-2 px-3 font-medium text-slate-700">Location</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Current Stock</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Reorder Level</th>
                 <th className="text-center py-2 px-3 font-medium text-slate-700">Sales Velocity</th>
@@ -6892,16 +6883,6 @@ const CustomerBuyingPatternsSection = () => {
                             <div className="text-xs text-slate-500 mt-0.5">🏷️ {product.brands.name}</div>
                           )}
                         </div>
-                      </td>
-                      <td className="text-center py-3 px-3">
-                        {product.location ? (
-                          <div className="text-xs">
-                            <div className="font-medium text-slate-900">{product.location.name}</div>
-                            <div className="text-slate-500">({product.location.type === 'pos' ? 'POS' : 'Inventory'})</div>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">No location</span>
-                        )}
                       </td>
                       <td className="text-center py-3 px-3">
                         <span className={`font-medium ${stockInfo.status === 'out' ? 'text-red-600' : stockInfo.status === 'low' ? 'text-yellow-600' : 'text-green-600'}`}>
