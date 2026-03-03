@@ -3779,15 +3779,13 @@ const SalesHub: React.FC = () => {
     const matchesCategory = categoryFilter === 'all' || productCategoryId === categoryFilter;
     const productBrandId = product.brand_id || (product.brands?.id);
     const matchesBrand = brandFilter === 'all' || productBrandId === brandFilter;
-    const productLocationId = product.location_id || (product.location?.id);
-    const matchesLocation = locationFilter === 'all' || productLocationId === locationFilter;
     const stockStatus = getStockStatus(product);
     const matchesStock = stockFilter === 'all' ||
                         (stockFilter === 'in-stock' && stockStatus.status === 'healthy') ||
                         (stockFilter === 'low-stock' && stockStatus.status === 'low') ||
                         (stockFilter === 'out-of-stock' && stockStatus.status === 'out');
 
-    return matchesSearch && matchesCategory && matchesBrand && matchesLocation && matchesStock;
+    return matchesSearch && matchesCategory && matchesBrand && matchesStock;
   });
 
   const addToCartWithQuantity = (product: Product, quantity: number, customPrice: number) => {
@@ -6151,19 +6149,6 @@ const CustomerBuyingPatternsSection = () => {
             ))}
           </select>
 
-          <select
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">📍 All Locations</option>
-            {userLocations.map(location => (
-              <option key={location.id} value={location.id}>
-                {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
-              </option>
-            ))}
-          </select>
-
           <Button
             onClick={() => setShowAddProductModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap"
@@ -6811,23 +6796,6 @@ const CustomerBuyingPatternsSection = () => {
                 ))}
               </select>
             </div>
-
-            {/* Location Filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-700">Location:</label>
-              <select
-                value={inventoryLocationFilter}
-                onChange={(e) => setInventoryLocationFilter(e.target.value)}
-                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">ALL LOCATIONS</option>
-                {userLocations.map(location => (
-                  <option key={location.id} value={location.id}>
-                    {location.name} ({location.type === 'pos' ? 'POS' : 'Inv'})
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
         
@@ -6860,15 +6828,12 @@ const CustomerBuyingPatternsSection = () => {
                   const matchesBrandFilter = inventoryBrandFilter === 'all' ||
                          product.brand_id === inventoryBrandFilter;
                   
-                  const matchesLocationFilter = inventoryLocationFilter === 'all' ||
-                         product.location_id === inventoryLocationFilter;
-                  
                   const matchesSearch = inventorySearchTerm === '' ||
                          product.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
                          (product.sku && product.sku.toLowerCase().includes(inventorySearchTerm.toLowerCase())) ||
                          (product.brands?.name && product.brands.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()));
                   
-                  return matchesStockFilter && matchesBrandFilter && matchesLocationFilter && matchesSearch;
+                  return matchesStockFilter && matchesBrandFilter && matchesSearch;
                 });
 
                 return filteredInventory.map(product => {
@@ -7221,21 +7186,6 @@ const CustomerBuyingPatternsSection = () => {
                 onChange={(e) => setFilters({...filters, product: e.target.value})}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">🏬 Location</label>
-              <select
-                value={filters.location}
-                onChange={(e) => setFilters({...filters, location: e.target.value})}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Locations</option>
-                {userLocations.map(location => (
-                  <option key={location.id} value={location.id}>
-                    {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
-                  </option>
-                ))}
-              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">📅 Date Range</label>
