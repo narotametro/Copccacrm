@@ -3,9 +3,15 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// Generate unique build timestamp for cache busting
+const buildTimestamp = Date.now().toString();
+
 // Updated base path for custom domain deployment
 export default defineConfig({
   base: '/',
+  define: {
+    'import.meta.env.VITE_BUILD_VERSION': JSON.stringify(buildTimestamp)
+  },
   build: {
     rollupOptions: {
       output: {
@@ -71,37 +77,35 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: true, // Force immediate activation
+        clientsClaim: true, // Take control immediately
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
-        // Only cache essential static files
+        
+        // CRITICAL: Only cache static assets, NEVER cache JS/CSS chunks
         globPatterns: ['**/*.{html,ico,png,svg,woff2}'],
+        
+        // Exclude ALL hashed JS/CSS from precaching (prevent 404 on old files)
+        globIgnores: ['**/assets/**/*.js', '**/assets/**/*.css'],
+        
         // SPA fallback - serve index.html for navigation requests
         navigateFallback: '/index.html',
-        // Only apply fallback to actual navigation, exclude assets and API calls
+        
+        // CRITICAL: Prevent service worker from intercepting asset requests
         navigateFallbackDenylist: [
           /\.(?:js|css|map|json|txt|xml|woff2?|ttf|eot|svg|png|jpe?g|gif|webp|ico)$/i,
           /^\/api\//,
-          /^\/__/
+          /^\/__/,
+          /\/assets\//  // Never intercept asset folder
         ],
-        // Ignore URL parameters for caching
+        
+        // Ignore ALL URL parameters
         ignoreURLParametersMatching: [/.*/],
+        
         runtimeCaching: [
-          // JS/CSS chunks: Network-first to always get latest after deployment
+          // JS/CSS: NetworkOnly (NEVER cache - always fetch fresh)
           {
             urlPattern: /\.(?:js|css)$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'js-css-cache',
-              expiration: {
-                maxEntries: 60,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
-              },
-              networkTimeoutSeconds: 10,
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            handler: 'NetworkOnly', // Changed from NetworkFirst to NetworkOnly
           },
           // Supabase API: Network-first for fresh data
           {

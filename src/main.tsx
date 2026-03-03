@@ -5,24 +5,68 @@ import './index.css';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Toaster } from 'sonner';
 
-// Handle chunk loading errors globally (auto-reload on new deployment)
+// ========================================
+// SERVICE WORKER & CACHE MANAGEMENT
+// ========================================
+
+// Force unregister ALL old service workers and clear ALL caches
+async function clearAllServiceWorkersAndCaches() {
+  try {
+    // 1. Unregister ALL service workers
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(reg => reg.unregister()));
+    }
+
+    // 2. Delete ALL cache storage
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+    }
+  } catch (err) {
+    // Silent fail - don't break the app
+  }
+}
+
+// Check if we need to force refresh (on first load after update)
+const BUILD_VERSION = import.meta.env.VITE_BUILD_VERSION || Date.now().toString();
+const STORED_VERSION = localStorage.getItem('app_build_version');
+
+if (STORED_VERSION && STORED_VERSION !== BUILD_VERSION) {
+  // New build detected - clear everything and force reload
+  clearAllServiceWorkersAndCaches().then(() => {
+    localStorage.setItem('app_build_version', BUILD_VERSION);
+    if (!sessionStorage.getItem('force_reload_done')) {
+      sessionStorage.setItem('force_reload_done', 'true');
+      window.location.reload();
+    }
+  });
+} else {
+  // First visit or same build
+  localStorage.setItem('app_build_version', BUILD_VERSION);
+}
+
+// Handle chunk loading errors (404 for old JS files)
 window.addEventListener('error', (event) => {
   const isChunkError = 
     event.message?.includes('Failed to fetch dynamically imported module') ||
     event.message?.includes('Loading chunk') ||
-    event.filename?.includes('.js');
+    event.message?.includes('Failed to load resource') ||
+    (event.filename?.includes('.js') && event.message?.includes('404'));
   
   if (isChunkError && !sessionStorage.getItem('chunk_reload_attempted')) {
-    console.log('Chunk load error detected. Reloading to fetch new build...');
+    // Clear everything and reload
     sessionStorage.setItem('chunk_reload_attempted', 'true');
-    window.location.reload();
+    clearAllServiceWorkersAndCaches().then(() => {
+      window.location.reload();
+    });
   }
 });
 
-// Clear reload flag on successful load
+// Clear reload flags on successful load
 window.addEventListener('load', () => {
-  // Immediately clear flag on successful load
   sessionStorage.removeItem('chunk_reload_attempted');
+  sessionStorage.removeItem('force_reload_done');
 });
 
 // Apply saved theme on app load
