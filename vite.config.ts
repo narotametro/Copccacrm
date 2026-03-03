@@ -65,12 +65,17 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
-        // Only cache essential static files (not JS chunks - they change every build)
+        // Only cache essential static files
         globPatterns: ['**/*.{html,ico,png,svg,woff2}'],
-        // Add SPA fallback for React Router
+        // SPA fallback - serve index.html for navigation requests
         navigateFallback: '/index.html',
-        navigateFallbackAllowlist: [/^(?!\/__).*/], // Allow all except special paths
-        // Aggressive cache cleanup - delete ALL old caches on new deployment
+        // Only apply fallback to actual navigation, exclude assets and API calls
+        navigateFallbackDenylist: [
+          /\.(?:js|css|map|json|txt|xml|woff2?|ttf|eot|svg|png|jpe?g|gif|webp|ico)$/i,
+          /^\/api\//,
+          /^\/__/
+        ],
+        // Ignore URL parameters for caching
         ignoreURLParametersMatching: [/.*/],
         runtimeCaching: [
           // JS/CSS chunks: Network-first to always get latest after deployment
