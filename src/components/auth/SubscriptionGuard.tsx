@@ -9,41 +9,82 @@ interface SubscriptionGuardProps {
 }
 
 /**
- * SubscriptionGuard - Ensures user has selected a plan OR inherits from inviter
- * Company owners must select a plan
- * Invited users automatically inherit their inviter's plan
+ * SubscriptionGuard - Ensures user has selected a plan before accessing app
+ * Redirects to /select-plan if no subscription exists
  */
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
-  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    checkSubscriptionAccess();
+    checkSubscription();
   }, [user]);
 
-  const checkSubscriptionAccess = async () => {
+  const checkSubscription = async () => {
     if (!user) {
       setChecking(false);
       return;
     }
 
     try {
-      // Use the get_user_subscription function which checks both own and inherited subscriptions
-      const { data, error } = await supabase
-        .rpc('get_user_subscription', { user_uuid: user.id });
+      // Get user's profile to check ownership and company info
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('is_company_owner, company_id, invited_by')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error checking subscription:', error);
-        setHasAccess(false);
-      } else {
-        // User has access if they have own subscription OR inherited from inviter
-        setHasAccess(data && data.length > 0);
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', profileError);
+        setHasSubscription(false);
+        setChecking(false);
+        return;
+      }
+
+      // INVITED USERS: Automatically inherit company owner's subscription
+      if (userProfile?.invited_by && userProfile?.company_id) {
+        // Find company owner's subscription
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('users')
+          .select(`
+            id,
+            user_subscriptions!inner(id, status)
+          `)
+          .eq('company_id', userProfile.company_id)
+          .eq('is_company_owner', true)
+          .in('user_subscriptions.status', ['trial', 'active'])
+          .maybeSingle();
+
+        if (ownerError && ownerError.code !== 'PGRST116') {
+          console.error('Error checking company owner subscription:', ownerError);
+        }
+
+        // Invited user has access if company owner has active subscription
+        setHasSubscription(!!ownerData);
+      } 
+      // COMPANY OWNERS: Check their own subscription
+      else if (userProfile?.is_company_owner) {
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking subscription:', error);
+        }
+
+        setHasSubscription(!!data);
+      } 
+      // NOT INVITED, NOT OWNER: Needs to select plan
+      else {
+        setHasSubscription(false);
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
-      setHasAccess(false);
+      console.error('Error in checkSubscription:', error);
+      setHasSubscription(false);
     } finally {
       setChecking(false);
     }
@@ -61,8 +102,8 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
     );
   }
 
-  // If no access (no own subscription and not invited), redirect to plan selection
-  if (hasAccess === false) {
+  // If no subscription, redirect to plan selection
+  if (hasSubscription === false) {
     return <Navigate to="/select-plan" state={{ from: location }} replace />;
   }
 

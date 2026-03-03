@@ -30,32 +30,49 @@ export const PlanSelection: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [isCompanyOwner, setIsCompanyOwner] = useState<boolean | null>(null);
 
   useEffect(() => {
+    checkUserRole();
     loadPlans();
     checkExistingSubscription();
   }, []);
 
-  const checkExistingSubscription = async () => {
+  const checkUserRole = async () => {
     if (!user) return;
 
     try {
-      // Check if user has own subscription OR inherits from inviter
-      const { data } = await supabase
-        .rpc('get_user_subscription', { user_uuid: user.id });
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('is_company_owner, invited_by, company_id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      // If user has subscription (own or inherited), redirect to dashboard
-      if (data && data.length > 0) {
-        const subscriptionInfo = data[0];
-        
-        if (subscriptionInfo.is_inherited) {
-          toast.success(`Welcome! You're using your team's ${subscriptionInfo.plan_display_name} plan`);
-        }
-        
+      const isOwner = userProfile?.is_company_owner || false;
+      setIsCompanyOwner(isOwner);
+
+      // If user is invited (not owner), they shouldn't be here
+      if (!isOwner && userProfile?.invited_by) {
+        toast.info('You are using your company\'s plan');
         navigate('/app/dashboard', { replace: true });
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      console.error('Error checking user role:', error);
+    }
+  };
+
+  const checkExistingSubscription = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('user_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // If user already has subscription, redirect to dashboard
+    if (data) {
+      navigate('/app/dashboard', { replace: true });
     }
   };
 

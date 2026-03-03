@@ -539,15 +539,20 @@ export const AppLayout: React.FC = () => {
                         <div>
                           <p className="text-xs text-slate-600">Current Plan</p>
                           <p className="font-bold text-green-700">{getPlanName()}</p>
+                          {!profile?.is_company_owner && (
+                            <p className="text-xs text-slate-500 mt-0.5">Team plan</p>
+                          )}
                         </div>
-                        <Link
-                          to="/app/settings"
-                          onClick={() => setProfileDropdownOpen(false)}
-                          className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                        >
-                          <CreditCard size={12} />
-                          Upgrade
-                        </Link>
+                        {profile?.is_company_owner && (
+                          <Link
+                            to="/app/settings"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                          >
+                            <CreditCard size={12} />
+                            Upgrade
+                          </Link>
+                        )}
                       </div>
                     </div>
                     {/* Profile Details */}
