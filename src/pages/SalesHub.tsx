@@ -2681,7 +2681,7 @@ const SalesHub: React.FC = () => {
   const [selectedProductForRestock, setSelectedProductForRestock] = useState<Product | null>(null);
   const [restockQuantity, setRestockQuantity] = useState<number | ''>('');
   const [restockNotes, setRestockNotes] = useState('');
-  const [restockLocation, setRestockLocation] = useState('main-store');
+  const [restockLocation, setRestockLocation] = useState('');
   const [isRestocking, setIsRestocking] = useState(false);
 
   // Order history state
@@ -4327,6 +4327,11 @@ const SalesHub: React.FC = () => {
       return;
     }
 
+    if (!restockLocation) {
+      toast.error('Please select a location for restocking');
+      return;
+    }
+
     setIsRestocking(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -4368,7 +4373,7 @@ const SalesHub: React.FC = () => {
 
       // Add entry to stock_history table
       const selectedLocation = userLocations.find(loc => loc.id === restockLocation);
-      const locationName = selectedLocation ? selectedLocation.name : restockLocation;
+      const locationName = selectedLocation ? selectedLocation.name : restockLocation.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       
       const historyData = {
         product_id: selectedProductForRestock.id,
@@ -4379,7 +4384,7 @@ const SalesHub: React.FC = () => {
         reference_type: 'adjustment_note',
         reference_id: `RESTOCK-${Date.now()}`,
         performed_by: user.id,
-        notes: restockNotes || 'Manual restock via inventory management'
+        notes: `Restocked to ${locationName}. ${restockNotes || 'Manual restock via inventory management'}`
       };
       
       console.log('Inserting stock history:', historyData);
@@ -4411,7 +4416,7 @@ const SalesHub: React.FC = () => {
       setSelectedProductForRestock(null);
       setRestockQuantity('');
       setRestockNotes('');
-      setRestockLocation('main-store');
+      setRestockLocation('');
 
       toast.success(`Successfully restocked ${quantity} units of ${selectedProductForRestock.name}`);
 
@@ -7712,7 +7717,7 @@ const CustomerBuyingPatternsSection = () => {
                 setSelectedProductForRestock(null);
                 setRestockQuantity('');
                 setRestockNotes('');
-                setRestockLocation('main-store');
+                setRestockLocation('');
               }}
               className="text-gray-500 hover:text-gray-700"
             >
@@ -7756,25 +7761,23 @@ const CustomerBuyingPatternsSection = () => {
                   // Show user's custom locations
                   userLocations.map((location) => (
                     <option key={location.id} value={location.id}>
-                      {location.name}
+                      {location.name} ({location.type === 'pos' ? 'POS' : 'Inventory'})
                     </option>
                   ))
                 ) : (
                   // Show default locations if no custom locations are set up
                   <>
                     <option value="main-store">Main Store</option>
-                    {userSubscriptionPlan !== 'starter' && (
-                      <>
-                        <option value="dar-pos">Dar POS</option>
-                        <option value="warehouse">Warehouse</option>
-                      </>
-                    )}
+                    <option value="warehouse-a">Warehouse A</option>
+                    <option value="warehouse-b">Warehouse B</option>
+                    <option value="pos-kariakoo">POS - Kariakoo</option>
+                    <option value="pos-ilala">POS - Ilala</option>
                   </>
                 )}
               </select>
               {userLocations.length === 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 Customize your location names in Settings → Locations
+                  💡 Setup custom locations in Settings → Locations
                 </p>
               )}
             </div>
