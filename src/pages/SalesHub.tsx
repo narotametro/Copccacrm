@@ -6796,6 +6796,23 @@ const CustomerBuyingPatternsSection = () => {
                 ))}
               </select>
             </div>
+
+            {/* Location Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-700">Location:</label>
+              <select
+                value={inventoryLocationFilter}
+                onChange={(e) => setInventoryLocationFilter(e.target.value)}
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">ALL LOCATIONS</option>
+                {userLocations.map(location => (
+                  <option key={location.id} value={location.id}>
+                    {location.name} ({location.type === 'pos' ? 'POS' : 'Inv'})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         
@@ -6828,12 +6845,15 @@ const CustomerBuyingPatternsSection = () => {
                   const matchesBrandFilter = inventoryBrandFilter === 'all' ||
                          product.brand_id === inventoryBrandFilter;
                   
+                  const matchesLocationFilter = inventoryLocationFilter === 'all' ||
+                         product.location_id === inventoryLocationFilter;
+                  
                   const matchesSearch = inventorySearchTerm === '' ||
                          product.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
                          (product.sku && product.sku.toLowerCase().includes(inventorySearchTerm.toLowerCase())) ||
                          (product.brands?.name && product.brands.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()));
                   
-                  return matchesStockFilter && matchesBrandFilter && matchesSearch;
+                  return matchesStockFilter && matchesBrandFilter && matchesLocationFilter && matchesSearch;
                 });
 
                 return filteredInventory.map(product => {
