@@ -26,6 +26,15 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1500,
     sourcemap: false,
+    // Remove console.log in production (keep console.error and console.warn for debugging)
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: ['log'], // Only remove console.log, keep error/warn/info
+        drop_debugger: true,
+        pure_funcs: ['console.log'] // Extra safety to ensure console.log is removed
+      }
+    },
     // Ensure proper module resolution
     commonjsOptions: {
       include: [/node_modules/],
