@@ -2,8 +2,17 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from 'sonner';
+import { initGlobalErrorHandling, initNetworkMonitoring } from './lib/errorHandling';
+
+// ========================================
+// ZERO-ERRORS ERROR HANDLING SYSTEM
+// ========================================
+// Initialize global error handlers BEFORE anything else
+// Users will NEVER see technical errors or 404s - only friendly messages
+initGlobalErrorHandling();
+initNetworkMonitoring();
 
 // ========================================
 // AUTOMATIC ERROR RECOVERY FOR END USERS
