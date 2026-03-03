@@ -58,7 +58,7 @@ export const AppLayout: React.FC = () => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
-  const { subscription, getPlanName } = useSubscription();
+  const { getPlanName } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);

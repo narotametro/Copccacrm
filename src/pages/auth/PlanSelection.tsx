@@ -30,7 +30,6 @@ export const PlanSelection: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
-  const [isCompanyOwner, setIsCompanyOwner] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkUserRole();
@@ -48,11 +47,8 @@ export const PlanSelection: React.FC = () => {
         .eq('id', user.id)
         .maybeSingle();
 
-      const isOwner = userProfile?.is_company_owner || false;
-      setIsCompanyOwner(isOwner);
-
       // If user is invited (not owner), they shouldn't be here
-      if (!isOwner && userProfile?.invited_by) {
+      if (!userProfile?.is_company_owner && userProfile?.invited_by) {
         toast.info('You are using your company\'s plan');
         navigate('/app/dashboard', { replace: true });
       }

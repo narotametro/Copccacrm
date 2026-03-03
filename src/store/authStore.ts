@@ -36,6 +36,9 @@ export interface UserProfile {
   phone: string | null;
   department: string | null;
   status: 'active' | 'inactive';
+  is_company_owner: boolean;
+  company_id: string | null;
+  invited_by: string | null;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
