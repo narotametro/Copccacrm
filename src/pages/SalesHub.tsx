@@ -1091,17 +1091,12 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
           .eq('id', user.id)
           .single();
 
-        if (!userData?.company_id) {
-          toast.error('Unable to determine your company');
-          return;
-        }
-
-        // Save to database
+        // Save to database (company_id optional)
         const { error } = await supabase
           .from('expense_categories')
           .insert([{
             name: newCategory,
-            company_id: userData.company_id,
+            company_id: userData?.company_id || null,
             is_default: false
           }]);
 
@@ -1410,12 +1405,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
         .eq('id', user.id)
         .single();
 
-      if (userError || !userData?.company_id) {
-        toast.error('Unable to determine your company');
-        return;
-      }
-
-      // Prepare expense data for database
+      // Prepare expense data for database (company_id optional)
       const expenseData = {
         title: expenseForm.title,
         amount: parseFloat(expenseForm.amount),
@@ -1430,7 +1420,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
         recurrence_frequency: expenseForm.isRecurring ? expenseForm.frequency : null,
         next_due_date: expenseForm.isRecurring ? expenseForm.nextDueDate : null,
         created_by: user.id,
-        company_id: userData.company_id
+        company_id: userData?.company_id || null
       };
 
       if (editingExpense) {
@@ -4617,19 +4607,18 @@ const SalesHub: React.FC = () => {
         .eq('id', user.id)
         .single();
 
-      if (!userData?.company_id) {
-        toast.error('Unable to determine your company. Please contact support.');
-        return;
-      }
-
-      // Validate location exists and belongs to company
-      const { data: locationData, error: locationError } = await supabase
+      // Validate location exists (company_id is optional)
+      const locationQuery = supabase
         .from('locations')
         .select('id, name, type')
         .eq('id', newProductData.location_id)
-        .eq('company_id', userData.company_id)
-        .eq('status', 'active')
-        .single();
+        .eq('status', 'active');
+      
+      if (userData?.company_id) {
+        locationQuery.eq('company_id', userData.company_id);
+      }
+      
+      const { data: locationData, error: locationError } = await locationQuery.single();
 
       if (locationError || !locationData) {
         toast.error('Invalid location selected');
@@ -4650,7 +4639,7 @@ const SalesHub: React.FC = () => {
           category_id: newProductData.category_id || null,
           location_id: newProductData.location_id,
           created_by: user.id,
-          company_id: userData.company_id
+          company_id: userData?.company_id || null
         })
         .select('*, brands(id, name), categories(id, name)')
         .single();
@@ -4868,19 +4857,14 @@ const SalesHub: React.FC = () => {
         .eq('id', user.id)
         .single();
 
-      if (!userData?.company_id) {
-        toast.error('Unable to determine your company. Please contact support.');
-        return;
-      }
-
-      // Insert new category
+      // Insert new category (company_id optional)
       const { data: newCategory, error: insertError } = await supabase
         .from('categories')
         .insert({
           name: newCategoryData.name.trim(),
           description: newCategoryData.description.trim() || null,
           created_by: user.id,
-          company_id: userData.company_id
+          company_id: userData?.company_id || null
         })
         .select()
         .single();
@@ -4929,19 +4913,14 @@ const SalesHub: React.FC = () => {
         .eq('id', user.id)
         .single();
 
-      if (!userData?.company_id) {
-        toast.error('Unable to determine your company. Please contact support.');
-        return;
-      }
-
-      // Insert new brand
+      // Insert new brand (company_id optional)
       const { data: newBrand, error: insertError } = await supabase
         .from('brands')
         .insert({
           name: newBrandData.name.trim(),
           description: newBrandData.description.trim() || null,
           created_by: user.id,
-          company_id: userData.company_id
+          company_id: userData?.company_id || null
         })
         .select()
         .single();
