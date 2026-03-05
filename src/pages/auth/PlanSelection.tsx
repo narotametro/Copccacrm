@@ -151,9 +151,10 @@ export const PlanSelection: React.FC = () => {
       console.log('✅ Plan activated:', data);
       toast.success('Plan activated successfully!');
       
-      // Redirect to dashboard
+      // Force full page reload to clear all cached state
+      // This ensures SubscriptionGuard picks up the new subscription
       setTimeout(() => {
-        navigate('/app/dashboard', { replace: true });
+        window.location.href = '/app/dashboard';
       }, 1000);
     } catch (error: any) {
       console.error('Error activating plan:', error);
