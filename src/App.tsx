@@ -9,6 +9,7 @@ import { COPCCAAdminLayout } from '@/components/layout/COPCCAAdminLayout';
 import { CurrencyProvider } from '@/context/CurrencyContext';
 import { SharedDataProvider } from '@/context/SharedDataContext';
 import { FeatureGate } from '@/components/ui/FeatureGate';
+import { toast } from 'sonner';
 
 // Lazy load all page components for instant loading
 const Login = lazy(() => import('@/pages/auth/Login'));
@@ -220,6 +221,24 @@ const App = () => {
   useEffect(() => {
     initialize(); // Fire and forget - let auth load in background
   }, [initialize]);
+
+  // Check for silent updates and show non-intrusive notification
+  useEffect(() => {
+    const updateAvailable = localStorage.getItem('update_available');
+    if (updateAvailable === 'true') {
+      // Show small toast (non-blocking, doesn't disrupt work)
+      toast.info('New version available', {
+        description: 'Updates installed. Refresh when convenient.',
+        duration: 8000,
+        action: {
+          label: 'Refresh Now',
+          onClick: () => window.location.reload()
+        }
+      });
+      // Clear flag so we don't show again
+      localStorage.removeItem('update_available');
+    }
+  }, []);
 
   // Render immediately - no waiting!
   return (

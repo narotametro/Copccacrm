@@ -43,76 +43,25 @@ async function clearAllServiceWorkersAndCaches() {
 const BUILD_VERSION = import.meta.env.VITE_BUILD_VERSION || Date.now().toString();
 const STORED_VERSION = localStorage.getItem('app_build_version');
 
-// CRITICAL: If new build detected, clear EVERYTHING before app loads
+// SILENT UPDATE: If new build detected, prepare in background (NON-DISRUPTIVE)
 if (STORED_VERSION && STORED_VERSION !== BUILD_VERSION) {
-  // New build detected - show update overlay immediately
-  const overlay = document.createElement('div');
-  overlay.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999999;
-      color: white;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    ">
-      <div style="text-align: center; max-width: 400px; padding: 40px;">
-        <div style="
-          width: 80px;
-          height: 80px;
-          border: 6px solid rgba(255, 255, 255, 0.2);
-          border-top: 6px solid white;
-          border-radius: 50%;
-          margin: 0 auto 32px;
-          animation: spin 1s linear infinite;
-        "></div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 12px;">
-          New Version Available
-        </h2>
-        <p style="font-size: 16px; opacity: 0.9; margin-bottom: 24px;">
-          Updating to the latest version...
-        </p>
-        <p style="font-size: 14px; opacity: 0.7;">
-          This happens automatically • No action needed
-        </p>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  
-  // Clear everything synchronously where possible
-  try {
-    sessionStorage.clear();
-  } catch (e) {}
-  
-  // Clear async caches
+  // New build detected - clear caches silently in background
+  // Users can keep working, update applies on next natural navigation
   clearAllServiceWorkersAndCaches().then(() => {
     localStorage.setItem('app_build_version', BUILD_VERSION);
+    localStorage.setItem('update_available', 'true');
     
-    // Force hard reload to get fresh content (only once)
-    if (!sessionStorage.getItem('hard_reload_done')) {
-      sessionStorage.setItem('hard_reload_done', 'true');
-      setTimeout(() => window.location.reload(), 1000);
-      throw new Error('Reloading for new version'); // Stop execution
-    }
+    // Show small toast notification (non-blocking) - will appear after app loads
+    // No forced reload, no full-screen overlay, user keeps working
   });
 } else {
   // First visit or same build - just store version
   localStorage.setItem('app_build_version', BUILD_VERSION);
+  localStorage.removeItem('update_available');
 }
 
+// ========================================
+// AUTOMATIC 404 ERROR RECOVERY
 // ========================================
 // AUTOMATIC 404 ERROR RECOVERY
 // ========================================
@@ -120,56 +69,6 @@ if (STORED_VERSION && STORED_VERSION !== BUILD_VERSION) {
 // They should NEVER see the error - we catch and fix before they notice
 
 let errorRecoveryInProgress = false;
-
-// Function to show loading overlay during auto-recovery
-function showUpdateOverlay(message: string) {
-  const overlay = document.createElement('div');
-  overlay.id = 'auto-update-overlay';
-  overlay.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999999;
-      color: white;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    ">
-      <div style="text-align: center; max-width: 400px; padding: 40px;">
-        <div style="
-          width: 80px;
-          height: 80px;
-          border: 6px solid rgba(255, 255, 255, 0.2);
-          border-top: 6px solid white;
-          border-radius: 50%;
-          margin: 0 auto 32px;
-          animation: spin 1s linear infinite;
-        "></div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 12px;">
-          ${message}
-        </h2>
-        <p style="font-size: 16px; opacity: 0.9; margin-bottom: 24px;">
-          Getting the latest version for you...
-        </p>
-        <p style="font-size: 14px; opacity: 0.7;">
-          This will only take a moment
-        </p>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-}
 
 window.addEventListener('error', (event) => {
   // Detect any file loading errors (404, chunk errors, etc.)
@@ -183,17 +82,14 @@ window.addEventListener('error', (event) => {
   if (is404Error && !errorRecoveryInProgress) {
     errorRecoveryInProgress = true;
     
-    // Show professional loading overlay (users never see error)
-    showUpdateOverlay('Updating App');
-    
-    // NUCLEAR: Clear everything and force reload
+    // SILENT FIX: Clear caches in background without disrupting user
     clearAllServiceWorkersAndCaches().then(() => {
       // Clear version to force fresh start
       localStorage.removeItem('app_build_version');
       sessionStorage.clear();
       
-      // Hard reload to get completely fresh content
-      setTimeout(() => window.location.reload(), 500);
+      // Reload quietly (page should already be loading)
+      setTimeout(() => window.location.reload(), 300);
     });
     
     // Prevent error from showing in console (user never sees it)
@@ -211,10 +107,9 @@ if ('serviceWorker' in navigator) {
     // Check for updates every 30 seconds
     setInterval(() => {
       registration.update().catch(() => {
-        // If update fails, might be stale - clear and reload
-        showUpdateOverlay('Refreshing App');
+        // If update fails silently, clear and reload without disruption
         clearAllServiceWorkersAndCaches().then(() => {
-          setTimeout(() => window.location.reload(), 500);
+          setTimeout(() => window.location.reload(), 300);
         });
       });
     }, 30000);
@@ -225,16 +120,11 @@ if ('serviceWorker' in navigator) {
       if (newWorker) {
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New service worker installed - show overlay
-            showUpdateOverlay('Installing Update');
-            
-            // Force immediate activation
+            // New service worker installed - silently activate  
             newWorker.postMessage({ type: 'SKIP_WAITING' });
             
-            // Reload after 1 second to use new SW
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
+            // Mark update available for next load (non-disruptive)
+            localStorage.setItem('update_available', 'true');
           }
         });
       }
