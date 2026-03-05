@@ -108,17 +108,13 @@ export const PlanSelection: React.FC = () => {
     setSubscribing(true);
 
     try {
-      // Create subscription for user
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .insert({
-          user_id: user.id,
-          plan_id: selectedPlan,
-          status: 'active',
-          billing_cycle: 'monthly',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        });
+      // Use upsert function to handle existing subscriptions gracefully
+      const { error } = await supabase.rpc('upsert_user_subscription', {
+        p_user_id: user.id,
+        p_plan_id: selectedPlan,
+        p_status: 'active',
+        p_billing_cycle: 'monthly'
+      });
 
       if (error) throw error;
 
