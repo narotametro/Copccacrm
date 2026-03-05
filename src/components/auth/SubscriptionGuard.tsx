@@ -66,9 +66,10 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
       } 
       // COMPANY OWNERS: Check their own subscription
       else if (userProfile?.is_company_owner) {
+        console.log('🔍 Checking subscription for company owner:', user.id);
         const { data, error } = await supabase
           .from('user_subscriptions')
-          .select('id')
+          .select('id, status')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -76,11 +77,25 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
           console.error('Error checking subscription:', error);
         }
 
+        console.log('📊 Subscription data:', data);
         setHasSubscription(!!data);
       } 
-      // NOT INVITED, NOT OWNER: Needs to select plan
+      // NOT INVITED, NOT OWNER: Check subscription anyway (fallback)
       else {
-        setHasSubscription(false);
+        console.log('⚠️ User not marked as owner or invited, checking subscription anyway');
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking subscription:', error);
+        }
+
+        console.log('📊 Fallback subscription check:', data);
+        // If subscription exists, allow access regardless of flags
+        setHasSubscription(!!data);
       }
     } catch (error) {
       console.error('Error in checkSubscription:', error);
