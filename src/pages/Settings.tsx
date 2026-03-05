@@ -571,9 +571,9 @@ export const Settings: React.FC = () => {
                   Business Profile
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-200">
-                  {isCompanyOwner 
+                  {isCompanyOwner || isAdmin
                     ? "Manage your business profile. This information is shared with all users in your organization."
-                    : "View your business profile. Only company owners can edit this information."
+                    : "View your business profile. Only company owners and admins can edit this information."
                   }
                 </p>
               </div>
@@ -585,7 +585,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.name}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
                     placeholder="COPCCA Technologies"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -596,7 +596,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.phone}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
                     placeholder="+255 XXX XXX XXX"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -607,7 +607,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.email}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, email: e.target.value })}
                     placeholder="admin@company.com"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -620,7 +620,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.tin}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, tin: e.target.value })}
                     placeholder="Enter your business TIN number"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-slate-500 mt-1">Tax Identification Number - Only shown on invoices if provided</p>
@@ -632,7 +632,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.address}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
                     placeholder="123 Business Ave, District"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -643,7 +643,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.city}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, city: e.target.value })}
                     placeholder="Dar es Salaam"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -654,7 +654,7 @@ export const Settings: React.FC = () => {
                     value={companyInfo.country}
                     onChange={(e) => setCompanyInfo({ ...companyInfo, country: e.target.value })}
                     placeholder="Tanzania"
-                    disabled={!isCompanyOwner}
+                    disabled={!isCompanyOwner && !isAdmin}
                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -676,7 +676,7 @@ export const Settings: React.FC = () => {
                         type="checkbox"
                         checked={showCompanyNameInNavbar}
                         onChange={(e) => setShowCompanyNameInNavbar(e.target.checked)}
-                        disabled={!isCompanyOwner}
+                        disabled={!isCompanyOwner && !isAdmin}
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
@@ -685,7 +685,7 @@ export const Settings: React.FC = () => {
                 </div>
               </div>
 
-              {isCompanyOwner && (
+              {(isCompanyOwner || isAdmin) && (
                 <div className="mt-4">
                   <Button 
                     icon={Save} 
