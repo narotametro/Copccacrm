@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Crown, Users, TrendingUp, Check, Loader, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -25,16 +25,22 @@ interface Plan {
 
 export const PlanSelection: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const redirectAttempted = useRef(false);
 
   useEffect(() => {
     checkUserRole();
     loadPlans();
-    checkExistingSubscription();
+    // Only check existing subscription if not redirected from dashboard (prevent loop)
+    const fromDashboard = location.state?.from?.pathname?.includes('/app/dashboard');
+    if (!fromDashboard && !redirectAttempted.current) {
+      checkExistingSubscription();
+    }
   }, []);
 
   const checkUserRole = async () => {
@@ -60,15 +66,32 @@ export const PlanSelection: React.FC = () => {
   const checkExistingSubscription = async () => {
     if (!user) return;
 
-    const { data } = await supabase
-      .from('user_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .in('status', ['trial', 'active'])
+        .maybeSingle();
 
-    // If user already has subscription, redirect to dashboard
-    if (data) {
-      navigate('/app/dashboard', { replace: true });
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking existing subscription:', error);
+        return;
+      }
+
+      // If user already has ACTIVE subscription, redirect to dashboard
+      if (data) {
+        console.log('✓ Active subscription found, redirecting to dashboard');
+        redirectAttempted.current = true;
+        // Add small delay to prevent redirect loop
+        setTimeout(() => {
+          navigate('/app/dashboard', { replace: true });
+        }, 500);
+      } else {
+        console.log('ℹ No active subscription found, staying on plan selection');
+      }
+    } catch (error) {
+      console.error('Error in checkExistingSubscription:', error);
     }
   };
 
