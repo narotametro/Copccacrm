@@ -6296,20 +6296,6 @@ const CustomerBuyingPatternsSection = () => {
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Active Cart ({cart.length} items)
               </div>
-              {cart.length > 0 && (
-                <Button
-                  onClick={() => {
-                    clearDemoData();
-                    toast.success('Demo data cleared from cart');
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Clear Demo Data
-                </Button>
-              )}
             </h4>
 
             {cart.length === 0 ? (
