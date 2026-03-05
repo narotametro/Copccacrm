@@ -109,15 +109,23 @@ export const PlanSelection: React.FC = () => {
 
     try {
       // Use upsert function to handle existing subscriptions gracefully
-      const { error } = await supabase.rpc('upsert_user_subscription', {
+      const { data, error } = await supabase.rpc('upsert_user_subscription', {
         p_user_id: user.id,
         p_plan_id: selectedPlan,
         p_status: 'active',
         p_billing_cycle: 'monthly'
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error('No subscription data returned');
+      }
+
+      console.log('✅ Plan activated:', data);
       toast.success('Plan activated successfully!');
       
       // Redirect to dashboard
