@@ -2553,6 +2553,17 @@ const SalesHub: React.FC = () => {
   const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
   const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<SalesHubOrder | null>(null);
 
+  // Stock validation modal state
+  const [showStockValidationModal, setShowStockValidationModal] = useState(false);
+  const [stockValidationErrors, setStockValidationErrors] = useState<Array<{
+    productName: string;
+    sku: string;
+    brand: string;
+    warehouse: string;
+    needed: number;
+    available: number;
+  }>>([]);
+
   // Company payment info for invoice
   const [companyPaymentInfo, setCompanyPaymentInfo] = useState({
     m_pesa: { paybill: '', account: '' },
@@ -3812,6 +3823,73 @@ const SalesHub: React.FC = () => {
         toast.error('Please select a customer and add items to cart');
         return;
       }
+
+      // ============================================
+      // STOCK VALIDATION - Check warehouse stock availability
+      // ============================================
+      console.log('🔍 Validating stock availability for warehouse:', selectedWarehouse);
+      
+      const stockErrors: Array<{
+        productName: string;
+        sku: string;
+        brand: string;
+        warehouse: string;
+        needed: number;
+        available: number;
+      }> = [];
+
+      // Get selected warehouse name
+      const selectedLocation = locations.find(loc => loc.id === selectedWarehouse);
+      const warehouseName = selectedLocation ? selectedLocation.name : 'Unknown';
+
+      // Check each cart item against warehouse stock
+      for (const cartItem of cart) {
+        // Query the actual product stock at the selected warehouse
+        const { data: productAtWarehouse, error } = await supabase
+          .from('products')
+          .select('id, name, sku, stock_quantity, brands(name)')
+          .eq('id', cartItem.product.id)
+          .eq('location_id', selectedWarehouse)
+          .single();
+
+        if (error || !productAtWarehouse) {
+          // Product doesn't exist at this warehouse
+          stockErrors.push({
+            productName: cartItem.product.name,
+            sku: cartItem.product.sku || 'N/A',
+            brand: cartItem.product.brands?.name || 'N/A',
+            warehouse: warehouseName,
+            needed: cartItem.quantity,
+            available: 0
+          });
+          console.warn(`❌ Product "${cartItem.product.name}" not found at warehouse "${warehouseName}"`);
+        } else if (productAtWarehouse.stock_quantity < cartItem.quantity) {
+          // Insufficient stock at this warehouse
+          stockErrors.push({
+            productName: productAtWarehouse.name,
+            sku: productAtWarehouse.sku || 'N/A',
+            brand: (productAtWarehouse.brands as any)?.name || 'N/A',
+            warehouse: warehouseName,
+            needed: cartItem.quantity,
+            available: productAtWarehouse.stock_quantity || 0
+          });
+          console.warn(`❌ Insufficient stock for "${productAtWarehouse.name}" at "${warehouseName}": need ${cartItem.quantity}, have ${productAtWarehouse.stock_quantity}`);
+        }
+      }
+
+      // If there are stock errors, show modal and block checkout
+      if (stockErrors.length > 0) {
+        console.error('🚫 Cannot complete order - stock validation failed');
+        setStockValidationErrors(stockErrors);
+        setShowStockValidationModal(true);
+        toast.error(`${stockErrors.length} product${stockErrors.length > 1 ? 's' : ''} unavailable at ${warehouseName}`, { duration: 5000 });
+        return; // STOP checkout process
+      }
+
+      console.log('✅ Stock validation passed - proceeding with checkout');
+      // ============================================
+      // END STOCK VALIDATION
+      // ============================================
 
       setIsProcessingOrder(true);
 
@@ -8607,6 +8685,124 @@ const CustomerBuyingPatternsSection = () => {
         order={selectedOrderForDetails}
         formatCurrency={formatCurrency}
       />
+
+      {/* Stock Validation Error Modal */}
+      {showStockValidationModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="bg-red-600 text-white p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-3 rounded-lg">
+                    <AlertTriangle className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">Insufficient Stock</h3>
+                    <p className="text-red-100 mt-1">
+                      {stockValidationErrors.length} product{stockValidationErrors.length > 1 ? 's are' : ' is'} unavailable at selected warehouse
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowStockValidationModal(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-900">
+                  <strong>⚠️ Action Required:</strong> The following products don't have enough stock at the selected warehouse. 
+                  Please adjust quantities, remove items, or switch to a different warehouse.
+                </p>
+              </div>
+
+              {/* Stock Errors Table */}
+              <div className="space-y-3">
+                {stockValidationErrors.map((error, index) => (
+                  <div 
+                    key={index} 
+                    className="border border-red-200 rounded-lg p-4 bg-red-50/50 hover:bg-red-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Product Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Package className="h-5 w-5 text-red-600" />
+                          <h4 className="font-semibold text-slate-900">{error.productName}</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-slate-600">SKU:</span>
+                            <span className="ml-2 font-medium text-slate-900">{error.sku}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-600">Brand:</span>
+                            <span className="ml-2 font-medium text-slate-900">{error.brand}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-600">Warehouse:</span>
+                            <span className="ml-2 font-medium text-blue-700">{error.warehouse}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stock Info */}
+                      <div className="flex items-center gap-6 bg-white rounded-lg p-4 border border-red-200">
+                        <div className="text-center">
+                          <div className="text-xs text-slate-600 mb-1">Needed</div>
+                          <div className="text-2xl font-bold text-red-600">{error.needed}</div>
+                        </div>
+                        <div className="text-2xl text-slate-400">vs</div>
+                        <div className="text-center">
+                          <div className="text-xs text-slate-600 mb-1">Available</div>
+                          <div className="text-2xl font-bold text-slate-900">
+                            {error.available}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shortage indicator */}
+                    <div className="mt-3 pt-3 border-t border-red-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-red-800 font-medium">
+                          ❌ Short by: {error.needed - error.available} unit{(error.needed - error.available) > 1 ? 's' : ''}
+                        </span>
+                        {error.available === 0 && (
+                          <span className="text-red-900 bg-red-200 px-3 py-1 rounded-full text-xs font-bold">
+                            OUT OF STOCK
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-slate-50 border-t border-slate-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-sm text-slate-600">
+                  <strong>💡 Tip:</strong> Check other warehouses or adjust order quantities
+                </div>
+                <Button
+                  onClick={() => setShowStockValidationModal(false)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                >
+                  Close & Edit Order
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Company Settings Modal */}
       {showCompanySettingsModal && (

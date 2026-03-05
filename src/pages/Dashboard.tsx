@@ -661,12 +661,29 @@ const Dashboard = () => {
 
         <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <TrendingUp className="text-orange-600" size={24} />
+            <div className={`p-3 rounded-lg ${
+              growthRate > 0 ? 'bg-green-100' : 
+              growthRate < 0 ? 'bg-red-100' : 
+              'bg-slate-100'
+            }`}>
+              {growthRate > 0 ? (
+                <ArrowUp className="text-green-600" size={24} />
+              ) : growthRate < 0 ? (
+                <ArrowDown className="text-red-600" size={24} />
+              ) : (
+                <TrendingUp className="text-slate-600" size={24} />
+              )}
             </div>
             <div>
               <p className="text-sm text-slate-600">Growth Rate</p>
-              <p className="text-2xl font-bold text-slate-900">{`+${growthRate}%`}</p>
+              <p className={`text-2xl font-bold ${
+                growthRate > 0 ? 'text-green-600' : 
+                growthRate < 0 ? 'text-red-600' : 
+                'text-slate-900'
+              }`}>
+                {growthRate === 0 && totalRevenue === 0 ? 'No data' : 
+                 `${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}%`}
+              </p>
             </div>
           </div>
         </Card>
