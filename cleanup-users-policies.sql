@@ -17,6 +17,10 @@ DROP POLICY IF EXISTS "Authenticated users can read users" ON users;
 DROP POLICY IF EXISTS "Users can update own data" ON users;
 DROP POLICY IF EXISTS "Admins can insert users" ON users;
 DROP POLICY IF EXISTS "Admins can delete users" ON users;
+DROP POLICY IF EXISTS "authenticated_users_can_read_users" ON users;
+DROP POLICY IF EXISTS "users_update_own_profile" ON users;
+DROP POLICY IF EXISTS "admins_can_insert_users" ON users;
+DROP POLICY IF EXISTS "admins_can_delete_users" ON users;
 
 -- Now recreate ONLY the clean policies we need
 
