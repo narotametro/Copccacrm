@@ -2519,6 +2519,9 @@ const SalesHub: React.FC = () => {
   const [locations, setLocations] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('main-store');
 
+  // VAT type selection state
+  const [vatType, setVatType] = useState<'inclusive' | 'exclusive'>('inclusive');
+
   // Tax rate constant (18% VAT for Tanzania)
   const taxRate = 0.18;
 
@@ -3044,7 +3047,7 @@ const SalesHub: React.FC = () => {
 
           <div class="totals-section">
             <div><strong>Subtotal:</strong> ${formatCurrency(order.subtotal)}</div>
-            <div><strong>VAT (18%):</strong> ${formatCurrency(order.tax_amount)}</div>
+            ${(order.vat_type === 'inclusive' || !order.vat_type) ? `<div><strong>VAT (18%):</strong> ${formatCurrency(order.tax_amount)}</div>` : ''}
             ${order.discount_amount > 0 ? `<div><strong>Discount:</strong> -${formatCurrency(order.discount_amount)}</div>` : ''}
             <div class="total-amount"><strong>Total:</strong> ${formatCurrency(order.total_amount)}</div>
           </div>
@@ -4078,6 +4081,7 @@ const SalesHub: React.FC = () => {
             discount_amount: actualDiscountAmount,
             total_amount: total,
             payment_method: paymentMethod,
+            vat_type: vatType,
             status: 'completed',
             items: orderSnapshot.items.map(item => ({
               product_id: item.product.id,
@@ -6566,6 +6570,36 @@ const CustomerBuyingPatternsSection = () => {
                   </p>
                 </div>
 
+                {/* VAT Type Selection */}
+                <div className="space-y-3">
+                  <h5 className="text-sm font-semibold text-slate-700">VAT Options</h5>
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="vatType"
+                        value="inclusive"
+                        checked={vatType === 'inclusive'}
+                        onChange={() => setVatType('inclusive')}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-slate-700">VAT Inclusive</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="vatType"
+                        value="exclusive"
+                        checked={vatType === 'exclusive'}
+                        onChange={() => setVatType('exclusive')}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-slate-700">VAT Exclusive</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-slate-500">VAT Inclusive: Shows VAT on invoice | VAT Exclusive: Hides VAT on invoice</p>
+                </div>
+
                 {/* Order Summary Breakdown */}
                 <div className="bg-slate-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
@@ -6588,12 +6622,15 @@ const CustomerBuyingPatternsSection = () => {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600">VAT (18%):</span>
-                    <span className="text-sm font-medium text-slate-900">
-                      {formatCurrency(getTotal() * taxRate)}
-                    </span>
-                  </div>
+                  {/* Only show VAT line if VAT Inclusive is selected */}
+                  {vatType === 'inclusive' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">VAT (18%):</span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {formatCurrency(getTotal() * taxRate)}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="border-t pt-2 flex justify-between items-center">
                     <span className="text-base font-bold text-slate-900">TOTAL:</span>
