@@ -7,14 +7,20 @@
 -- This will be used in all policies below
 
 -- ===============================
--- STEP 1: DROP OVERLY PERMISSIVE POLICIES
+-- STEP 1: DROP ALL EXISTING POLICIES
 -- ===============================
 DROP POLICY IF EXISTS "products_all_authenticated" ON products;
+DROP POLICY IF EXISTS "products_company_scope" ON products;
 DROP POLICY IF EXISTS "brands_all_authenticated" ON brands;
+DROP POLICY IF EXISTS "brands_company_scope" ON brands;
 DROP POLICY IF EXISTS "categories_all_authenticated" ON categories;
+DROP POLICY IF EXISTS "categories_company_scope" ON categories;
 DROP POLICY IF EXISTS "locations_all_authenticated" ON locations;
+DROP POLICY IF EXISTS "locations_company_scope" ON locations;
 DROP POLICY IF EXISTS "expenses_all_authenticated" ON expenses;
+DROP POLICY IF EXISTS "expenses_company_scope" ON expenses;
 DROP POLICY IF EXISTS "expense_categories_all_authenticated" ON expense_categories;
+DROP POLICY IF EXISTS "expense_categories_company_scope" ON expense_categories;
 
 -- ===============================
 -- STEP 2: PRODUCTS - COMPANY SCOPED
