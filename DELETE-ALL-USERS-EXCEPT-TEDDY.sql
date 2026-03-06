@@ -9,99 +9,120 @@
 -- Delete in correct order to avoid FK constraint errors
 DO $$
 DECLARE
-  deleted_products INT;
-  deleted_locations INT;
-  deleted_inventory_locations INT;
-  deleted_brands INT;
-  deleted_categories INT;
-  deleted_orders INT;
-  deleted_customers INT;
-  deleted_users INT;
+  keep_users UUID[];
+  deleted_count INT;
+  total_deleted INT := 0;
 BEGIN
-  -- Delete products from users we're removing
-  DELETE FROM products WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  );
-  GET DIAGNOSTICS deleted_products = ROW_COUNT;
+  -- Get list of user IDs to keep
+  SELECT ARRAY_AGG(id) INTO keep_users
+  FROM auth.users 
+  WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com');
   
-  -- Delete locations from users we're removing
-  DELETE FROM locations WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  );
-  GET DIAGNOSTICS deleted_locations = ROW_COUNT;
+  RAISE NOTICE '🔥 Starting comprehensive data cleanup...';
+  RAISE NOTICE '📋 Keeping users: teddy@gmail.com, narotametro@gmail.com, sales@copcca.com';
   
-  -- Delete inventory_locations from users we're removing
-  DELETE FROM inventory_locations WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  );
-  GET DIAGNOSTICS deleted_inventory_locations = ROW_COUNT;
+  -- Delete from tables with created_by column
+  DELETE FROM support_tickets WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Support tickets: % deleted', deleted_count;
   
-  -- Delete brands from users we're removing
-  DELETE FROM brands WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  ) AND created_by IS NOT NULL;
-  GET DIAGNOSTICS deleted_brands = ROW_COUNT;
+  DELETE FROM deals WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Deals: % deleted', deleted_count;
   
-  -- Delete categories from users we're removing
-  DELETE FROM categories WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  ) AND created_by IS NOT NULL;
-  GET DIAGNOSTICS deleted_categories = ROW_COUNT;
+  DELETE FROM invoices WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Invoices: % deleted', deleted_count;
   
-  -- Delete orders from users we're removing
-  DELETE FROM sales_hub_orders WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  );
-  GET DIAGNOSTICS deleted_orders = ROW_COUNT;
+  DELETE FROM expenses WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Expenses: % deleted', deleted_count;
   
-  -- Delete customers from users we're removing
-  DELETE FROM sales_hub_customers WHERE created_by NOT IN (
-    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-  );
-  GET DIAGNOSTICS deleted_customers = ROW_COUNT;
+  DELETE FROM stock_transfers WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Stock transfers: % deleted', deleted_count;
   
-  RAISE NOTICE '✅ Data cleanup complete:';
-  RAISE NOTICE '  - Products deleted: %', deleted_products;
-  RAISE NOTICE '  - Locations deleted: %', deleted_locations;
-  RAISE NOTICE '  - Inventory Locations deleted: %', deleted_inventory_locations;
-  RAISE NOTICE '  - Brands deleted: %', deleted_brands;
-  RAISE NOTICE '  - Categories deleted: %', deleted_categories;
-  RAISE NOTICE '  - Orders deleted: %', deleted_orders;
-  RAISE NOTICE '  - Customers deleted: %', deleted_customers;
+  DELETE FROM products WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Products: % deleted', deleted_count;
+  
+  DELETE FROM locations WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Locations: % deleted', deleted_count;
+  
+  DELETE FROM inventory_locations WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Inventory locations: % deleted', deleted_count;
+  
+  DELETE FROM brands WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Brands: % deleted', deleted_count;
+  
+  DELETE FROM categories WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Categories: % deleted', deleted_count;
+  
+  DELETE FROM sales_hub_orders WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Orders: % deleted', deleted_count;
+  
+  DELETE FROM sales_hub_customers WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Customers: % deleted', deleted_count;
+  
+  -- Delete from tables with user_id column
+  DELETE FROM interactions WHERE user_id IS NOT NULL AND user_id != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Interactions: % deleted', deleted_count;
+  
+  DELETE FROM user_subscriptions WHERE user_id IS NOT NULL AND user_id != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ User subscriptions: % deleted', deleted_count;
+  
+  DELETE FROM notifications WHERE user_id IS NOT NULL AND user_id != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Notifications: % deleted', deleted_count;
+  
+  DELETE FROM sales_hub_sessions WHERE user_id IS NOT NULL AND user_id != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Sales hub sessions: % deleted', deleted_count;
+  
+  RAISE NOTICE '';
+  RAISE NOTICE '✅ Data cleanup complete! Total records deleted: %', total_deleted;
 END $$;
 
 -- STEP 2: NOW delete from public.users (after cleaning up their data)
 DELETE FROM users 
-WHERE email != 'teddy@gmail.com' 
-AND email NOT LIKE '%narotametro%'
-AND email NOT LIKE '%sales@copcca%';
+WHERE id NOT IN (
+  SELECT id FROM auth.users 
+  WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
+);
 
--- Show which users were deleted
-SELECT 
-  '✅ USERS DELETED FROM PUBLIC.USERS' as status,
-  COUNT(*) as deleted_count
-FROM users
-WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com');
-
--- Show which auth users still need manual deletion
-SELECT 
-  '⚠️ THESE AUTH USERS NEED MANUAL DELETION' as warning,
-  email,
-  created_at
-FROM auth.users
-WHERE email != 'teddy@gmail.com'
-AND email NOT LIKE '%narotametro%'
-AND email NOT LIKE '%sales@copcca%'
-ORDER BY created_at DESC;
-
--- NOTE: You must manually delete from auth.users using Supabase Dashboard
--- Go to: Authentication → Users → Select each user → Delete
--- OR use Supabase Management API (requires service role key)
-
--- Verification: Show remaining users
-SELECT 
-  '✅ REMAINING USERS' as status,
-  email,
-  created_at
-FROM auth.users
-ORDER BY created_at DESC;
+-- Show results
+DO $$
+DECLARE
+  remaining_count INT;
+  deleted_auth_users TEXT;
+BEGIN
+  SELECT COUNT(*) INTO remaining_count FROM users;
+  RAISE NOTICE '';
+  RAISE NOTICE '✅ USER CLEANUP COMPLETE';
+  RAISE NOTICE '  - Remaining users in public.users: %', remaining_count;
+  
+  -- Show which auth users still need manual deletion
+  SELECT STRING_AGG(email, ', ') INTO deleted_auth_users
+  FROM auth.users
+  WHERE email NOT IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com');
+  
+  IF deleted_auth_users IS NOT NULL THEN
+    RAISE NOTICE '';
+    RAISE NOTICE '⚠️  MANUAL ACTION REQUIRED';
+    RAISE NOTICE '  These auth accounts need deletion in Supabase Dashboard:';
+    RAISE NOTICE '  %', deleted_auth_users;
+    RAISE NOTICE '';
+    RAISE NOTICE '  Go to: Supabase Dashboard → Authentication → Users → Delete each user';
+  ELSE
+    RAISE NOTICE '';
+    RAISE NOTICE '✅ No auth users need manual deletion';
+  END IF;
+END $$;
