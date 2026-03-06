@@ -134,9 +134,9 @@ WITH CHECK (
 CREATE POLICY "companies_access" ON companies FOR ALL
 USING (
   auth.uid() IS NOT NULL AND (
-    customer_id = (SELECT company_id FROM users WHERE id = auth.uid()) OR
     created_by = auth.uid() OR
-    (SELECT company_id FROM users WHERE id = auth.uid()) IS NULL
+    (SELECT company_id FROM users WHERE id = auth.uid()) IS NULL OR
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
   )
 )
 WITH CHECK (
