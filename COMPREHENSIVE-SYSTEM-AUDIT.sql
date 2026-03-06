@@ -81,7 +81,6 @@ SELECT
   '🏢 COMPANIES' as check_type,
   id,
   name,
-  company_tin,
   created_by,
   created_at
 FROM companies
