@@ -11,6 +11,7 @@ DO $$
 DECLARE
   deleted_products INT;
   deleted_locations INT;
+  deleted_inventory_locations INT;
   deleted_brands INT;
   deleted_categories INT;
   deleted_orders INT;
@@ -28,6 +29,12 @@ BEGIN
     SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
   );
   GET DIAGNOSTICS deleted_locations = ROW_COUNT;
+  
+  -- Delete inventory_locations from users we're removing
+  DELETE FROM inventory_locations WHERE created_by NOT IN (
+    SELECT id FROM auth.users WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
+  );
+  GET DIAGNOSTICS deleted_inventory_locations = ROW_COUNT;
   
   -- Delete brands from users we're removing
   DELETE FROM brands WHERE created_by NOT IN (
@@ -56,6 +63,7 @@ BEGIN
   RAISE NOTICE '✅ Data cleanup complete:';
   RAISE NOTICE '  - Products deleted: %', deleted_products;
   RAISE NOTICE '  - Locations deleted: %', deleted_locations;
+  RAISE NOTICE '  - Inventory Locations deleted: %', deleted_inventory_locations;
   RAISE NOTICE '  - Brands deleted: %', deleted_brands;
   RAISE NOTICE '  - Categories deleted: %', deleted_categories;
   RAISE NOTICE '  - Orders deleted: %', deleted_orders;
