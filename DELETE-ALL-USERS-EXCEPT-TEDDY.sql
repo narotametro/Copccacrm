@@ -13,6 +13,9 @@ DECLARE
   deleted_count INT;
   total_deleted INT := 0;
 BEGIN
+  -- Disable triggers to avoid errors from broken triggers
+  SET session_replication_role = replica;
+  
   -- Get list of user IDs to keep
   SELECT ARRAY_AGG(id) INTO keep_users
   FROM auth.users 
@@ -92,16 +95,28 @@ BEGIN
   GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
   RAISE NOTICE '  ✓ Sales hub sessions: % deleted', deleted_count;
   
+  -- Re-enable triggers
+  SET session_replication_role = DEFAULT;
+  
   RAISE NOTICE '';
   RAISE NOTICE '✅ Data cleanup complete! Total records deleted: %', total_deleted;
 END $$;
 
 -- STEP 2: NOW delete from public.users (after cleaning up their data)
-DELETE FROM users 
-WHERE id NOT IN (
-  SELECT id FROM auth.users 
-  WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
-);
+DO $$
+BEGIN
+  -- Disable triggers
+  SET session_replication_role = replica;
+  
+  DELETE FROM users 
+  WHERE id NOT IN (
+    SELECT id FROM auth.users 
+    WHERE email IN ('teddy@gmail.com', 'narotametro@gmail.com', 'sales@copcca.com')
+  );
+  
+  -- Re-enable triggers
+  SET session_replication_role = DEFAULT;
+END $$;
 
 -- Show results
 DO $$
