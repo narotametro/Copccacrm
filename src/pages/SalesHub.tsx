@@ -3888,7 +3888,7 @@ const SalesHub: React.FC = () => {
 
       // Calculate totals
       const subtotal = getTotal();
-      const taxAmount = subtotal * taxRate;
+      const taxAmount = vatType === 'inclusive' ? subtotal * taxRate : 0;
 
       // Calculate discount based on type
       const actualDiscountAmount = discountType === 'percentage'
@@ -3899,6 +3899,7 @@ const SalesHub: React.FC = () => {
       
       console.log('💰 Order totals breakdown:');
       console.log('  Subtotal:', subtotal);
+      console.log('  VAT Type:', vatType);
       console.log('  Tax (18%):', taxAmount);
       console.log('  Discount:', actualDiscountAmount);
       console.log('  TOTAL:', total);
@@ -6636,7 +6637,7 @@ const CustomerBuyingPatternsSection = () => {
                     <span className="text-base font-bold text-slate-900">TOTAL:</span>
                     <span className="text-lg font-bold text-slate-900">
                       {formatCurrency(
-                        getTotal() + (getTotal() * taxRate) -
+                        getTotal() + (vatType === 'inclusive' ? getTotal() * taxRate : 0) -
                         (discountType === 'percentage'
                           ? getTotal() * (committedDiscountPercent / 100)
                           : Math.min(committedDiscountAmount, getTotal()))
