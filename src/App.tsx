@@ -50,6 +50,7 @@ const Support = lazy(() => import('@/pages/Support').then(module => ({ default: 
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminCompanies = lazy(() => import('@/pages/admin/AdminCompanies').then(module => ({ default: module.AdminCompanies })));
+const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers').then(module => ({ default: module.AdminUsers })));
 const AdminSubscriptions = lazy(() => import('@/pages/admin/AdminSubscriptions').then(module => ({ default: module.AdminSubscriptions })));
 const AdminSystem = lazy(() => import('@/pages/admin/AdminSystem').then(module => ({ default: module.AdminSystem })));
 const SMSAdminPanel = lazy(() => import('@/pages/admin/SMSAdminPanel').then(module => ({ default: module.SMSAdminPanel })));
@@ -151,6 +152,7 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="companies" element={<AdminCompanies />} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />
           <Route path="sms" element={<SMSAdminPanel />} />
           <Route path="system" element={<AdminSystem />} />

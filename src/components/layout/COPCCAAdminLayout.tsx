@@ -96,6 +96,15 @@ export const COPCCAAdminLayout: React.FC = () => {
               <span className="text-sm font-medium">Companies</span>
             </button>
             <button
+              onClick={() => navigate('/copcca-admin/users')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/users' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
+            >
+              <Shield size={16} />
+              <span className="text-sm font-medium">Users</span>
+            </button>
+            <button
               onClick={() => navigate('/copcca-admin/subscriptions')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
                 location.pathname === '/copcca-admin/subscriptions' ? 'bg-white/10 ring-2 ring-white/30' : ''
