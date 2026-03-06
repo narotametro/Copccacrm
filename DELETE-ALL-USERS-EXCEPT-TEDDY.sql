@@ -22,6 +22,11 @@ BEGIN
   RAISE NOTICE '📋 Keeping users: teddy@gmail.com, narotametro@gmail.com, sales@copcca.com';
   
   -- Delete from tables with created_by column
+  -- Delete companies first (has assigned_to FK)
+  DELETE FROM companies WHERE assigned_to IS NOT NULL AND assigned_to != ALL(keep_users);
+  GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
+  RAISE NOTICE '  ✓ Companies: % deleted', deleted_count;
+  
   DELETE FROM support_tickets WHERE created_by IS NOT NULL AND created_by != ALL(keep_users);
   GET DIAGNOSTICS deleted_count = ROW_COUNT; total_deleted := total_deleted + deleted_count;
   RAISE NOTICE '  ✓ Support tickets: % deleted', deleted_count;
