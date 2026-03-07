@@ -17,10 +17,14 @@ BEGIN
   RAISE NOTICE '';
   
   -- Delete demo companies first
-  DELETE FROM companies WHERE admin_email IN (
+  DELETE FROM companies WHERE email IN (
     'admin@techcorp.ng',
     'admin@globaltrade.com',
     'contact@innovationhub.ng'
+  ) OR name IN (
+    'Techcorp Nigeria Ltd',
+    'Global Trade Solutions',
+    'Innovation Hub Lagos'
   );
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RAISE NOTICE '  ✓ Demo companies: % deleted', deleted_count;
@@ -75,7 +79,7 @@ SELECT
   '✅ REMAINING COMPANIES' as status,
   id,
   name,
-  admin_email,
+  email,
   status,
   created_at
 FROM companies

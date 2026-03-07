@@ -8,9 +8,9 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Free') THEN
-    INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
     VALUES (
-      'Free', 'Perfect for trying out COPCCA', 0, 0,
+      'Free', 'Free Plan', 'Perfect for trying out COPCCA', 0, 0,
       '{"features": ["Up to 3 users", "100 products", "Basic reports", "Email support"]}',
       3, 100, true
     );
@@ -18,9 +18,9 @@ BEGIN
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Starter') THEN
-    INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
     VALUES (
-      'Starter', 'For small businesses', 50000, 500000,
+      'Starter', 'Starter Plan', 'For small businesses', 50000, 500000,
       '{"features": ["Up to 10 users", "1000 products", "Advanced reports", "Priority support"]}',
       10, 1000, true
     );
@@ -28,9 +28,9 @@ BEGIN
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Professional') THEN
-    INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
     VALUES (
-      'Professional', 'For growing businesses', 150000, 1500000,
+      'Professional', 'Professional Plan', 'For growing businesses', 150000, 1500000,
       '{"features": ["Up to 50 users", "Unlimited products", "Custom reports", "24/7 support"]}',
       50, -1, true
     );
@@ -38,9 +38,9 @@ BEGIN
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Enterprise') THEN
-    INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
     VALUES (
-      'Enterprise', 'For large organizations', 500000, 5000000,
+      'Enterprise', 'Enterprise Plan', 'For large organizations', 500000, 5000000,
       '{"features": ["Unlimited users", "Unlimited products", "Dedicated support", "White label"]}',
       -1, -1, true
     );

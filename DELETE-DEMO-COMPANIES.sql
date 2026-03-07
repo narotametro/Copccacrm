@@ -12,23 +12,33 @@ SELECT
   '⚠️ DEMO COMPANIES TO BE DELETED' as warning,
   id,
   name,
-  admin_email,
+  email,
   status,
   created_at
 FROM companies
-WHERE admin_email IN (
+WHERE email IN (
   'admin@techcorp.ng',
   'admin@globaltrade.com',
   'contact@innovationhub.ng'
+)
+OR name IN (
+  'Techcorp Nigeria Ltd',
+  'Global Trade Solutions',
+  'Innovation Hub Lagos'
 )
 ORDER BY created_at;
 
 -- Delete demo companies
 DELETE FROM companies
-WHERE admin_email IN (
+WHERE email IN (
   'admin@techcorp.ng',
   'admin@globaltrade.com',
   'contact@innovationhub.ng'
+)
+OR name IN (
+  'Techcorp Nigeria Ltd',
+  'Global Trade Solutions',
+  'Innovation Hub Lagos'
 );
 
 -- Re-enable triggers
@@ -44,7 +54,7 @@ FROM companies;
 SELECT 
   id,
   name,
-  admin_email,
+  email,
   status,
   created_at
 FROM companies
