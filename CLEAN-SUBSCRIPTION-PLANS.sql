@@ -54,7 +54,9 @@ VALUES (
   2, 2,
   7,
   true
-); with 7-day trial
+);
+
+-- Create PRO plan (TZS 120,000/month) with 7-day trial
 INSERT INTO subscription_plans (
   name, display_name, description, 
   price_monthly, price_yearly, 
@@ -70,11 +72,11 @@ VALUES (
   '{"all_features": true, "features": ["Up to 10 users", "Unlimited products", "Unlimited invoices", "Unlimited POS locations", "Unlimited Inventory locations", "ALL FEATURES INCLUDED", "Sales Pipeline", "Marketing Campaigns", "Product Intelligence", "Advanced Analytics"]}',
   10, -1, -1,
   -1, -1,
-  7tures": ["Up to 10 users", "Unlimited products", "Unlimited invoices", "Unlimited POS locations", "Unlimited Inventory locations", "ALL FEATURES INCLUDED", "Sales Pipeline", "Marketing Campaigns", "Product Intelligence", "Advanced Analytics"]}',
-  10, -1, -1,
-  -1, -1,
+  7,
   true
-);with ACTIVE status (no trial needed for existing users)
+);
+
+-- STEP 3: Assign all users to PRO plan with ACTIVE status (no trial needed for existing users)
 DO $$
 DECLARE
   v_pro_plan_id UUID;
@@ -105,9 +107,7 @@ BEGIN
     SELECT 1 FROM user_subscriptions us WHERE us.user_id = u.id
   );
   
-  RAISE NOTICE '✅ All users assigned to PRO plan (ACTIVE status)
-  
-  RAISE NOTICE '✅ All users assigned to PRO plan';
+  RAISE NOTICE '✅ All users assigned to PRO plan (ACTIVE status)';
 END $$;
 
 -- Show final result
