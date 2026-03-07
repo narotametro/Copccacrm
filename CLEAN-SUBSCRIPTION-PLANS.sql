@@ -79,11 +79,12 @@ BEGIN
   SELECT id INTO v_pro_plan_id FROM subscription_plans WHERE name = 'PRO';
   
   -- Create subscription for each user who doesn't have one
-  INSERT INTO user_subscriptions (user_id, plan_id, status, start_date)
+  INSERT INTO user_subscriptions (user_id, plan_id, status, trial_start_date, current_period_start)
   SELECT 
     u.id,
     v_pro_plan_id,
     'active',
+    NOW(),
     NOW()
   FROM users u
   WHERE NOT EXISTS (
