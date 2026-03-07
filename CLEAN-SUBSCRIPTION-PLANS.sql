@@ -2,13 +2,21 @@
 -- CLEAN UP SUBSCRIPTION PLANS - REMOVE ALL DUPLICATES
 -- =====================================================
 -- Deletes ALL existing plans and creates only the 3 correct ones
+-- Handles foreign key constraints from user_subscriptions
 -- =====================================================
 
--- Delete ALL existing subscription plans (case-insensitive)
+-- STEP 1: Temporarily remove FK constraint from user_subscriptions
+-- (We'll reassign users to correct plans after)
+DELETE FROM user_subscriptions WHERE plan_id IN (
+  SELECT id FROM subscription_plans 
+  WHERE UPPER(name) IN ('FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE', 'START', 'GROW', 'PRO')
+);
+
+-- STEP 2: Delete ALL existing subscription plans (case-insensitive)
 DELETE FROM subscription_plans 
 WHERE UPPER(name) IN ('FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE', 'START', 'GROW', 'PRO');
 
--- Create START plan (TZS 25,000/month)
+-- STEP 2: Create START plan (TZS 25,000/month)
 INSERT INTO subscription_plans (
   name, display_name, description, 
   price_monthly, price_yearly, 
@@ -61,6 +69,29 @@ VALUES (
   -1, -1,
   true
 );
+
+-- STEP 3: Assign all users to PRO plan (since you're testing/production)
+DO $$
+DECLARE
+  v_pro_plan_id UUID;
+BEGIN
+  -- Get PRO plan ID
+  SELECT id INTO v_pro_plan_id FROM subscription_plans WHERE name = 'PRO';
+  
+  -- Create subscription for each user who doesn't have one
+  INSERT INTO user_subscriptions (user_id, plan_id, status, start_date)
+  SELECT 
+    u.id,
+    v_pro_plan_id,
+    'active',
+    NOW()
+  FROM users u
+  WHERE NOT EXISTS (
+    SELECT 1 FROM user_subscriptions us WHERE us.user_id = u.id
+  );
+  
+  RAISE NOTICE '✅ All users assigned to PRO plan';
+END $$;
 
 -- Show final result
 SELECT 
