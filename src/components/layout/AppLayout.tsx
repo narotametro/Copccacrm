@@ -58,7 +58,7 @@ export const AppLayout: React.FC = () => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
-  const { getPlanName } = useSubscription();
+  const { getPlanName, isOnTrial, getTrialDaysRemaining } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -536,9 +536,21 @@ export const AppLayout: React.FC = () => {
                     {/* Current Plan Badge */}
                     <div className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border-y border-green-100">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <p className="text-xs text-slate-600">Current Plan</p>
-                          <p className="font-bold text-green-700">{getPlanName()}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-green-700">{getPlanName()}</p>
+                            {isOnTrial() && (
+                              <>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                  Free Trial
+                                </span>
+                                <span className="text-xs text-slate-600">
+                                  ({getTrialDaysRemaining()} {getTrialDaysRemaining() === 1 ? 'day' : 'days'} left)
+                                </span>
+                              </>
+                            )}
+                          </div>
                           {!profile?.is_company_owner && (
                             <p className="text-xs text-slate-500 mt-0.5">Team plan</p>
                           )}
