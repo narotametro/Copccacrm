@@ -16,13 +16,14 @@ DELETE FROM user_subscriptions WHERE plan_id IN (
 DELETE FROM subscription_plans 
 WHERE UPPER(name) IN ('FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE', 'START', 'GROW', 'PRO');
 
--- STEP 2: Create START plan (TZS 25,000/month)
+-- STEP 2: Create START plan (TZS 25,000/month) with 7-day trial
 INSERT INTO subscription_plans (
   name, display_name, description, 
   price_monthly, price_yearly, 
   features, 
   max_users, max_products, max_invoices_monthly,
   max_pos_locations, max_inventory_locations,
+  trial_days,
   is_active
 )
 VALUES (
@@ -31,16 +32,18 @@ VALUES (
   '{"features": ["1 user", "100 products", "100 invoices/month", "1 POS location", "Dashboard", "Customer Management", "Advanced POS", "My Workplace"]}',
   1, 100, 100,
   1, 1,
+  7,
   true
 );
 
--- Create GROW plan (TZS 80,000/month)
+-- Create GROW plan (TZS 80,000/month) with 7-day trial
 INSERT INTO subscription_plans (
   name, display_name, description, 
   price_monthly, price_yearly, 
   features, 
   max_users, max_products, max_invoices_monthly,
   max_pos_locations, max_inventory_locations,
+  trial_days,
   is_active
 )
 VALUES (
@@ -49,28 +52,29 @@ VALUES (
   '{"features": ["Up to 3 users", "500 products", "500 invoices/month", "2 POS locations", "2 Inventory locations", "After Sales", "KPI Tracking", "Debt Collection", "Admin Panel"]}',
   3, 500, 500,
   2, 2,
+  7,
   true
-);
-
--- Create PRO plan (TZS 120,000/month)
+); with 7-day trial
 INSERT INTO subscription_plans (
   name, display_name, description, 
   price_monthly, price_yearly, 
   features, 
   max_users, max_products, max_invoices_monthly,
   max_pos_locations, max_inventory_locations,
+  trial_days,
   is_active
 )
 VALUES (
   'PRO', 'PRO', 'Complete business platform', 
   120000, 1200000,
-  '{"features": ["Up to 10 users", "Unlimited products", "Unlimited invoices", "Unlimited POS locations", "Unlimited Inventory locations", "ALL FEATURES INCLUDED", "Sales Pipeline", "Marketing Campaigns", "Product Intelligence", "Advanced Analytics"]}',
+  '{"all_features": true, "features": ["Up to 10 users", "Unlimited products", "Unlimited invoices", "Unlimited POS locations", "Unlimited Inventory locations", "ALL FEATURES INCLUDED", "Sales Pipeline", "Marketing Campaigns", "Product Intelligence", "Advanced Analytics"]}',
+  10, -1, -1,
+  -1, -1,
+  7tures": ["Up to 10 users", "Unlimited products", "Unlimited invoices", "Unlimited POS locations", "Unlimited Inventory locations", "ALL FEATURES INCLUDED", "Sales Pipeline", "Marketing Campaigns", "Product Intelligence", "Advanced Analytics"]}',
   10, -1, -1,
   -1, -1,
   true
-);
-
--- STEP 3: Assign all users to PRO plan (since you're testing/production)
+);with ACTIVE status (no trial needed for existing users)
 DO $$
 DECLARE
   v_pro_plan_id UUID;
@@ -78,18 +82,30 @@ BEGIN
   -- Get PRO plan ID
   SELECT id INTO v_pro_plan_id FROM subscription_plans WHERE name = 'PRO';
   
-  -- Create subscription for each user who doesn't have one
-  INSERT INTO user_subscriptions (user_id, plan_id, status, trial_start_date, current_period_start)
+  -- Create ACTIVE subscription for each user (skip trial for existing users)
+  INSERT INTO user_subscriptions (
+    user_id, 
+    plan_id, 
+    status, 
+    trial_start_date, 
+    trial_end_date,
+    current_period_start, 
+    current_period_end
+  )
   SELECT 
     u.id,
     v_pro_plan_id,
     'active',
     NOW(),
-    NOW()
+    NOW(), -- Trial already ended (for existing users)
+    NOW(),
+    NOW() + INTERVAL '1 year' -- Give them 1 year active subscription
   FROM users u
   WHERE NOT EXISTS (
     SELECT 1 FROM user_subscriptions us WHERE us.user_id = u.id
   );
+  
+  RAISE NOTICE '✅ All users assigned to PRO plan (ACTIVE status)
   
   RAISE NOTICE '✅ All users assigned to PRO plan';
 END $$;
