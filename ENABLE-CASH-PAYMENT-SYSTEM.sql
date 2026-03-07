@@ -8,33 +8,73 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Free') THEN
-    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (
+      name, display_name, description, 
+      price_monthly, price_yearly, 
+      features, 
+      max_users, max_products, 
+      max_pos_locations, max_inventory_locations,
+      is_active
+    )
     VALUES (
-      'Free', 'Free Plan', 'Perfect for trying out COPCCA', 0, 0,
-      '{"features": ["Up to 3 users", "100 products", "Basic reports", "Email support"]}',
-      3, 100, true
+      'Free', 'Free Plan', 'Perfect for trying out COPCCA', 
+      0, 0,
+      '{"features": ["Up to 3 users", "100 products", "1 location", "Basic reports", "Email support"]}',
+      3, 100,
+      1, 1,
+      true
     );
-    RAISE NOTICE '✓ Created Free plan';
+    RAISE NOTICE '✓ Created Free plan (1 POS + 1 Warehouse)';
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Starter') THEN
-    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (
+      name, display_name, description, 
+      price_monthly, price_yearly, 
+      features, 
+      max_users, max_products, 
+      max_pos_locations, max_inventory_locations,
+      is_active
+    )
     VALUES (
-      'Starter', 'Starter Plan', 'For small businesses', 50000, 500000,
-      '{"features": ["Up to 10 users", "1000 products", "Advanced reports", "Priority support"]}',
-      10, 1000, true
+      'Starter', 'Starter Plan', 'For small businesses', 
+      50000, 500000,
+      name, display_name, description, 
+      price_monthly, price_yearly, 
+      features, 
+      max_users, max_products, 
+      max_pos_locations, max_inventory_locations,
+      is_active
+    )
+    VALUES (
+      'Professional', 'Professional Plan', 'For growing businesses', 
+      150000, 1500000,
+      '{"features": ["Up to 50 users", "Unlimited products", "Unlimited locations", "Custom reports", "24/7 support"]}',
+      50, -1,
+      -1, -1,
+      true
     );
-    RAISE NOTICE '✓ Created Starter plan (TZS 50,000/month)';
+    RAISE NOTICE '✓ Created Professional plan (TZS 150,000/month, UNLIMITED locationsS + 3 Warehouses)';
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Professional') THEN
-    INSERT INTO subscription_plans (name, display_name, description, price_monthly, price_yearly, features, max_users, max_products, is_active)
+    INSERT INTO subscription_plans (
+      name, display_name, description, 
+      price_monthly, price_yearly, 
+      features, 
+      max_users, max_products, 
+      max_pos_locations, max_inventory_locations,
+      is_active
+    )
     VALUES (
-      'Professional', 'Professional Plan', 'For growing businesses', 150000, 1500000,
-      '{"features": ["Up to 50 users", "Unlimited products", "Custom reports", "24/7 support"]}',
-      50, -1, true
+      'Enterprise', 'Enterprise Plan', 'For large organizations', 
+      500000, 5000000,
+      '{"features": ["Unlimited users", "Unlimited products", "Unlimited locations", "Dedicated support", "White label"]}',
+      -1, -1,
+      -1, -1,
+      true
     );
-    RAISE NOTICE '✓ Created Professional plan (TZS 150,000/month)';
+    RAISE NOTICE '✓ Created Enterprise plan (TZS 500,000/month, UNLIMITED everythingth)';
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Enterprise') THEN
