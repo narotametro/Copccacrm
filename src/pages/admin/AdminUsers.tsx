@@ -3,14 +3,17 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
-import { Users, Trash2, Shield, Mail, Calendar, AlertTriangle } from 'lucide-react';
+import { Users, Trash2, Shield, Mail, Calendar, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface User {
   id: string;
   email: string;
   created_at: string;
+  updated_at: string | null;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
+  confirmation_sent_at: string | null;
+  invited_at: string | null;
   full_name?: string;
   role?: string;
 }
@@ -21,6 +24,7 @@ export const AdminUsers: React.FC = () => {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -30,10 +34,10 @@ export const AdminUsers: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get all users from authenticated users table
+      // Get all users from authenticated users table with all details
       const { data: authUsers, error: authError } = await supabase
         .from('auth.users')
-        .select('id, email, created_at, last_sign_in_at, email_confirmed_at')
+        .select('id, email, created_at, updated_at, last_sign_in_at, email_confirmed_at, confirmation_sent_at, invited_at')
         .order('created_at', { ascending: false });
 
       if (authError) {
@@ -183,86 +187,139 @@ export const AdminUsers: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-primary-600 font-semibold">
-                          {user.full_name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-slate-900">
-                          {user.full_name || 'No Name'}
+              {users.map((user) => {
+                const isExpanded = expandedUserId === user.id;
+                return (
+                  <React.Fragment key={user.id}>
+                    <tr 
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {isExpanded ? (
+                            <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
+                          )}
+                          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span className="text-primary-600 font-semibold">
+                              {user.full_name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900">
+                              {user.full_name || 'No Name'}
+                            </div>
+                            <div className="text-sm text-slate-500 font-mono">{user.id.slice(0, 13)}...</div>
+                          </div>
                         </div>
-                        <div className="text-sm text-slate-500">{user.id.slice(0, 8)}...</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className="text-slate-400" />
-                      <span className="text-slate-900">{user.email}</span>
-                      {user.email === 'teddy@gmail.com' && (
-                        <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
-                          TEST
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Mail size={14} className="text-slate-400" />
+                          <span className="text-slate-900">{user.email}</span>
+                          {user.email === 'teddy@gmail.com' && (
+                            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
+                              TEST
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                            user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-700'
+                              : user.role === 'manager'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {user.role === 'admin' && <Shield size={12} />}
+                          {user.role?.toUpperCase() || 'USER'}
                         </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        user.role === 'admin'
-                          ? 'bg-purple-100 text-purple-700'
-                          : user.role === 'manager'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {user.role === 'admin' && <Shield size={12} />}
-                      {user.role?.toUpperCase() || 'USER'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Calendar size={14} className="text-slate-400" />
-                      {formatDate(user.created_at)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                        user.email_confirmed_at
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {user.email_confirmed_at ? '✓ Confirmed' : '⚠ Pending'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Button
-                      onClick={() => handleDeleteClick(user)}
-                      variant="outline"
-                      size="sm"
-                      disabled={deletingUserId === user.id || user.email === 'teddy@gmail.com'}
-                      className={
-                        user.email === 'teddy@gmail.com'
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-red-50 hover:text-red-600 hover:border-red-300'
-                      }
-                    >
-                      <Trash2 size={16} />
-                      {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Calendar size={14} className="text-slate-400" />
+                          {formatDate(user.created_at)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                            user.email_confirmed_at
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {user.email_confirmed_at ? '✓ Confirmed' : '⚠ Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(user);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          disabled={deletingUserId === user.id || user.email === 'teddy@gmail.com'}
+                          className={
+                            user.email === 'teddy@gmail.com'
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:bg-red-50 hover:text-red-600 hover:border-red-300'
+                          }
+                        >
+                          <Trash2 size={16} />
+                          {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
+                        </Button>
+                      </td>
+                    </tr>
+                    {/* Expanded Details Row */}
+                    {isExpanded && (
+                      <tr className="bg-slate-50">
+                        <td colSpan={7} className="px-6 py-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="font-semibold text-slate-700">User UID:</span>
+                              <p className="text-slate-600 font-mono text-xs mt-1">{user.id}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Created at:</span>
+                              <p className="text-slate-600 mt-1">{formatDate(user.created_at)}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Updated at:</span>
+                              <p className="text-slate-600 mt-1">{user.updated_at ? formatDate(user.updated_at) : '-'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Invited at:</span>
+                              <p className="text-slate-600 mt-1">{user.invited_at ? formatDate(user.invited_at) : '-'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Confirmation sent at:</span>
+                              <p className="text-slate-600 mt-1">{user.confirmation_sent_at ? formatDate(user.confirmation_sent_at) : '-'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Confirmed at:</span>
+                              <p className="text-slate-600 mt-1">{user.email_confirmed_at ? formatDate(user.email_confirmed_at) : '-'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-700">Last signed in:</span>
+                              <p className="text-slate-600 mt-1">{user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
