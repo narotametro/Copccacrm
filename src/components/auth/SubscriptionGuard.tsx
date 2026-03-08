@@ -45,24 +45,31 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
 
       // INVITED USERS: Automatically inherit company owner's subscription
       if (userProfile?.invited_by && userProfile?.company_id) {
-        // Find company owner's subscription
+        // First, find the company owner
         const { data: ownerData, error: ownerError } = await supabase
           .from('users')
-          .select(`
-            id,
-            user_subscriptions!inner(id, status)
-          `)
+          .select('id')
           .eq('company_id', userProfile.company_id)
           .eq('is_company_owner', true)
-          .in('user_subscriptions.status', ['trial', 'active'])
           .maybeSingle();
 
         if (ownerError && ownerError.code !== 'PGRST116') {
-          console.error('Error checking company owner subscription:', ownerError);
+          console.error('Error finding company owner:', ownerError);
         }
 
-        // Invited user has access if company owner has active subscription
-        setHasSubscription(!!ownerData);
+        // Then check if owner has active subscription
+        if (ownerData) {
+          const { data: subscriptionData } = await supabase
+            .from('user_subscriptions')
+            .select('id, status')
+            .eq('user_id', ownerData.id)
+            .in('status', ['trial', 'active'])
+            .maybeSingle();
+
+          setHasSubscription(!!subscriptionData);
+        } else {
+          setHasSubscription(false);
+        }
       } 
       // COMPANY OWNERS: Check their own subscription
       else if (userProfile?.is_company_owner) {

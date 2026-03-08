@@ -264,18 +264,37 @@ export async function revokeAllOtherSessions(
 }
 
 /**
- * Check concurrent session limit
+ * Check concurrent session limit and cleanup old sessions if exceeded
  */
 export async function checkConcurrentSessionLimit(
   userId: string,
   maxSessions: number = 3
-): Promise<{ allowed: boolean; activeCount: number }> {
+): Promise<{ allowed: boolean; activeCount: number; cleanedUp: boolean }> {
   const sessions = await getActiveSessions(userId);
   const activeCount = sessions.length;
 
+  // If limit exceeded, revoke oldest sessions
+  if (activeCount >= maxSessions) {
+    const sessionsToRevoke = sessions.slice(maxSessions - 1); // Keep newest (maxSessions-1) sessions
+    
+    for (const session of sessionsToRevoke) {
+      await supabase
+        .from('session_fingerprints')
+        .update({ is_active: false })
+        .eq('id', session.id);
+    }
+
+    return {
+      allowed: true,
+      activeCount: maxSessions - 1,
+      cleanedUp: true,
+    };
+  }
+
   return {
-    allowed: activeCount < maxSessions,
+    allowed: true,
     activeCount,
+    cleanedUp: false,
   };
 }
 

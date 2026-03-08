@@ -99,10 +99,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       );
 
       // Check concurrent session limit
+      // Check concurrent sessions and auto-cleanup old sessions if limit exceeded
       const sessionLimit = await checkConcurrentSessionLimit(data.user.id, 3);
-      if (!sessionLimit.allowed) {
-        console.warn(`User has ${sessionLimit.activeCount} active sessions (limit: 3)`);
-        // You can choose to block or just warn
+      if (sessionLimit.cleanedUp) {
+        console.log(`Cleaned up old sessions. Active sessions: ${sessionLimit.activeCount}/3`);
       }
 
       // Generate and store session fingerprint
