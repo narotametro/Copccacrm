@@ -135,11 +135,14 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: data.user.id,
           email: data.user.email || '',
           full_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-          role: 'user',
+          role: (data.user.user_metadata?.role as 'admin' | 'manager' | 'user') || 'user',
           avatar_url: data.user.user_metadata?.avatar_url || null,
           phone: null,
           department: null,
-          status: 'active'
+          status: 'active',
+          is_company_owner: data.user.user_metadata?.is_company_owner || false,
+          company_id: data.user.user_metadata?.company_id || null,
+          invited_by: null,
         };
         set({ user: data.user, profile: fallbackProfile, loading: false });
       } else {
@@ -242,11 +245,14 @@ export const useAuthStore = create<AuthState>((set) => ({
             id: signInData.user.id,
             email: signInData.user.email || '',
             full_name: signInData.user.user_metadata?.full_name || signInData.user.email?.split('@')[0] || 'User',
-            role: 'user',
+            role: (signInData.user.user_metadata?.role as 'admin' | 'manager' | 'user') || 'admin',
             avatar_url: signInData.user.user_metadata?.avatar_url || null,
             phone: null,
             department: null,
-            status: 'active'
+            status: 'active',
+            is_company_owner: true,
+            company_id: signInData.user.user_metadata?.company_id || null,
+            invited_by: null,
           };
           set({ user: signInData.user, profile: fallbackProfile });
         } else {
@@ -337,11 +343,14 @@ export const useAuthStore = create<AuthState>((set) => ({
                 id: session.user.id,
                 email: session.user.email || '',
                 full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                role: 'user',
+                role: (session.user.user_metadata?.role as 'admin' | 'manager' | 'user') || 'user',
                 avatar_url: session.user.user_metadata?.avatar_url || null,
                 phone: session.user.user_metadata?.phone || null,
                 department: null,
-                status: 'active'
+                status: 'active',
+                is_company_owner: session.user.user_metadata?.is_company_owner || false,
+                company_id: session.user.user_metadata?.company_id || null,
+                invited_by: null,
               };
               set({ profile: defaultProfile });
             } else {
@@ -357,11 +366,14 @@ export const useAuthStore = create<AuthState>((set) => ({
               id: session.user.id,
               email: session.user.email || '',
               full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-              role: 'user',
+              role: (session.user.user_metadata?.role as 'admin' | 'manager' | 'user') || 'user',
               avatar_url: session.user.user_metadata?.avatar_url || null,
               phone: null,
               department: null,
-              status: 'active'
+              status: 'active',
+              is_company_owner: session.user.user_metadata?.is_company_owner || false,
+              company_id: session.user.user_metadata?.company_id || null,
+              invited_by: null,
             };
             set({ profile: fallbackProfile });
           }
