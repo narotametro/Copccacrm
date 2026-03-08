@@ -9,6 +9,7 @@ import { COPCCAAdminLayout } from '@/components/layout/COPCCAAdminLayout';
 import { CurrencyProvider } from '@/context/CurrencyContext';
 import { SharedDataProvider } from '@/context/SharedDataContext';
 import { FeatureGate } from '@/components/ui/FeatureGate';
+import { UpdateNotifier } from '@/components/UpdateNotifier';
 import { toast } from 'sonner';
 
 // Eagerly load critical pages for zero loading spinner
@@ -242,6 +243,7 @@ const App = () => {
             v7_relativeSplatPath: true,
           }}
         >
+          <UpdateNotifier />
           <AppRoutes />
         </BrowserRouter>
       </SharedDataProvider>

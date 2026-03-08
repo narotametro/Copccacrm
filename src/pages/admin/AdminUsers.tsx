@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Users, Trash2, Shield, Mail, Calendar, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface User {

@@ -42,6 +42,7 @@ import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { useSalesHubStore } from '@/store/salesHubStore';
 import { StockTransfers } from '@/components/inventory/StockTransfers';
+import { useOptimisticCache } from '@/lib/optimisticCache';
 
 interface Product {
   id: string;
@@ -2471,8 +2472,51 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 const SalesHub: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [activeSubsection, setActiveSubsection] = useState<Subsection>('updates');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  
+  // Instant loading with optimistic cache - zero spinners
+  const { data: rawProducts } = useOptimisticCache<Product>({
+    table: 'products',
+    query: 'id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, location_id, image_url, brands(id, name), categories(id, name), location:locations(id, name, type)',
+    orderBy: { column: 'name', ascending: true },
+  });
+  
+  const { data: rawCustomers } = useOptimisticCache<any>({
+    table: 'companies',
+    query: '*',
+    queryFilters: [{ column: 'is_own_company', operator: 'eq', value: false }],
+    orderBy: { column: 'name', ascending: true },
+  });
+  
+  // Transform raw data to expected formats
+  const products = rawProducts.map(product => ({
+    ...product,
+    brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || undefined),
+    categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || undefined),
+    location: Array.isArray(product.location) && product.location.length > 0 ? product.location[0] : (product.location || undefined),
+    sales_velocity: 0
+  })) as Product[];
+  
+  const customers: Customer[] = rawCustomers.map((company: any) => ({
+    id: company.id,
+    customer_id: company.id,
+    name: company.name,
+    company_name: company.name,
+    email: company.email || '',
+    phone: company.phone || '',
+    mobile: company.phone || '',
+    tier: company.subscription_plan || 'bronze',
+    health_score: company.health_score || 50,
+    churn_risk: 'low',
+    upsell_potential: 'medium',
+    lifetime_value: company.annual_revenue || 0,
+    outstanding_balance: 0,
+    preferred_payment: 'bank_transfer',
+    status: company.status,
+    total_orders: 0,
+    last_order_date: undefined,
+    tags: []
+  }));
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
@@ -2824,61 +2868,6 @@ const SalesHub: React.FC = () => {
   // AI Insights data - loaded from real data
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const kpisLoadedRef = useRef(false);
-
-  const loadCustomers = useCallback(async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        return;
-      }
-
-      // Query ONLY customer companies (same logic as Customer 360)
-      // is_own_company flag distinguishes between user's company and their customers
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('created_by', userData.user.id)
-        .eq('is_own_company', false)  // Only load customer companies, not user's own company
-        .order('name');
-
-      if (error) throw error;
-
-      // Transform data to match Customer interface
-      const transformedCustomers: Customer[] = (data || []).map(company => ({
-        id: company.id,
-        customer_id: company.id, // Use company ID as customer_id
-        name: company.name,
-        company_name: company.name, // Company name is the same as name
-        email: company.email || '',
-        phone: company.phone || '',
-        mobile: company.phone || '', // Use phone as mobile
-        tier: company.subscription_plan || 'bronze', // Map subscription plan to tier
-        health_score: company.health_score || 50,
-        churn_risk: 'low', // Default value since not in companies table
-        upsell_potential: 'medium', // Default value since not in companies table
-        lifetime_value: company.annual_revenue || 0,
-        outstanding_balance: 0, // Default value since not in companies table
-        preferred_payment: 'bank_transfer', // Default value
-        status: company.status,
-        total_orders: 0, // Default value since not in companies table
-        last_order_date: undefined, // Not available in companies table
-        tags: [] // Default empty array
-      }));
-
-      setCustomers(transformedCustomers);
-    } catch (error: unknown) {
-      console.error('Error loading customers:', error);
-
-      // Check if it's a 404 error (table doesn't exist)
-      const err = error as { code?: string; message?: string };
-      if (err?.code === 'PGRST116' || err?.message?.includes('404') || err?.message?.includes('relation') && err?.message?.includes('does not exist')) {
-        toast.error('Companies database not set up yet. Please run database-setup.sql in your Supabase SQL Editor.');
-        setCustomers([]); // Set empty array to prevent crashes
-      } else {
-        toast.error('Failed to load customers from CUSTOMERS 360');
-      }
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrderHistory = useCallback(async () => {
     try {
@@ -3411,40 +3400,26 @@ const SalesHub: React.FC = () => {
       loadAIInsights();
     }
     if (activeSubsection === 'products') {
-      // Load products if not already loaded
-      if (products.length === 0) {
-        loadProductsWithVelocity();
-      }
+      // Products loaded instantly via optimistic cache - no need to fetch
       loadCategories();
       loadBrands();
     }
     if (activeSubsection === 'inventory-status') {
-      // Load products if not already loaded
-      if (products.length === 0) {
-        loadProductsWithVelocity();
-      }
+      // Products loaded instantly via optimistic cache - no need to fetch
       loadBrands(); // Load brands for filter dropdown
     }
     if (activeSubsection === 'carts-invoice') {
-      loadCustomers();
+      // Customers loaded instantly via optimistic cache - no need to fetch
       loadOrderHistory();
       loadCompanyPaymentInfo();
       loadCompanyInfo();
-
-      // Fallback: if customers are taking long, show warning
-      const timeout = setTimeout(() => {
-        console.warn('Customer loading taking longer than expected');
-      }, 10000);
-
-      return () => clearTimeout(timeout);
     }
-  }, [activeSubsection, loadCustomers, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSubsection, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load user subscription plan and products on component mount
+  // Load user subscription plan on component mount
   useEffect(() => {
     loadUserSubscriptionPlan();
-    // Pre-load products for faster navigation
-    loadProductsWithVelocity();
+    // Products loaded instantly via optimistic cache - no need to pre-load
   }, []);
 
   // Check for navigation from floating button
@@ -3608,125 +3583,6 @@ const SalesHub: React.FC = () => {
       setBrands(data || []);
     } catch (error) {
       console.error('Error loading brands:', error);
-    }
-  };
-
-  const loadProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories (
-            id,
-            name
-          ),
-          brands (
-            id,
-            name
-          )
-        `)
-        .order('name');
-
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
-  };
-
-  const calculateSalesVelocity = async (productId: string): Promise<number> => {
-    try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const { data, error } = await supabase
-        .from('stock_history')
-        .select('quantity_change, created_at')
-        .eq('product_id', productId)
-        .eq('action', 'sale')
-        .gte('created_at', thirtyDaysAgo.toISOString())
-        .lt('quantity_change', 0); // Negative values indicate sales
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) return 0;
-
-      const totalSold = Math.abs(data.reduce((sum, record) => sum + record.quantity_change, 0));
-      const daysDiff = Math.max(1, Math.ceil((new Date().getTime() - thirtyDaysAgo.getTime()) / (1000 * 60 * 60 * 24)));
-
-      return Math.round((totalSold / daysDiff) * 10) / 10; // Round to 1 decimal place
-    } catch (error) {
-      console.error('Error calculating sales velocity:', error);
-      return 0;
-    }
-  };
-
-  const loadProductsWithVelocity = async () => {
-    try {
-      // Load ALL products from database with location info
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, location_id, brands(id, name), categories(id, name), location:locations(id, name, type)')
-        .order('name');
-
-      if (error) throw error;
-
-      // Display products immediately with 0 sales velocity
-      // Supabase returns brands/categories/locations as arrays, take first element
-      const productsWithoutVelocity = (data || []).map(product => ({
-        ...product,
-        brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || undefined),
-        categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || undefined),
-        location: Array.isArray(product.location) && product.location.length > 0 ? product.location[0] : (product.location || undefined),
-        sales_velocity: 0
-      })) as Product[];
-      setProducts(productsWithoutVelocity);
-
-      // Calculate sales velocity in the background (non-blocking) using optimized batch query
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      // Fetch all stock history for all products in a single query
-      supabase
-        .from('stock_history')
-        .select('product_id, quantity_change, created_at')
-        .in('change_type', ['sale', 'pos_sale'])
-        .gte('created_at', thirtyDaysAgo.toISOString())
-        .lt('quantity_change', 0)
-        .then(({ data: historyData, error: historyError }) => {
-          if (historyError) {
-            console.error('Error loading stock history:', historyError);
-            return;
-          }
-
-          // Group by product_id and calculate velocity
-          const velocityMap = new Map<string, number>();
-          const daysDiff = Math.max(1, Math.ceil((new Date().getTime() - thirtyDaysAgo.getTime()) / (1000 * 60 * 60 * 24)));
-
-          (historyData || []).forEach(record => {
-            const currentTotal = velocityMap.get(record.product_id) || 0;
-            velocityMap.set(record.product_id, currentTotal + Math.abs(record.quantity_change));
-          });
-
-          // Update products with calculated velocities
-          const productsWithVelocity = (data || []).map(product => ({
-            ...product,
-            brands: Array.isArray(product.brands) && product.brands.length > 0 ? product.brands[0] : (product.brands || undefined),
-            categories: Array.isArray(product.categories) && product.categories.length > 0 ? product.categories[0] : (product.categories || undefined),
-            location: Array.isArray(product.location) && product.location.length > 0 ? product.location[0] : (product.location || undefined),
-            sales_velocity: velocityMap.has(product.id) 
-              ? Math.round((velocityMap.get(product.id)! / daysDiff) * 10) / 10
-              : 0
-          })) as Product[];
-
-          setProducts(productsWithVelocity);
-        });
-    } catch (error) {
-      // Don't log AbortErrors - they're expected during navigation/remounts
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        console.error('Error loading products:', error);
-      }
     }
   };
 
@@ -4493,8 +4349,7 @@ const SalesHub: React.FC = () => {
 
       toast.success(`Successfully restocked ${quantity} units of ${selectedProductForRestock.name}`);
 
-      // Refresh products to ensure consistency
-      loadProductsWithVelocity();
+      // Products refresh automatically via optimistic cache real-time subscriptions
 
     } catch (error) {
       console.error('Error during restock:', error);
