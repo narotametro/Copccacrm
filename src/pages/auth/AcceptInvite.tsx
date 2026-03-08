@@ -148,7 +148,7 @@ export const AcceptInvite: React.FC = () => {
       const companyId = (invite as any).inviter_company_id || null;
 
       // Check if user already exists in auth
-      const { data: existingUsers, error: checkError } = await supabase
+      const { data: existingUsers } = await supabase
         .from('users')
         .select('id, email')
         .eq('email', invite.email.toLowerCase())
@@ -222,9 +222,22 @@ export const AcceptInvite: React.FC = () => {
         if (updateError) throw updateError;
       }
 
-      toast.success('Invitation accepted! Please sign in.');
+      // Auto sign-in the user (no manual login needed!)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invite.email,
+        password,
+      });
+
+      if (signInError) {
+        console.error('Auto sign-in failed:', signInError);
+        toast.success('Invitation accepted! Please sign in.');
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      toast.success('Welcome to the team! 🎉');
       setStatus('accepted');
-      navigate('/login', { replace: true });
+      navigate('/app/dashboard', { replace: true });
     } catch (error) {
       console.error('Invite acceptance failed:', error);
       toast.error('Could not accept invitation');

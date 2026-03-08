@@ -144,15 +144,39 @@ export const Register: React.FC = () => {
         }
       }
 
+      // Always try to sign in automatically (better UX)
       if (signUpResult.autoSignedIn) {
-        toast.success('Account created successfully! You have 7 days free trial.');
+        toast.success('Account created successfully! You have 7 days free trial. 🎉');
         navigate('/app/dashboard');
       } else if (signUpResult.requiresEmailConfirmation) {
-        toast.success('Account created! Please check your email to confirm your account, then sign in.');
-        navigate('/login');
+        // Rare case: Email confirmation required by Supabase settings
+        // Even then, try to auto sign-in if possible
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+        
+        if (!signInError) {
+          toast.success('Account created successfully! You have 7 days free trial. 🎉');
+          navigate('/app/dashboard');
+        } else {
+          toast.success('Account created! Please check your email to confirm your account, then sign in.');
+          navigate('/login');
+        }
       } else {
-        toast.success('Account created successfully! You have 7 days free trial.');
-        navigate('/app/dashboard');
+        // Fallback: try signing in manually
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+        
+        if (!signInError) {
+          toast.success('Account created successfully! You have 7 days free trial. 🎉');
+          navigate('/app/dashboard');
+        } else {
+          toast.success('Account created! Please sign in to continue.');
+          navigate('/login');
+        }
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create account';
