@@ -10,8 +10,10 @@ interface AuthState {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  hasActiveSubscription: boolean | null; // null = not checked yet, true/false = checked
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
+  setHasActiveSubscription: (has: boolean) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string, companyInfo?: {
@@ -25,6 +27,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   initialize: () => Promise<void>;
+  checkSubscription: () => Promise<boolean>;
 }
 
 export interface UserProfile {
@@ -41,13 +44,15 @@ export interface UserProfile {
   invited_by: string | null;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   loading: false, // Start false for instant rendering!
+  hasActiveSubscription: null, // Cache subscription status
 
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
+  setHasActiveSubscription: (has) => set({ hasActiveSubscription: has }),
 
   signIn: async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
@@ -148,6 +153,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         set({ user: data.user, profile: profile || null, loading: false });
       }
+      
+      // Check subscription in background (non-blocking)
+      get().checkSubscription();
     } else {
       set({ loading: false });
     }
@@ -379,12 +387,57 @@ export const useAuthStore = create<AuthState>((set) => ({
           }
         };
         fetchProfile();
+        
+        // Check subscription in background (non-blocking)
+        get().checkSubscription();
       }
     } catch (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         console.error('Auth initialization error:', error);
       }
+    }
+  },
+
+  checkSubscription: async () => {
+    const { user, profile } = get();
+    if (!user) {
+      set({ hasActiveSubscription: false });
+      return false;
+    }
+
+    try {
+      let subscriptionUserId = user.id;
+
+      // If user is invited, check company owner's subscription
+      if (profile && !profile.is_company_owner && profile.invited_by && profile.company_id) {
+        const { data: ownerData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('company_id', profile.company_id)
+          .eq('is_company_owner', true)
+          .maybeSingle();
+
+        if (ownerData) {
+          subscriptionUserId = ownerData.id;
+        }
+      }
+
+      // Check for active subscription
+      const { data } = await supabase
+        .from('user_subscriptions')
+        .select('id, status')
+        .eq('user_id', subscriptionUserId)
+        .in('status', ['trial', 'active'])
+        .maybeSingle();
+
+      const hasSubscription = !!data;
+      set({ hasActiveSubscription: hasSubscription });
+      return hasSubscription;
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      set({ hasActiveSubscription: false });
+      return false;
     }
   },
 }));

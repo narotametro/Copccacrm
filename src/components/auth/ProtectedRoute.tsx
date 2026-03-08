@@ -14,16 +14,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
-  const loading = useAuthStore((state) => state.loading);
   const location = useLocation();
 
   const roleHierarchy = { admin: 3, manager: 2, user: 1 } as const;
   const effectiveRole = (profile?.role || user?.user_metadata?.role || 'user') as 'admin' | 'manager' | 'user';
 
-  if (loading) {
-    return <LoadingPage />;
-  }
-
+  // INSTANT: No loading check - auth is instantly available from cache
   if (!user) {
     // Save the current path before redirecting to login
     localStorage.setItem('redirectAfterLogin', location.pathname);

@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Loader } from 'lucide-react';
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;
@@ -11,121 +9,25 @@ interface SubscriptionGuardProps {
 /**
  * SubscriptionGuard - Ensures user has selected a plan before accessing app
  * Redirects to /select-plan if no subscription exists
+ * INSTANT: Uses cached subscription status from authStore (no loading spinner!)
  */
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const user = useAuthStore((state) => state.user);
+  const hasActiveSubscription = useAuthStore((state) => state.hasActiveSubscription);
+  const checkSubscription = useAuthStore((state) => state.checkSubscription);
   const location = useLocation();
-  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
-  const [checking, setChecking] = useState(true);
 
+  // Refresh subscription check when component mounts (non-blocking)
   useEffect(() => {
-    checkSubscription();
-  }, [user]);
-
-  const checkSubscription = async () => {
-    if (!user) {
-      setChecking(false);
-      return;
+    if (user && hasActiveSubscription === null) {
+      checkSubscription(); // Background check if not yet cached
     }
+  }, [user, hasActiveSubscription, checkSubscription]);
 
-    try {
-      // Get user's profile to check ownership and company info
-      const { data: userProfile, error: profileError } = await supabase
-        .from('users')
-        .select('is_company_owner, company_id, invited_by')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching user profile:', profileError);
-        setHasSubscription(false);
-        setChecking(false);
-        return;
-      }
-
-      // INVITED USERS: Automatically inherit company owner's subscription
-      if (userProfile?.invited_by && userProfile?.company_id) {
-        // First, find the company owner
-        const { data: ownerData, error: ownerError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('company_id', userProfile.company_id)
-          .eq('is_company_owner', true)
-          .maybeSingle();
-
-        if (ownerError && ownerError.code !== 'PGRST116') {
-          console.error('Error finding company owner:', ownerError);
-        }
-
-        // Then check if owner has active subscription
-        if (ownerData) {
-          const { data: subscriptionData } = await supabase
-            .from('user_subscriptions')
-            .select('id, status')
-            .eq('user_id', ownerData.id)
-            .in('status', ['trial', 'active'])
-            .maybeSingle();
-
-          setHasSubscription(!!subscriptionData);
-        } else {
-          setHasSubscription(false);
-        }
-      } 
-      // COMPANY OWNERS: Check their own subscription
-      else if (userProfile?.is_company_owner) {
-        console.log('🔍 Checking subscription for company owner:', user.id);
-        const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking subscription:', error);
-        }
-
-        console.log('📊 Subscription data:', data);
-        setHasSubscription(!!data);
-      } 
-      // NOT INVITED, NOT OWNER: Check subscription anyway (fallback)
-      else {
-        console.log('⚠️ User not marked as owner or invited, checking subscription anyway');
-        const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking subscription:', error);
-        }
-
-        console.log('📊 Fallback subscription check:', data);
-        // If subscription exists, allow access regardless of flags
-        setHasSubscription(!!data);
-      }
-    } catch (error) {
-      console.error('Error in checkSubscription:', error);
-      setHasSubscription(false);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  // Show loading while checking
-  if (checking) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If no subscription, redirect to plan selection
-  if (hasSubscription === false) {
+  // INSTANT: Use cached subscription status (no loading, no blink!)
+  // If null (not yet checked), allow access and check runs in background
+  // If false (checked and none found), redirect to plan selection
+  if (hasActiveSubscription === false) {
     return <Navigate to="/select-plan" state={{ from: location }} replace />;
   }
 
