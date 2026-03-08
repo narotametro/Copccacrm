@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Plus,
   Banknote,
@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { supabase } from '@/lib/supabase';
+import { useOptimisticCache } from '@/lib/optimisticCache';
 
 interface Deal {
   id: string;
@@ -70,15 +70,9 @@ const stages = [
   { id: 'lost', label: 'Closed Lost', color: 'bg-red-100 text-red-700 border-red-200' },
 ];
 
-const initialDeals: Deal[] = [];
-
 export const SalesPipelineView: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const [selectedStage, setSelectedStage] = useState<string>('all');
-  const [deals, setDeals] = useState<Deal[]>(initialDeals);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [showDealModal, setShowDealModal] = useState(false);
@@ -93,64 +87,38 @@ export const SalesPipelineView: React.FC = () => {
     notes: '',
   });
 
-  // Fetch deals, companies, and users
-  const fetchData = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) return;
+  // Use optimistic cache for instant loading
+  const dealsCache = useOptimisticCache<DealWithJoins>({
+    table: 'deals',
+    query: `
+      *,
+      companies:company_id(name),
+      profiles:assigned_to(full_name, email)
+    `,
+    orderBy: { column: 'created_at', ascending: false },
+  });
 
-      // PARALLEL API CALLS - fetch all data simultaneously
-      const [dealsResult, companiesResult, usersResult] = await Promise.all([
-        supabase
-          .from('deals')
-          .select(`
-            *,
-            companies:company_id(name),
-            profiles:assigned_to(full_name, email)
-          `)
-          .eq('created_by', userData.user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('companies')
-          .select('id, name')
-          .eq('created_by', userData.user.id)
-          .order('name'),
-        supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .order('full_name')
-      ]);
+  const companiesCache = useOptimisticCache<Company>({
+    table: 'companies',
+    query: 'id, name',
+    orderBy: { column: 'name', ascending: true },
+  });
 
-      if (dealsResult.error) throw dealsResult.error;
+  const usersCache = useOptimisticCache<User>({
+    table: 'profiles',
+    query: 'id, full_name, email',
+    orderBy: { column: 'full_name', ascending: true },
+  });
 
-      // Transform the data
-      const transformedDeals = dealsResult.data?.map((deal: DealWithJoins) => ({
-        ...deal,
-        company_name: deal.companies?.name || 'Unknown Company',
-        assigned_user_name: deal.profiles?.full_name || deal.profiles?.email || 'Unassigned',
-      })) || [];
+  // Transform deals data with joined information
+  const deals: Deal[] = dealsCache.data.map((deal: DealWithJoins) => ({
+    ...deal,
+    company_name: deal.companies?.name || 'Unknown Company',
+    assigned_user_name: deal.profiles?.full_name || deal.profiles?.email || 'Unassigned',
+  }));
 
-      setDeals(transformedDeals);
-
-      if (!companiesResult.error && companiesResult.data) {
-        setCompanies(companiesResult.data);
-      }
-
-      if (!usersResult.error && usersResult.data) {
-        setUsers(usersResult.data);
-      }
-
-    } catch (error) {
-      console.error('Error fetching pipeline data:', error);
-      toast.error('Failed to load pipeline data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const companies = companiesCache.data;
+  const users = usersCache.data;
 
   const resetForm = () => {
     setForm({
@@ -205,24 +173,14 @@ export const SalesPipelineView: React.FC = () => {
       };
 
       if (modalMode === 'add') {
-        const { error } = await supabase
-          .from('deals')
-          .insert([dealData]);
-
-        if (error) throw error;
+        await dealsCache.create(dealData);
         toast.success('Deal created successfully');
       } else {
-        const { error } = await supabase
-          .from('deals')
-          .update(dealData)
-          .eq('id', activeDealId);
-
-        if (error) throw error;
+        await dealsCache.update(activeDealId!, dealData);
         toast.success('Deal updated successfully');
       }
 
       setShowDealModal(false);
-      fetchData(); // Refresh data
     } catch (error) {
       console.error('Error saving deal:', error);
       toast.error('Failed to save deal');
@@ -233,14 +191,8 @@ export const SalesPipelineView: React.FC = () => {
     if (!confirm('Are you sure you want to delete this deal?')) return;
 
     try {
-      const { error } = await supabase
-        .from('deals')
-        .delete()
-        .eq('id', dealId);
-
-      if (error) throw error;
+      await dealsCache.delete(dealId);
       toast.success('Deal deleted successfully');
-      fetchData(); // Refresh data
     } catch (error) {
       console.error('Error deleting deal:', error);
       toast.error('Failed to delete deal');
@@ -389,7 +341,7 @@ export const SalesPipelineView: React.FC = () => {
             <span className="text-xs text-slate-600">Total Pipeline</span>
           </div>
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : formatCurrency(deals.reduce((sum, deal) => sum + (deal.value || 0), 0))}
+            {formatCurrency(deals.reduce((sum, deal) => sum + (deal.value || 0), 0))}
           </div>
         </Card>
         <Card className="p-4">
@@ -398,7 +350,7 @@ export const SalesPipelineView: React.FC = () => {
             <span className="text-xs text-slate-600">Expected Revenue</span>
           </div>
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : formatCurrency(
+            {formatCurrency(
               deals.reduce((sum, deal) => {
                 if (deal.stage === 'won') return sum + (deal.value || 0);
                 return sum + ((deal.value || 0) * (deal.probability || 0) / 100);
@@ -412,7 +364,7 @@ export const SalesPipelineView: React.FC = () => {
             <span className="text-xs text-slate-600">Avg Probability</span>
           </div>
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : deals.length > 0
+            {deals.length > 0
               ? Math.round(deals.reduce((sum, deal) => sum + (deal.probability || 0), 0) / deals.length)
               : 0}%
           </div>
@@ -423,7 +375,7 @@ export const SalesPipelineView: React.FC = () => {
             <span className="text-xs text-slate-600">Active Deals</span>
           </div>
           <div className="text-2xl font-bold text-slate-900">
-            {loading ? '...' : deals.filter(d => !['won', 'lost'].includes(d.stage)).length}
+            {deals.filter(d => !['won', 'lost'].includes(d.stage)).length}
           </div>
         </Card>
       </div>
@@ -459,26 +411,7 @@ export const SalesPipelineView: React.FC = () => {
 
       {/* Deal Cards */}
       <div className="grid gap-4">
-        {loading ? (
-          // Show skeleton loading cards
-          [1, 2, 3].map((i) => (
-            <Card key={i} className="p-4 animate-pulse">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-48 mb-2"></div>
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>
-                </div>
-                <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
-              </div>
-              <div className="flex gap-2 mb-3">
-                <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                <div className="h-6 w-20 bg-slate-200 dark:bg-slate-700 rounded"></div>
-              </div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-2"></div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
-            </Card>
-          ))
-        ) : filteredDeals.length === 0 ? (
+        {filteredDeals.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             No deals found in this stage
           </div>
