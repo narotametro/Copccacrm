@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Suspense, lazy, useEffect, useState, useRef } from 'react';
+import { Suspense, lazy, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -11,7 +11,12 @@ import { SharedDataProvider } from '@/context/SharedDataContext';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 import { toast } from 'sonner';
 
-// Lazy load all page components for instant loading
+// Eagerly load critical pages for zero loading spinner
+import Dashboard from '@/pages/Dashboard';
+import { Customers } from '@/pages/Customers';
+import SalesHub from '@/pages/SalesHub';
+
+// Lazy load non-critical pages
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Register = lazy(() => import('@/pages/auth/Register').then(module => ({ default: module.Register })));
 const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword').then(module => ({ default: module.ForgotPassword })));
@@ -20,11 +25,8 @@ const COPCCAAdminLogin = lazy(() => import('@/pages/auth/COPCCAAdminLogin').then
 const AcceptInvite = lazy(() => import('@/pages/auth/AcceptInvite').then(module => ({ default: module.AcceptInvite })));
 const PlanSelection = lazy(() => import('@/pages/auth/PlanSelection').then(module => ({ default: module.PlanSelection })));
 
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Customers = lazy(() => import('@/pages/Customers').then(module => ({ default: module.Customers })));
 const CustomerDetailPage = lazy(() => import('@/pages/CustomerDetailPage').then(module => ({ default: module.CustomerDetailPage })));
 const Sales = lazy(() => import('@/pages/Sales').then(module => ({ default: module.Sales })));
-const SalesHub = lazy(() => import('@/pages/SalesHub'));
 const AfterSales = lazy(() => import('@/pages/AfterSales').then(module => ({ default: module.AfterSales })));
 const DebtCollection = lazy(() => import('@/pages/DebtCollection').then(module => ({ default: module.DebtCollection })));
 const Competitors = lazy(() => import('@/pages/Competitors').then(module => ({ default: module.Competitors })));
@@ -62,13 +64,8 @@ const InstantLoader = () => (
   </div>
 );
 
-// Preload critical routes for instant navigation
-const preloadCriticalRoutes = () => {
-  // Aggressively preload the most used pages
-  import('@/pages/Dashboard');
-  import('@/pages/Customers');
-  import('@/pages/SalesHub');
-};
+// Critical pages are now eagerly loaded - no preloading needed
+// They're bundled with the main app for instant access
 
 const AppRoutes = () => {
   const { user, loading } = useAuthStore();
@@ -97,13 +94,6 @@ const AppRoutes = () => {
       }
     }
   }, [loading, user, location.pathname, navigate]); // Only run when auth state is ready
-
-  // Preload critical routes after authentication (instant)
-  useEffect(() => {
-    if (user) {
-      preloadCriticalRoutes(); // Immediate preload when user is available
-    }
-  }, [user]);
   
   // No loading check - render immediately!
   return (
