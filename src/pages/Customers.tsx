@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/lib/types/database';
+import { useOptimisticCache } from '@/lib/optimisticCache';
 import {
   Plus,
   Search,
@@ -104,10 +105,47 @@ export const Customers: React.FC = () => {
   const { getCustomerFinancialMetrics, customers: contextCustomers, setSupportTickets, supportTickets } = useSharedData();
   const navigate = useNavigate();
 
-  // IMPORTANT: Do NOT initialize from localStorage - it may contain corrupt data with Date.now() IDs
-  // Always load fresh from database
-  const [companies, setCompanies] = useState<Business[]>([]);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);  // Track loading state
+  // Use optimistic cache for instant loading
+  const { 
+    data: companiesData, 
+    create: createCompany, 
+    update: updateCompany, 
+    delete: deleteCompany 
+  } = useOptimisticCache<Database['public']['Tables']['companies']['Row']>({
+    table: 'companies',
+    query: '*',
+    orderBy: { column: 'created_at', ascending: false },
+    filter: (company) => company.is_own_company === false,
+  });
+
+  // Transform database companies to Business format
+  const companies: Business[] = companiesData.map((c) => ({
+    id: c.id,
+    name: c.name,
+    contactPerson: c.address || '',
+    status: c.status,
+    customer_type: 'active' as const,
+    health_score: c.health_score || 80,
+    churn_risk: 20,
+    upsell_potential: 30,
+    email: c.email,
+    phone: c.phone,
+    website: c.website || '',
+    townCity: c.city || '',
+    others: [],
+    total_revenue: 0,
+    purchases: 0,
+    avg_order_value: 0,
+    last_purchase: new Date().toISOString().split('T')[0],
+    tier: 'bronze' as const,
+    sentiment: (c.sentiment as 'positive' | 'neutral' | 'negative') || 'neutral',
+    feedback_count: 0,
+    jtbd: c.jtbd || '',
+    pain_points: [],
+    feedback_history: [],
+    priority_actions: [],
+  }));
+
   const [searchTerm, setSearchTerm] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [townCityFilter, setTownCityFilter] = useState('all');
@@ -156,92 +194,8 @@ export const Customers: React.FC = () => {
   const [escalateNote, setEscalateNote] = useState('');
   const [escalatePriority, setEscalatePriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
 
-  // Load companies from database on mount
-  useEffect(() => {
-    const loadCompaniesFromDatabase = async () => {
-      setIsLoadingCustomers(true);  // Start loading
-      try {
-        // CRITICAL: Clear corrupt localStorage data from old versions
-        // Old versions used Date.now() for IDs, which breaks UUID queries
-        const saved = localStorage.getItem('copcca-customers');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            const hasCorruptData = parsed.some((c: any) => c.id && !isValidUUID(c.id));
-            if (hasCorruptData) {
-              console.warn('Removing corrupt customer data from localStorage (contains non-UUID IDs)');
-              localStorage.removeItem('copcca-customers');
-            }
-          } catch (e) {
-            localStorage.removeItem('copcca-customers');
-          }
-        }
-
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) {
-          setIsLoadingCustomers(false);
-          return;
-        }
-
-        // Query ONLY customer companies (exclude user's own company)
-        // is_own_company flag distinguishes between user's company and their customers
-        const { data, error } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('created_by', userData.user.id)
-          .eq('is_own_company', false)  // ← Only load customer companies, not user's own company
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          // Convert database companies to the format expected by the component
-          const formattedCompanies: Business[] = data.map((c: Database['public']['Tables']['companies']['Row']) => ({
-            id: c.id,
-            name: c.name,
-            contactPerson: c.address || '',  // Contact person stored in address field
-            status: c.status,
-            customer_type: 'active' as const,
-            health_score: c.health_score || 80,
-            churn_risk: 20,
-            upsell_potential: 30,
-            email: c.email,
-            phone: c.phone,
-            website: c.website || '',
-            townCity: c.city || '',  // Town/city from city field
-            others: [],
-            total_revenue: 0,
-            purchases: 0,
-            avg_order_value: 0,
-            last_purchase: new Date().toISOString().split('T')[0],
-            tier: 'bronze' as const,
-            sentiment: (c.sentiment as 'positive' | 'neutral' | 'negative') || 'neutral',
-            feedback_count: 0,
-            jtbd: c.jtbd || '',
-            pain_points: [],
-            feedback_history: [],
-            priority_actions: []
-          }));
-          setCompanies(formattedCompanies);
-        }
-      } catch (error) {
-        // Don't log AbortErrors - they're expected during navigation/remounts
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error('Error loading companies from database:', error);
-          toast.error('Failed to load customers. Please refresh the page.');
-        }
-        // Do NOT fallback to localStorage - it may contain corrupt data with Date.now() IDs
-        // User should refresh or clear cache instead
-      } finally {
-        setIsLoadingCustomers(false);  // Always stop loading
-      }
-    };
-
-    loadCompaniesFromDatabase();
-  }, []);
-
-  // Removed localStorage sync - use database as single source of truth
-  // This prevents corrupt data (Date.now() IDs) from being cached
+  // No loading needed! Optimistic cache handles everything
+  // Data loads instantly from cache, syncs in background
 
   // Save activeTab to localStorage whenever it changes
   useEffect(() => {
@@ -397,106 +351,50 @@ export const Customers: React.FC = () => {
 
       // Check if editing existing customer
       if (editingCustomerId) {
-        // UPDATE existing customer
-        const { error } = await supabase
-          .from('companies')
-          .update({
-            name: formData.name,
-            email: formData.email.toLowerCase(),  // Auto-lowercase email
-            phone: formData.phone,
-            website: formData.website,
-            address: formData.contactPerson,  // Store contact person in address field
-            city: formData.townCity,  // Store town/city in city field
-          })
-          .eq('id', editingCustomerId);
-
-        if (error) throw error;
-
-        // Update local state
-        setCompanies(companies.map(c => 
-          c.id === editingCustomerId 
-            ? { ...c, ...formData, email: formData.email.toLowerCase() }
-            : c
-        ));
-        toast.success('Customer updated successfully');
-        setShowModal(false);
-        setEditingCustomerId(null);
-        setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
-        setCurrentOther('');
-        return;
-      }
-
-      // INSERT new customer (Supabase will generate UUID)
-      const { data: newCompany, error } = await supabase
-        .from('companies')
-        .insert([{
+        // UPDATE existing customer - instant UI update
+        await updateCompany(editingCustomerId, {
           name: formData.name,
-          email: formData.email.toLowerCase(),  // Auto-lowercase email
+          email: formData.email.toLowerCase(),
           phone: formData.phone,
           website: formData.website,
-          address: formData.contactPerson,  // Store contact person in address field
-          city: formData.townCity,  // Store town/city in city field
+          address: formData.contactPerson,
+          city: formData.townCity,
+        });
+        
+        toast.success('Customer updated successfully');
+      } else {
+        // CREATE new customer - instant UI update
+        await createCompany({
+          name: formData.name,
+          email: formData.email.toLowerCase(),
+          phone: formData.phone,
+          website: formData.website,
+          address: formData.contactPerson,
+          city: formData.townCity,
           status: 'prospect',
           created_by: userData.user.id,
-          is_own_company: false,  // This is a customer, not user's own company
+          is_own_company: false,
           jtbd: 'New customer onboarding',
           sentiment: 'neutral',
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Add to local state with proper formatting
-      const formattedCompany: Business = {
-        id: newCompany.id,
-        ...formData,
-        status: 'prospect',
-        health_score: 75,
-        customer_type: 'lead',
-        churn_risk: 20,
-        upsell_potential: 50,
-        total_revenue: 0,
-        purchases: 0,
-        avg_order_value: 0,
-        last_purchase: new Date().toISOString(),
-        sentiment: 'neutral',
-        tier: 'bronze',
-        feedback_count: 0,
-        jtbd: 'New customer onboarding',
-        pain_points: [],
-        feedback_history: [],
-        priority_actions: ['Initial contact'],
-      };
+        });
+        
+        toast.success('Customer added successfully');
+      }
       
-      setCompanies([formattedCompany, ...companies]);
-      toast.success('Customer added successfully');
       setShowModal(false);
+      setEditingCustomerId(null);
       setFormData({ name: '', contactPerson: '', email: '', phone: '', website: '', townCity: '', others: [] });
       setCurrentOther('');
     } catch (error) {
-      console.error('Error adding customer:', error);
-      toast.error('Failed to add customer');
+      console.error('Error saving customer:', error);
+      toast.error('Failed to save customer');
     }
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
-    try {
-      // Delete from database
-      const { error } = await supabase
-        .from('companies')
-        .delete()
-        .eq('id', customerId);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setCompanies(companies.filter(c => c.id !== customerId));
-      toast.success('Customer deleted successfully');
-    } catch (error) {
-      console.error('Error deleting customer:', error);
-      toast.error('Failed to delete customer. Please try again.');
-    }
+    // Delete with instant UI update
+    await deleteCompany(customerId);
+    toast.success('Customer deleted successfully');
   };
 
   const handleEditCustomer = (customer: Business) => {
@@ -548,26 +446,7 @@ export const Customers: React.FC = () => {
 
   const uniqueTownCities = Array.from(new Set(companies.map(c => c.townCity).filter(Boolean))).sort() as string[];
 
-  // Show loading skeleton while fetching data
-  if (isLoadingCustomers) {
-    return (
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Customer 360°</h1>
-            <p className="text-slate-600 mt-1 text-sm md:text-base">Loading customers...</p>
-          </div>
-        </div>
-        <div className="animate-pulse space-y-4">
-          <div className="h-20 bg-slate-200 rounded-lg"></div>
-          <div className="h-32 bg-slate-200 rounded-lg"></div>
-          <div className="h-32 bg-slate-200 rounded-lg"></div>
-          <div className="h-32 bg-slate-200 rounded-lg"></div>
-        </div>
-      </div>
-    );
-  }
-
+  // No loading needed! Page renders instantly with cached data
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
