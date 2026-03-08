@@ -106,12 +106,29 @@ export const PlanSelection: React.FC = () => {
       if (error) throw error;
 
       if (data) {
-        const plansWithIcons = data.map((plan: any) => ({
-          ...plan,
-          icon: plan.name === 'start' ? Users : plan.name === 'grow' ? TrendingUp : Crown,
-          color: plan.name === 'start' ? 'green' : plan.name === 'grow' ? 'blue' : 'purple',
-          popular: plan.name === 'grow',
-        }));
+        const plansWithIcons = data.map((plan: any) => {
+          // Ensure features is always an array
+          let features = plan.features;
+          if (!Array.isArray(features)) {
+            if (typeof features === 'string') {
+              try {
+                features = JSON.parse(features);
+              } catch {
+                features = [];
+              }
+            } else {
+              features = [];
+            }
+          }
+
+          return {
+            ...plan,
+            features,
+            icon: plan.name === 'start' ? Users : plan.name === 'grow' ? TrendingUp : Crown,
+            color: plan.name === 'start' ? 'green' : plan.name === 'grow' ? 'blue' : 'purple',
+            popular: plan.name === 'grow',
+          };
+        });
         setPlans(plansWithIcons);
       }
     } catch (error) {
@@ -189,11 +206,14 @@ export const PlanSelection: React.FC = () => {
       'all_features': 'All Features Included',
     };
 
-    if (plan.features.includes('all_features')) {
+    // Safety check: ensure features is an array
+    const features = Array.isArray(plan.features) ? plan.features : [];
+
+    if (features.includes('all_features')) {
       return ['All Features Included', 'Unlimited Users', 'Unlimited Products', 'Priority Support', 'Advanced Analytics'];
     }
 
-    return plan.features.map(f => featureDescriptions[f] || f);
+    return features.map(f => featureDescriptions[f] || f);
   };
 
   if (loading) {
