@@ -6,13 +6,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useCurrency, currencies } from '@/context/CurrencyContext';
 import { formatName } from '@/lib/textFormat';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/types/database';
+import { useOptimisticCache } from '@/lib/optimisticCache';
 
-type InvoiceRow = Pick<Database['public']['Tables']['invoices']['Row'], 'total_amount' | 'status'>;
-type DealRow = Pick<Database['public']['Tables']['deals']['Row'], 'title' | 'created_at' | 'stage'>;
-type CompanyRow = Pick<Database['public']['Tables']['companies']['Row'], 'name' | 'created_at'>;
+type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
+type DealRow = Database['public']['Tables']['deals']['Row'];
+type CompanyRow = Database['public']['Tables']['companies']['Row'];
+type SalesHubOrderRow = {
+  id: string;
+  total_amount: number;
+  created_at: string;
+  created_by: string;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -21,20 +28,8 @@ const Dashboard = () => {
   const displayName = formatName(profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User');
   const { currency, setCurrency, formatCurrency } = useCurrency();
   
-  // Real data state
-  const [totalRevenue, setTotalRevenue] = useState<number>(0);
-  const [filteredRevenue, setFilteredRevenue] = useState<number>(0);
+  // Revenue period state
   const [revenuePeriod, setRevenuePeriod] = useState<string>('all');
-  const [activeCustomers, setActiveCustomers] = useState<number>(0);
-  const [dealsWon, setDealsWon] = useState<number>(0);
-  const [growthRate, setGrowthRate] = useState<number>(0);
-  const [recentActivities, setRecentActivities] = useState<Array<{
-    type: string;
-    title: string;
-    description: string;
-    time: string;
-    color: string;
-  }>>([]);
   
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -48,344 +43,242 @@ const Dashboard = () => {
   // Floating button state
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   
-  // Sales pipeline state
-  const [pipelineData, setPipelineData] = useState<Array<{
-    stage: string;
-    count: number;
-    color: string;
-  }>>([]);
-  
-  // Removed useIntegratedKPIData hook as we're fetching data directly
-  
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Get current user first
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) return;
-        
-        // PARALLEL API CALLS - much faster!
-        const [
-          invoicesResult,
-          salesHubOrdersResult,
-          companiesResult,
-          dealsResult,
-          allDealsResult,
-          recentDealsResult,
-          recentCompaniesResult
-        ] = await Promise.all([
-          supabase.from('invoices').select('total_amount, status').eq('status', 'paid').eq('created_by', userData.user.id),
-          supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id),
-          supabase.from('companies').select('id, status').eq('created_by', userData.user.id).eq('is_own_company', false),
-          supabase.from('deals').select('id, stage').eq('stage', 'won').eq('created_by', userData.user.id),
-          supabase.from('deals').select('stage').eq('created_by', userData.user.id),
-          supabase.from('deals').select('title, created_at, stage').eq('created_by', userData.user.id).order('created_at', { ascending: false }).limit(3),
-          supabase.from('companies').select('name, created_at').eq('created_by', userData.user.id).eq('is_own_company', false).order('created_at', { ascending: false }).limit(2)
-        ]);
-        
-        // Process revenue from both invoices AND sales hub orders
-        let totalRev = 0;
-        if (!invoicesResult.error && invoicesResult.data) {
-          totalRev += invoicesResult.data.reduce((sum: number, invoice: InvoiceRow) => sum + (invoice.total_amount || 0), 0);
-        }
-        if (!salesHubOrdersResult.error && salesHubOrdersResult.data) {
-          totalRev += salesHubOrdersResult.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
-        }
-        setTotalRevenue(totalRev);
-        setFilteredRevenue(totalRev); // Initialize filtered revenue
-        
-        // Process active customers
-        if (!companiesResult.error && companiesResult.data) {
-          setActiveCustomers(companiesResult.data.length);
-        }
-        
-        // Process deals won
-        if (!dealsResult.error && dealsResult.data) {
-          setDealsWon(dealsResult.data.length);
-        }
-        
-        // Calculate growth rate based on revenue comparison
-        // Compare current month vs previous month
-        const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        
-        // Fetch current month revenue
-        const [currentMonthInvoices, currentMonthOrders] = await Promise.all([
-          supabase
-            .from('invoices')
-            .select('total_amount')
-            .eq('status', 'paid')
-            .eq('created_by', userData.user.id)
-            .gte('created_at', currentMonthStart.toISOString()),
-          supabase
-            .from('sales_hub_orders')
-            .select('total_amount')
-            .eq('created_by', userData.user.id)
-            .gte('created_at', currentMonthStart.toISOString())
-        ]);
-        
-        let currentMonthRevenue = 0;
-        if (!currentMonthInvoices.error && currentMonthInvoices.data) {
-          currentMonthRevenue += currentMonthInvoices.data.reduce((sum: number, inv: any) => sum + (inv.total_amount || 0), 0);
-        }
-        if (!currentMonthOrders.error && currentMonthOrders.data) {
-          currentMonthRevenue += currentMonthOrders.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
-        }
-        
-        // Fetch last month revenue
-        const [lastMonthInvoices, lastMonthOrders] = await Promise.all([
-          supabase
-            .from('invoices')
-            .select('total_amount')
-            .eq('status', 'paid')
-            .eq('created_by', userData.user.id)
-            .gte('created_at', lastMonthStart.toISOString())
-            .lte('created_at', lastMonthEnd.toISOString()),
-          supabase
-            .from('sales_hub_orders')
-            .select('total_amount')
-            .eq('created_by', userData.user.id)
-            .gte('created_at', lastMonthStart.toISOString())
-            .lte('created_at', lastMonthEnd.toISOString())
-        ]);
-        
-        let lastMonthRevenue = 0;
-        if (!lastMonthInvoices.error && lastMonthInvoices.data) {
-          lastMonthRevenue += lastMonthInvoices.data.reduce((sum: number, inv: any) => sum + (inv.total_amount || 0), 0);
-        }
-        if (!lastMonthOrders.error && lastMonthOrders.data) {
-          lastMonthRevenue += lastMonthOrders.data.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
-        }
-        
-        // Calculate percentage growth
-        if (lastMonthRevenue > 0) {
-          const growth = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-          setGrowthRate(Math.round(growth * 10) / 10); // Round to 1 decimal place
-        } else if (currentMonthRevenue > 0) {
-          setGrowthRate(100); // 100% growth if we had no revenue last month but have some now
-        } else {
-          setGrowthRate(0); // 0% growth if no revenue in either month
-        }
-        
-        // Process pipeline data
-        if (!allDealsResult.error && allDealsResult.data) {
-          const stages = [
-            { stage: 'lead', label: 'Lead', color: 'bg-slate-500' },
-            { stage: 'qualified', label: 'Qualified', color: 'bg-blue-500' },
-            { stage: 'proposal', label: 'Proposal', color: 'bg-yellow-500' },
-            { stage: 'negotiation', label: 'Negotiation', color: 'bg-orange-500' },
-            { stage: 'won', label: 'Won', color: 'bg-green-500' }
-          ];
-          
-          const pipeline = stages.map(s => ({
-            stage: s.label,
-            count: allDealsResult.data.filter((d: any) => d.stage === s.stage).length,
-            color: s.color
-          }));
-          
-          setPipelineData(pipeline);
-        }
-        
-        // Build recent activities
-        const activities: Array<{
-          type: string;
-          title: string;
-          description: string;
-          time: string;
-          color: string;
-        }> = [];
-        
-        if (!recentDealsResult.error && recentDealsResult.data) {
-          recentDealsResult.data.forEach((deal: DealRow) => {
-            activities.push({
-              type: deal.stage === 'won' ? 'deal_won' : 'deal_created',
-              title: deal.stage === 'won' ? 'New deal closed' : 'New deal created',
-              description: deal.title,
-              time: new Date(deal.created_at).toLocaleString(),
-              color: deal.stage === 'won' ? 'green' : 'blue'
-            });
-          });
-        }
-        
-        if (!recentCompaniesResult.error && recentCompaniesResult.data) {
-          recentCompaniesResult.data.forEach((company: CompanyRow) => {
-            activities.push({
-              type: 'company_added',
-              title: 'Customer added',
-              description: company.name,
-              time: new Date(company.created_at).toLocaleString(),
-              color: 'blue'
-            });
-          });
-        }
-        
-        activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-        setRecentActivities(activities.slice(0, 3));
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      }
-    };
-    
-    fetchDashboardData();
-  }, []);
+  // Optimistic caches for instant loading
+  const { data: invoices } = useOptimisticCache<InvoiceRow>({
+    table: 'invoices',
+    query: 'total_amount, status, created_at',
+    queryFilters: user?.id ? [
+      { column: 'status', operator: 'eq', value: 'paid' },
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
 
-  // Filter revenue based on selected period
-  useEffect(() => {
-    const filterRevenueByPeriod = async () => {
-      if (revenuePeriod === 'all') {
-        setFilteredRevenue(totalRevenue);
-        return;
-      }
+  const { data: salesHubOrders } = useOptimisticCache<SalesHubOrderRow>({
+    table: 'sales_hub_orders',
+    query: 'total_amount, created_at',
+    queryFilters: user?.id ? [
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
 
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) return;
+  const { data: companies } = useOptimisticCache<CompanyRow>({
+    table: 'companies',
+    query: 'id, name, status, created_at',
+    queryFilters: user?.id ? [
+      { column: 'is_own_company', operator: 'eq', value: false },
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
 
-        const now = new Date();
-        let startDate: Date;
+  const { data: deals } = useOptimisticCache<DealRow>({
+    table: 'deals',
+    query: 'id, title, stage, created_at',
+    queryFilters: user?.id ? [
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
 
-        switch (revenuePeriod) {
-          case 'january':
-          case 'february':
-          case 'march':
-          case 'april':
-          case 'may':
-          case 'june':
-          case 'july':
-          case 'august':
-          case 'september':
-          case 'october':
-          case 'november':
-          case 'december':
-            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-            const monthIndex = monthNames.indexOf(revenuePeriod);
-            startDate = new Date(now.getFullYear(), monthIndex, 1);
-            const endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
-            
-            const [monthInvoices, monthOrders] = await Promise.all([
-              supabase
-                .from('invoices')
-                .select('total_amount')
-                .eq('status', 'paid')
-                .eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString()),
-              supabase
-                .from('sales_hub_orders')
-                .select('total_amount')
-                .eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString())
-            ]);
-            
-            const monthRevenue = (monthInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-                                  (monthOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0);
-            setFilteredRevenue(monthRevenue);
-            break;
+  // Calculate total revenue from cached data
+  const totalRevenue = useMemo(() => {
+    const invoiceRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+    const ordersRevenue = salesHubOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+    return invoiceRevenue + ordersRevenue;
+  }, [invoices, salesHubOrders]);
 
-          case 'q1':
-            startDate = new Date(now.getFullYear(), 0, 1);
-            const endQ1 = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
-            const [q1Invoices, q1Orders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ1.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ1.toISOString())
-            ]);
-            setFilteredRevenue(
-              (q1Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (q1Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+  // Calculate filtered revenue by period
+  const filteredRevenue = useMemo(() => {
+    if (revenuePeriod === 'all') return totalRevenue;
 
-          case 'q2':
-            startDate = new Date(now.getFullYear(), 3, 1);
-            const endQ2 = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
-            const [q2Invoices, q2Orders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ2.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ2.toISOString())
-            ]);
-            setFilteredRevenue(
-              (q2Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (q2Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
 
-          case 'q3':
-            startDate = new Date(now.getFullYear(), 6, 1);
-            const endQ3 = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
-            const [q3Invoices, q3Orders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ3.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ3.toISOString())
-            ]);
-            setFilteredRevenue(
-              (q3Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (q3Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+    switch (revenuePeriod) {
+      case 'january':
+      case 'february':
+      case 'march':
+      case 'april':
+      case 'may':
+      case 'june':
+      case 'july':
+      case 'august':
+      case 'september':
+      case 'october':
+      case 'november':
+      case 'december':
+        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const monthIndex = monthNames.indexOf(revenuePeriod);
+        startDate = new Date(now.getFullYear(), monthIndex, 1);
+        endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
+        break;
 
-          case 'q4':
-            startDate = new Date(now.getFullYear(), 9, 1);
-            const endQ4 = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-            const [q4Invoices, q4Orders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ4.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endQ4.toISOString())
-            ]);
-            setFilteredRevenue(
-              (q4Invoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (q4Orders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+      case 'q1':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
+        break;
 
-          case '6months':
-            startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-            const [sixMonthInvoices, sixMonthOrders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', now.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', now.toISOString())
-            ]);
-            setFilteredRevenue(
-              (sixMonthInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (sixMonthOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+      case 'q2':
+        startDate = new Date(now.getFullYear(), 3, 1);
+        endDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
+        break;
 
-          case 'annual':
-            startDate = new Date(now.getFullYear(), 0, 1);
-            const endYear = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-            const [annualInvoices, annualOrders] = await Promise.all([
-              supabase.from('invoices').select('total_amount').eq('status', 'paid').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endYear.toISOString()),
-              supabase.from('sales_hub_orders').select('total_amount').eq('created_by', userData.user.id)
-                .gte('created_at', startDate.toISOString()).lte('created_at', endYear.toISOString())
-            ]);
-            setFilteredRevenue(
-              (annualInvoices.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0) +
-              (annualOrders.data?.reduce((sum, ord) => sum + (ord.total_amount || 0), 0) || 0)
-            );
-            break;
+      case 'q3':
+        startDate = new Date(now.getFullYear(), 6, 1);
+        endDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
+        break;
 
-          default:
-            setFilteredRevenue(totalRevenue);
-        }
-      } catch (error) {
-        console.error('Error filtering revenue:', error);
-        setFilteredRevenue(totalRevenue);
-      }
-    };
+      case 'q4':
+        startDate = new Date(now.getFullYear(), 9, 1);
+        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+        break;
 
-    filterRevenueByPeriod();
-  }, [revenuePeriod, totalRevenue]);
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        endDate = now;
+        break;
+
+      case 'annual':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+        break;
+
+      default:
+        return totalRevenue;
+    }
+
+    const startTime = startDate.getTime();
+    const endTime = endDate.getTime();
+
+    const filteredInvoices = invoices.filter(inv => {
+      const createdTime = new Date(inv.created_at).getTime();
+      return createdTime >= startTime && createdTime <= endTime;
+    });
+
+    const filteredOrders = salesHubOrders.filter(order => {
+      const createdTime = new Date(order.created_at).getTime();
+      return createdTime >= startTime && createdTime <= endTime;
+    });
+
+    const invoiceRev = filteredInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+    const ordersRev = filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+    return invoiceRev + ordersRev;
+  }, [revenuePeriod, totalRevenue, invoices, salesHubOrders]);
+
+  // Calculate active customers
+  const activeCustomers = useMemo(() => companies.length, [companies]);
+
+  // Calculate deals won
+  const dealsWon = useMemo(() => deals.filter(d => d.stage === 'won').length, [deals]);
+
+  // Calculate growth rate
+  const growthRate = useMemo(() => {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    const currentMonthStartTime = currentMonthStart.getTime();
+    const lastMonthStartTime = lastMonthStart.getTime();
+    const lastMonthEndTime = lastMonthEnd.getTime();
+
+    // Current month revenue
+    const currentMonthInvoices = invoices.filter(inv => {
+      const time = new Date(inv.created_at).getTime();
+      return time >= currentMonthStartTime;
+    });
+    const currentMonthOrders = salesHubOrders.filter(order => {
+      const time = new Date(order.created_at).getTime();
+      return time >= currentMonthStartTime;
+    });
+
+    const currentMonthRevenue = 
+      currentMonthInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) +
+      currentMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+    // Last month revenue
+    const lastMonthInvoices = invoices.filter(inv => {
+      const time = new Date(inv.created_at).getTime();
+      return time >= lastMonthStartTime && time <= lastMonthEndTime;
+    });
+    const lastMonthOrders = salesHubOrders.filter(order => {
+      const time = new Date(order.created_at).getTime();
+      return time >= lastMonthStartTime && time <= lastMonthEndTime;
+    });
+
+    const lastMonthRevenue = 
+      lastMonthInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) +
+      lastMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+    // Calculate percentage growth
+    if (lastMonthRevenue > 0) {
+      const growth = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+      return Math.round(growth * 10) / 10;
+    } else if (currentMonthRevenue > 0) {
+      return 100;
+    }
+    return 0;
+  }, [invoices, salesHubOrders]);
+
+  // Calculate pipeline data
+  const pipelineData = useMemo(() => {
+    const stages = [
+      { stage: 'lead', label: 'Lead', color: 'bg-slate-500' },
+      { stage: 'qualified', label: 'Qualified', color: 'bg-blue-500' },
+      { stage: 'proposal', label: 'Proposal', color: 'bg-yellow-500' },
+      { stage: 'negotiation', label: 'Negotiation', color: 'bg-orange-500' },
+      { stage: 'won', label: 'Won', color: 'bg-green-500' }
+    ];
+
+    return stages.map(s => ({
+      stage: s.label,
+      count: deals.filter(d => d.stage === s.stage).length,
+      color: s.color
+    }));
+  }, [deals]);
+
+  // Calculate recent activities
+  const recentActivities = useMemo(() => {
+    const activities: Array<{
+      type: string;
+      title: string;
+      description: string;
+      time: string;
+      color: string;
+    }> = [];
+
+    // Recent deals (last 3)
+    const recentDeals = deals.slice(0, 3);
+    recentDeals.forEach((deal) => {
+      activities.push({
+        type: deal.stage === 'won' ? 'deal_won' : 'deal_created',
+        title: deal.stage === 'won' ? 'New deal closed' : 'New deal created',
+        description: deal.title,
+        time: new Date(deal.created_at).toLocaleString(),
+        color: deal.stage === 'won' ? 'green' : 'blue'
+      });
+    });
+
+    // Recent companies (last 2)
+    const recentCompanies = companies.slice(0, 2);
+    recentCompanies.forEach((company) => {
+      activities.push({
+        type: 'company_added',
+        title: 'Customer added',
+        description: company.name,
+        time: new Date(company.created_at).toLocaleString(),
+        color: 'blue'
+      });
+    });
+
+    // Sort by time and return top 3
+    activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    return activities.slice(0, 3);
+  }, [deals, companies]);
 
   const fetchSalesForDate = async (date: string) => {
     try {

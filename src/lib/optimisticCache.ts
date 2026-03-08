@@ -23,6 +23,7 @@ interface CacheConfig<T> {
   query?: string;
   orderBy?: { column: string; ascending?: boolean };
   filter?: (item: T) => boolean;
+  queryFilters?: Array<{ column: string; operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte'; value: any }>;
   ttl?: number; // Time to live in milliseconds (default: 5 minutes)
 }
 
@@ -79,6 +80,32 @@ class OptimisticCache<T extends { id: string }> {
         .from(this.config.table)
         .select(this.config.query || '*');
 
+      // Apply query filters
+      if (this.config.queryFilters) {
+        this.config.queryFilters.forEach(qf => {
+          switch (qf.operator) {
+            case 'eq':
+              query = query.eq(qf.column, qf.value);
+              break;
+            case 'neq':
+              query = query.neq(qf.column, qf.value);
+              break;
+            case 'gt':
+              query = query.gt(qf.column, qf.value);
+              break;
+            case 'gte':
+              query = query.gte(qf.column, qf.value);
+              break;
+            case 'lt':
+              query = query.lt(qf.column, qf.value);
+              break;
+            case 'lte':
+              query = query.lte(qf.column, qf.value);
+              break;
+          }
+        });
+      }
+
       if (this.config.orderBy) {
         query = query.order(this.config.orderBy.column, {
           ascending: this.config.orderBy.ascending ?? false,
@@ -89,7 +116,7 @@ class OptimisticCache<T extends { id: string }> {
 
       if (error) throw error;
 
-      this.set((data as T[]) || []);
+      this.set((data as unknown as T[]) || []);
       return this.data;
     } catch (error) {
       console.error(`Error fetching ${this.config.table}:`, error);
@@ -105,7 +132,7 @@ class OptimisticCache<T extends { id: string }> {
       id: tempId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as T;
+    } as unknown as T;
 
     // Instant UI update
     this.set([optimisticItem, ...this.data]);
@@ -121,7 +148,7 @@ class OptimisticCache<T extends { id: string }> {
       if (error) throw error;
 
       // Replace temp item with real one
-      this.set(this.data.map(d => (d.id === tempId ? data as T : d)));
+      this.set(this.data.map(d => (d.id === tempId ? data as unknown as T : d)));
       
       return data as T;
     } catch (error) {
