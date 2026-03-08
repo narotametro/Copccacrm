@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
+import { useOptimisticCache } from '@/lib/optimisticCache';
 import { useCurrency } from '@/context/CurrencyContext';
 
 interface Invoice {
@@ -35,50 +35,54 @@ interface Invoice {
 const Invoices: React.FC = () => {
   const navigate = useNavigate();
   const { formatCurrency: formatCurrencyFn } = useCurrency();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Use optimistic cache for instant loading
+  const { data: invoicesData } = useOptimisticCache<Invoice>({
+    table: 'invoices',
+    query: '*, companies(name)',
+    orderBy: { column: 'created_at', ascending: false },
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'due_date' | 'created_at' | 'total_amount'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const loadInvoices = useCallback(async () => {
-    try {
-      let query = supabase
-        .from('invoices')
-        .select(`
-          *,
-          companies (
-            name
-          )
-        `);
+  // Client-side filtering and sorting (instant)
+  const filteredInvoices = useMemo(() => {
+    let filtered = invoicesData;
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      setInvoices(data || []);
-    } catch (error) {
-      console.error('Error loading invoices:', error);
-    } finally {
-      setLoading(false);
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(inv => inv.status === statusFilter);
     }
-  }, [statusFilter, sortBy, sortOrder]);
 
-  useEffect(() => {
-    loadInvoices();
-  }, [statusFilter, sortBy, sortOrder, loadInvoices]);
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(invoice =>
+        invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.companies?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-  const filteredInvoices = invoices.filter(invoice =>
-    invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    invoice.companies?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal;
+      if (sortBy === 'due_date') {
+        aVal = new Date(a.due_date).getTime();
+        bVal = new Date(b.due_date).getTime();
+      } else if (sortBy === 'created_at') {
+        aVal = new Date(a.created_at).getTime();
+        bVal = new Date(b.created_at).getTime();
+      } else {
+        aVal = a.total_amount;
+        bVal = b.total_amount;
+      }
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+
+    return sorted;
+  }, [invoicesData, statusFilter, searchTerm, sortBy, sortOrder]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -215,43 +219,12 @@ const Invoices: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
-                {loading ? (
-                  // Show skeleton loading rows
-                  [1, 2, 3, 4, 5].map((i) => (
-                    <tr key={i} className="hover:bg-slate-50">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center">
-                          <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded mr-2 animate-pulse"></div>
-                          <div>
-                            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-1 animate-pulse"></div>
-                            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32 animate-pulse"></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex gap-2">
-                          <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                          <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                          <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                {filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                      No invoices found
+                    </td>
+                  </tr>
                 ) : (
                   filteredInvoices.map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-slate-50">
