@@ -72,10 +72,55 @@ export const AcceptInvite: React.FC = () => {
       // This avoids RLS policy issues when accepting invitations
       const inviterName = (data as any).inviter_name || 'System Administrator';
       const companyNameValue = (data as any).inviter_company_name || 'the company';
+      const inviterCompanyId = (data as any).inviter_company_id;
       
       setAdminName(inviterName);
       setCompanyName(companyNameValue);
-      setPlanName('START'); // Default plan name
+
+      // Fetch actual subscription plan for the company
+      if (inviterCompanyId) {
+        try {
+          // Get the company owner's user ID
+          const { data: companyOwner } = await supabase
+            .from('users')
+            .select('id')
+            .eq('company_id', inviterCompanyId)
+            .eq('role', 'admin')
+            .limit(1)
+            .maybeSingle();
+
+          if (companyOwner) {
+            // Fetch the actual subscription plan
+            const { data: subscription } = await supabase
+              .from('user_subscriptions')
+              .select(`
+                subscription_plans (
+                  display_name
+                )
+              `)
+              .eq('user_id', companyOwner.id)
+              .in('status', ['trial', 'active'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (subscription && (subscription as any).subscription_plans) {
+              const plan = (subscription as any).subscription_plans;
+              const displayName = Array.isArray(plan) ? plan[0]?.display_name : plan?.display_name;
+              setPlanName(displayName || 'START');
+            } else {
+              setPlanName('START'); // Default if no subscription found
+            }
+          } else {
+            setPlanName('START'); // Default if no owner found
+          }
+        } catch (err) {
+          console.error('Error fetching subscription:', err);
+          setPlanName('START'); // Default on error
+        }
+      } else {
+        setPlanName('START'); // Default if no company ID
+      }
 
       setStatus('ready');
     };
