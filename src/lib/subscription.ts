@@ -56,13 +56,8 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
     const { data, error } = await supabase
       .from('user_subscriptions')
       .select(`
-        id,
-        user_id,
-        plan_id,
-        status,
-        trial_end_date,
-        current_period_end,
-        plan:subscription_plans (
+        *,
+        subscription_plans (
           id,
           name,
           display_name,
@@ -93,7 +88,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 
     // Type assertion since Supabase returns nested objects correctly
     const subscriptionData = data as any;
-    const planData = subscriptionData.plan; // Direct access using alias
+    const planData = subscriptionData.subscription_plans; // Direct table name
 
     return {
       id: subscriptionData.id,
