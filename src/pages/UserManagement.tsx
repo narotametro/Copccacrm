@@ -195,19 +195,25 @@ export const UserManagement: React.FC = () => {
         if (!inviteError && dbInvites) {
           setInvites(dbInvites);
           
+          // Get all existing user emails to avoid duplicates
+          const existingEmails = new Set(mappedUsers.map(u => u.email.toLowerCase()));
+          
           // Add pending invitations to the users list
-          const pendingUsers: UserType[] = dbInvites.map((invite: DbInvite) => ({
-            id: invite.id,
-            full_name: invite.email.split('@')[0] || 'Pending User', // Use email prefix as name placeholder
-            email: invite.email,
-            role: invite.role as UserType['role'],
-            department: 'Pending',
-            phone: '—',
-            status: 'pending' as UserType['status'],
-            permissions: defaultPermissionsForRole(invite.role as UserType['role']),
-            created_at: invite.created_at?.split('T')[0] || '—',
-            last_login: 'Pending',
-          }));
+          // BUT exclude invitations where the user already exists (accepted invitation)
+          const pendingUsers: UserType[] = dbInvites
+            .filter((invite: DbInvite) => !existingEmails.has(invite.email.toLowerCase()))
+            .map((invite: DbInvite) => ({
+              id: invite.id,
+              full_name: invite.email.split('@')[0] || 'Pending User', // Use email prefix as name placeholder
+              email: invite.email,
+              role: invite.role as UserType['role'],
+              department: 'Pending',
+              phone: '—',
+              status: 'pending' as UserType['status'],
+              permissions: defaultPermissionsForRole(invite.role as UserType['role']),
+              created_at: invite.created_at?.split('T')[0] || '—',
+              last_login: 'Pending',
+            }));
           
           setUsers([...mappedUsers, ...pendingUsers]);
         } else {
