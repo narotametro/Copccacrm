@@ -150,11 +150,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           invited_by: null,
         };
         set({ user: data.user, profile: fallbackProfile, loading: false });
+        // If invited user, immediately grant access
+        if (fallbackProfile.invited_by && fallbackProfile.company_id) {
+          set({ hasActiveSubscription: true });
+        }
       } else {
         set({ user: data.user, profile: profile || null, loading: false });
+        // If invited user, immediately grant access
+        if (profile?.invited_by && profile?.company_id) {
+          set({ hasActiveSubscription: true });
+        }
       }
       
       // Check subscription in background (non-blocking, runs once)
+      // This will verify but won't override invited user's access
       setTimeout(() => get().checkSubscription(), 100);
     } else {
       set({ loading: false });
@@ -361,8 +370,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 invited_by: null,
               };
               set({ profile: defaultProfile });
+              // If invited user, immediately grant access
+              if (defaultProfile.invited_by && defaultProfile.company_id) {
+                set({ hasActiveSubscription: true });
+              }
             } else {
               set({ profile: profile || null });
+              // If invited user, immediately grant access
+              if (profile?.invited_by && profile?.company_id) {
+                set({ hasActiveSubscription: true });
+              }
             }
           } catch (profileErr) {
             // Don't log AbortErrors - they're expected during navigation/remounts
@@ -384,6 +401,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               invited_by: null,
             };
             set({ profile: fallbackProfile });
+            // If invited user, immediately grant access
+            if (fallbackProfile.invited_by && fallbackProfile.company_id) {
+              set({ hasActiveSubscription: true });
+            }
           }
         };
         fetchProfile();
@@ -407,21 +428,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      let subscriptionUserId = user.id;
-
-      // If user is invited, check company owner's subscription
+      // INVITED USERS: Always grant access if they have invited_by (they inherit company subscription)
       if (profile && !profile.is_company_owner && profile.invited_by && profile.company_id) {
-        const { data: ownerData } = await supabase
-          .from('users')
-          .select('id')
-          .eq('company_id', profile.company_id)
-          .eq('is_company_owner', true)
-          .maybeSingle();
-
-        if (ownerData) {
-          subscriptionUserId = ownerData.id;
-        }
+        // Invited users automatically inherit company owner's subscription
+        // No need to check - they always have access as long as they're invited
+        set({ hasActiveSubscription: true });
+        return true;
       }
+
+      // COMPANY OWNERS: Check their own subscription
+      let subscriptionUserId = user.id;
 
       // Check for active subscription
       const { data } = await supabase
