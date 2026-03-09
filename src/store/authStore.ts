@@ -154,8 +154,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: data.user, profile: profile || null, loading: false });
       }
       
-      // Check subscription in background (non-blocking)
-      get().checkSubscription();
+      // Check subscription in background (non-blocking, runs once)
+      setTimeout(() => get().checkSubscription(), 100);
     } else {
       set({ loading: false });
     }
@@ -388,8 +388,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         };
         fetchProfile();
         
-        // Check subscription in background (non-blocking)
-        get().checkSubscription();
+        // Check subscription in background (non-blocking, runs once after profile loads)
+        setTimeout(() => get().checkSubscription(), 100);
       }
     } catch (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts

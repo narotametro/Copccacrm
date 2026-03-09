@@ -84,7 +84,7 @@ const AppRoutes = () => {
 
   // Restore saved path after page refresh (only once on mount when user is authenticated)
   useEffect(() => {
-    if (!loading && user && !hasRestoredPath.current) {
+    if (user && !hasRestoredPath.current) {
       const savedPath = sessionStorage.getItem('requested_path');
       if (savedPath && savedPath !== location.pathname && savedPath.startsWith('/app/')) {
         hasRestoredPath.current = true;
@@ -94,7 +94,8 @@ const AppRoutes = () => {
         hasRestoredPath.current = true;
       }
     }
-  }, [loading, user, location.pathname, navigate]); // Only run when auth state is ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Only depend on user (prevents infinite loop)
   
   // No loading check - render immediately!
   return (

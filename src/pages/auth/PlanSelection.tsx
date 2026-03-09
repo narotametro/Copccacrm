@@ -32,8 +32,13 @@ export const PlanSelection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const redirectAttempted = useRef(false);
+  const roleChecked = useRef(false);
 
   useEffect(() => {
+    // Prevent repeated execution
+    if (roleChecked.current) return;
+    roleChecked.current = true;
+
     checkUserRole();
     loadPlans();
     // Only check existing subscription if not redirected from dashboard (prevent loop)
@@ -41,7 +46,8 @@ export const PlanSelection: React.FC = () => {
     if (!fromDashboard && !redirectAttempted.current) {
       checkExistingSubscription();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - run only once on mount
 
   const checkUserRole = async () => {
     if (!user) return;
@@ -55,7 +61,7 @@ export const PlanSelection: React.FC = () => {
 
       // If user is invited (not owner), they shouldn't be here
       if (!userProfile?.is_company_owner && userProfile?.invited_by) {
-        toast.info('You are using your company\'s plan');
+        // Silent redirect - no toast needed (prevents spam)
         navigate('/app/dashboard', { replace: true });
       }
     } catch (error) {

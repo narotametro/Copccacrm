@@ -18,11 +18,13 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }
   const location = useLocation();
 
   // Refresh subscription check when component mounts (non-blocking)
+  // Run only ONCE when user becomes available
   useEffect(() => {
     if (user && hasActiveSubscription === null) {
       checkSubscription(); // Background check if not yet cached
     }
-  }, [user, hasActiveSubscription, checkSubscription]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Only depend on user, not checkSubscription (prevents infinite loop)
 
   // INSTANT: Use cached subscription status (no loading, no blink!)
   // If null (not yet checked), allow access and check runs in background
