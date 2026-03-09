@@ -12,6 +12,7 @@ interface AuthState {
   loading: boolean;
   initialized: boolean; // Prevent double initialization
   hasActiveSubscription: boolean | null; // null = not checked yet, true/false = checked
+  subscriptionPlanName: string | null; // Store plan name for instant display (e.g., "PRO", "GROW", "Free")
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
   setHasActiveSubscription: (has: boolean) => void;
@@ -437,7 +438,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   checkSubscription: async () => {
     const { user, profile } = get();
     if (!user) {
-      set({ hasActiveSubscription: false });
+      set({ hasActiveSubscription: false, subscriptionPlanName: null });
       return false;
     }
 
@@ -445,28 +446,77 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // INVITED USERS: Always grant access if they have invited_by (they inherit company subscription)
       if (profile && !profile.is_company_owner && profile.invited_by && profile.company_id) {
         // Invited users automatically inherit company owner's subscription
-        // No need to check - they always have access as long as they're invited
-        set({ hasActiveSubscription: true });
+        // Fetch the company owner's subscription plan name
+        const { data: ownerData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('company_id', profile.company_id)
+          .eq('is_company_owner', true)
+          .maybeSingle();
+
+        if (ownerData) {
+          // Fetch owner's subscription plan
+          const { data: ownerSubscription } = await supabase
+            .from('user_subscriptions')
+            .select(`
+              id,
+              status,
+              subscription_plans!user_subscriptions_plan_id_fkey(
+                name,
+                display_name
+              )
+            `)
+            .eq('user_id', ownerData.id)
+            .in('status', ['trial', 'active'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (ownerSubscription) {
+            const plan = (ownerSubscription as any).subscription_plans;
+            const planName = plan?.display_name || plan?.name?.toUpperCase() || 'PRO';
+            set({ hasActiveSubscription: true, subscriptionPlanName: planName });
+            return true;
+          }
+        }
+
+        // Fallback: grant access but show as "Team" plan
+        set({ hasActiveSubscription: true, subscriptionPlanName: 'Team' });
         return true;
       }
 
       // COMPANY OWNERS: Check their own subscription
       let subscriptionUserId = user.id;
 
-      // Check for active subscription
+      // Check for active subscription with plan details
       const { data } = await supabase
         .from('user_subscriptions')
-        .select('id, status')
+        .select(`
+          id,
+          status,
+          subscription_plans!user_subscriptions_plan_id_fkey(
+            name,
+            display_name
+          )
+        `)
         .eq('user_id', subscriptionUserId)
         .in('status', ['trial', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      const hasSubscription = !!data;
-      set({ hasActiveSubscription: hasSubscription });
-      return hasSubscription;
+      if (data) {
+        const plan = (data as any).subscription_plans;
+        const planName = plan?.display_name || plan?.name?.toUpperCase() || 'PRO';
+        set({ hasActiveSubscription: true, subscriptionPlanName: planName });
+        return true;
+      } else {
+        set({ hasActiveSubscription: false, subscriptionPlanName: null });
+        return false;
+      }
     } catch (error) {
       console.error('Error checking subscription:', error);
-      set({ hasActiveSubscription: false });
+      set({ hasActiveSubscription: false, subscriptionPlanName: null });
       return false;
     }
   },

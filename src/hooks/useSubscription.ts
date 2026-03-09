@@ -134,6 +134,11 @@ export function useSubscription() {
   }
 
   function getPlanName(): string {
+    // First check authStore for cached plan name (instant for invited users)
+    const cachedPlanName = useAuthStore.getState().subscriptionPlanName;
+    if (cachedPlanName) return cachedPlanName;
+    
+    // Fallback to subscription data
     if (!subscription) return 'Free';
     return subscription.plan.display_name || subscription.plan.name.toUpperCase();
   }
