@@ -62,7 +62,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
         status,
         trial_end_date,
         current_period_end,
-        subscription_plans (
+        plan:subscription_plans (
           id,
           name,
           display_name,
@@ -93,9 +93,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 
     // Type assertion since Supabase returns nested objects correctly
     const subscriptionData = data as any;
-    const planData = Array.isArray(subscriptionData.subscription_plans) 
-      ? subscriptionData.subscription_plans[0] 
-      : subscriptionData.subscription_plans;
+    const planData = subscriptionData.plan; // Direct access using alias
 
     return {
       id: subscriptionData.id,

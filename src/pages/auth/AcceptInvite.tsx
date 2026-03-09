@@ -94,7 +94,7 @@ export const AcceptInvite: React.FC = () => {
             const { data: subscription } = await supabase
               .from('user_subscriptions')
               .select(`
-                subscription_plans (
+                plan:subscription_plans (
                   display_name
                 )
               `)
@@ -104,9 +104,9 @@ export const AcceptInvite: React.FC = () => {
               .limit(1)
               .maybeSingle();
 
-            if (subscription && (subscription as any).subscription_plans) {
-              const plan = (subscription as any).subscription_plans;
-              const displayName = Array.isArray(plan) ? plan[0]?.display_name : plan?.display_name;
+            if (subscription && (subscription as any).plan) {
+              const plan = (subscription as any).plan;
+              const displayName = plan?.display_name;
               setPlanName(displayName || 'START');
             } else {
               setPlanName('START'); // Default if no subscription found
