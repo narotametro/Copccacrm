@@ -10,6 +10,7 @@ interface AuthState {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  initialized: boolean; // Prevent double initialization
   hasActiveSubscription: boolean | null; // null = not checked yet, true/false = checked
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
@@ -48,6 +49,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   loading: false, // Start false for instant rendering!
+  initialized: false, // Track initialization
   hasActiveSubscription: null, // Cache subscription status
 
   setUser: (user) => set({ user }),
@@ -150,21 +152,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           invited_by: null,
         };
         set({ user: data.user, profile: fallbackProfile, loading: false });
-        // If invited user, immediately grant access
+        // If invited user, immediately grant access (no check needed)
         if (fallbackProfile.invited_by && fallbackProfile.company_id) {
           set({ hasActiveSubscription: true });
+        } else {
+          // Company owner: check subscription immediately (not delayed)
+          get().checkSubscription();
         }
       } else {
         set({ user: data.user, profile: profile || null, loading: false });
-        // If invited user, immediately grant access
+        // If invited user, immediately grant access (no check needed)
         if (profile?.invited_by && profile?.company_id) {
           set({ hasActiveSubscription: true });
+        } else {
+          // Company owner: check subscription immediately (not delayed)
+          get().checkSubscription();
         }
       }
-      
-      // Check subscription in background (non-blocking, runs once)
-      // This will verify but won't override invited user's access
-      setTimeout(() => get().checkSubscription(), 100);
     } else {
       set({ loading: false });
     }
@@ -319,6 +323,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initialize: async () => {
+    // Prevent double initialization
+    if (get().initialized) return;
+    set({ initialized: true });
+
     try {
       // Check if Supabase is properly configured
       if (!isSupabaseConfigured) {
@@ -370,15 +378,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 invited_by: null,
               };
               set({ profile: defaultProfile });
-              // If invited user, immediately grant access
+              // If invited user, immediately grant access (no check needed)
               if (defaultProfile.invited_by && defaultProfile.company_id) {
                 set({ hasActiveSubscription: true });
+              } else {
+                // Company owner: check subscription immediately
+                get().checkSubscription();
               }
             } else {
               set({ profile: profile || null });
-              // If invited user, immediately grant access
+              // If invited user, immediately grant access (no check needed)
               if (profile?.invited_by && profile?.company_id) {
                 set({ hasActiveSubscription: true });
+              } else {
+                // Company owner: check subscription immediately
+                get().checkSubscription();
               }
             }
           } catch (profileErr) {
@@ -401,16 +415,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               invited_by: null,
             };
             set({ profile: fallbackProfile });
-            // If invited user, immediately grant access
+            // If invited user, immediately grant access (no check needed)
             if (fallbackProfile.invited_by && fallbackProfile.company_id) {
               set({ hasActiveSubscription: true });
+            } else {
+              // Company owner: check subscription immediately
+              get().checkSubscription();
             }
           }
         };
         fetchProfile();
-        
-        // Check subscription in background (non-blocking, runs once after profile loads)
-        setTimeout(() => get().checkSubscription(), 100);
       }
     } catch (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts

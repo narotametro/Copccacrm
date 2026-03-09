@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
@@ -10,21 +9,14 @@ interface SubscriptionGuardProps {
  * SubscriptionGuard - Ensures user has selected a plan before accessing app
  * Redirects to /select-plan if no subscription exists
  * INSTANT: Uses cached subscription status from authStore (no loading spinner!)
+ * Subscription is checked immediately in authStore on login/init, not here
  */
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
-  const user = useAuthStore((state) => state.user);
   const hasActiveSubscription = useAuthStore((state) => state.hasActiveSubscription);
-  const checkSubscription = useAuthStore((state) => state.checkSubscription);
   const location = useLocation();
 
-  // Refresh subscription check when component mounts (non-blocking)
-  // Run only ONCE when user becomes available
-  useEffect(() => {
-    if (user && hasActiveSubscription === null) {
-      checkSubscription(); // Background check if not yet cached
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // Only depend on user, not checkSubscription (prevents infinite loop)
+  // NO useEffect needed - subscription is checked in authStore immediately after login/init
+  // This component just reads the cached value (instant, no async checks)
 
   // INSTANT: Use cached subscription status (no loading, no blink!)
   // If null (not yet checked), allow access and check runs in background

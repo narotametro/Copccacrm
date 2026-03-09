@@ -70,33 +70,9 @@ const InstantLoader = () => (
 
 const AppRoutes = () => {
   const { user, loading } = useAuthStore();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const hasRestoredPath = useRef(false);
-
-  // Save current path on every route change (for persistence after refresh)
-  useEffect(() => {
-    // Only save app paths, not login/register/etc
-    if (location.pathname.startsWith('/app/') || location.pathname.startsWith('/copcca-admin/')) {
-      sessionStorage.setItem('requested_path', location.pathname);
-    }
-  }, [location.pathname]);
-
-  // Restore saved path after page refresh (only once on mount when user is authenticated)
-  useEffect(() => {
-    if (user && !hasRestoredPath.current) {
-      const savedPath = sessionStorage.getItem('requested_path');
-      if (savedPath && savedPath !== location.pathname && savedPath.startsWith('/app/')) {
-        hasRestoredPath.current = true;
-        sessionStorage.removeItem('requested_path');
-        navigate(savedPath, { replace: true });
-      } else {
-        hasRestoredPath.current = true;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // Only depend on user (prevents infinite loop)
   
+  // NO path restoration - causes navigation loops and blinking
+  // React Router handles navigation state properly without manual intervention
   // No loading check - render immediately!
   return (
     <Suspense fallback={<InstantLoader />}>

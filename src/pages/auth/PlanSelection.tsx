@@ -31,75 +31,21 @@ export const PlanSelection: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
-  const redirectAttempted = useRef(false);
-  const roleChecked = useRef(false);
+  const initiated = useRef(false);
 
   useEffect(() => {
-    // Prevent repeated execution
-    if (roleChecked.current) return;
-    roleChecked.current = true;
+    // Run only once on mount
+    if (initiated.current) return;
+    initiated.current = true;
 
-    checkUserRole();
     loadPlans();
-    // Only check existing subscription if not redirected from dashboard (prevent loop)
-    const fromDashboard = location.state?.from?.pathname?.includes('/app/dashboard');
-    if (!fromDashboard && !redirectAttempted.current) {
-      checkExistingSubscription();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - run only once on mount
+  }, []);
 
-  const checkUserRole = async () => {
-    if (!user) return;
-
-    try {
-      const { data: userProfile } = await supabase
-        .from('users')
-        .select('is_company_owner, invited_by, company_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      // If user is invited (not owner), they shouldn't be here
-      if (!userProfile?.is_company_owner && userProfile?.invited_by) {
-        // Silent redirect - no toast needed (prevents spam)
-        navigate('/app/dashboard', { replace: true });
-      }
-    } catch (error) {
-      console.error('Error checking user role:', error);
-    }
-  };
-
-  const checkExistingSubscription = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .in('status', ['trial', 'active'])
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking existing subscription:', error);
-        return;
-      }
-
-      // If user already has ACTIVE subscription, redirect to dashboard
-      if (data) {
-        console.log('✓ Active subscription found, redirecting to dashboard');
-        redirectAttempted.current = true;
-        // Add small delay to prevent redirect loop
-        setTimeout(() => {
-          navigate('/app/dashboard', { replace: true });
-        }, 500);
-      } else {
-        console.log('ℹ No active subscription found, staying on plan selection');
-      }
-    } catch (error) {
-      console.error('Error in checkExistingSubscription:', error);
-    }
-  };
+  // Removed checkUserRole and checkExistingSubscription
+  // These are now handled by SubscriptionGuard (instant, no async checks)
+  // Invited users never reach this page (redirected by SubscriptionGuard)
+  // Users with subscriptions never reach this page (redirected by SubscriptionGuard)
 
   const loadPlans = async () => {
     try {
