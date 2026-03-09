@@ -215,8 +215,9 @@ export const AppLayout: React.FC = () => {
           if (companyId && companyId !== 'undefined') {
             const { data: companyUsers } = await supabase
               .from('users')
-              .select('id, full_name, role')
+              .select('id, full_name, role, status')
               .eq('company_id', companyId)
+              .eq('status', 'active') // Only show active users in filter
               .order('full_name');
 
             if (companyUsers) {

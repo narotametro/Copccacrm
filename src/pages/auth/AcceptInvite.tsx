@@ -213,13 +213,17 @@ export const AcceptInvite: React.FC = () => {
           throw upsertError;
         }
 
-        // Mark invitation as used
+        // Mark ALL invitations for this email as used (in case multiple invitations were sent)
         const { error: updateError } = await supabase
           .from('invitation_links')
           .update({ used: true, used_at: new Date().toISOString() })
-          .eq('id', invite.id);
+          .eq('email', invite.email) // Mark ALL invitations for this email, not just this one
+          .eq('used', false);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error marking invitation as used:', updateError);
+          // Don't throw - user is already created, just log the error
+        }
       }
 
       // Auto sign-in the user (no manual login needed!)
