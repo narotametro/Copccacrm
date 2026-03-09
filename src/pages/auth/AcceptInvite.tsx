@@ -94,7 +94,7 @@ export const AcceptInvite: React.FC = () => {
             const { data: subscription } = await supabase
               .from('user_subscriptions')
               .select(`
-                subscription_plans (
+                subscription_plans!user_subscriptions_plan_id_fkey (
                   display_name
                 )
               `)

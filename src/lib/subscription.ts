@@ -57,7 +57,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
       .from('user_subscriptions')
       .select(`
         *,
-        subscription_plans (
+        subscription_plans!user_subscriptions_plan_id_fkey (
           id,
           name,
           display_name,

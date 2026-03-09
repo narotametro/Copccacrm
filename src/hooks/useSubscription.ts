@@ -90,7 +90,7 @@ export function useSubscription() {
         .from('user_subscriptions')
         .select(`
           *,
-          subscription_plans(*)
+          subscription_plans!user_subscriptions_plan_id_fkey(*)
         `)
         .eq('user_id', subscriptionUserId)
         .in('status', ['trial', 'active'])
