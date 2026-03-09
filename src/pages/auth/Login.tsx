@@ -58,7 +58,7 @@ export default function Login() {
           <h1 className="text-3xl font-bold text-slate-900">COPCCA CRM</h1>
           <p className="text-slate-600 mt-2">Sign in to your account</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <Input
             type="email"
             label="Email"
@@ -67,6 +67,8 @@ export default function Login() {
             onChange={e => setEmail(e.target.value)}
             icon={Mail}
             required
+            autoComplete="off"
+            name="email-login"
           />
           <div className="relative">
             <Input
@@ -77,6 +79,8 @@ export default function Login() {
               onChange={e => setPassword(e.target.value)}
               icon={Lock}
               required
+              autoComplete="off"
+              name="password-login"
             />
             <button
               type="button"
@@ -91,7 +95,14 @@ export default function Login() {
               type="checkbox"
               id="rememberMe"
               checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setRememberMe(checked);
+                // If unchecking "Remember email", remove from localStorage immediately
+                if (!checked) {
+                  localStorage.removeItem('rememberedEmail');
+                }
+              }}
               className="w-4 h-4 text-primary-600 bg-white border-slate-300 rounded focus:ring-primary-500 focus:ring-2"
             />
             <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-700">
