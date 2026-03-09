@@ -77,8 +77,8 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: true, // Force immediate activation
-        clientsClaim: true, // Take control immediately
+        skipWaiting: false, // Let user trigger update (prevents claim error)
+        clientsClaim: false, // Prevent automatic claim on activation
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         
         // CRITICAL: Only cache static assets, NEVER cache JS/CSS chunks
