@@ -49,6 +49,16 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Force cache bust by injecting timestamp into HTML
+    {
+      name: 'html-transform',
+      transformIndexHtml(html) {
+        return html.replace(
+          '</head>',
+          `  <meta name="build-timestamp" content="${buildTimestamp}">\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n  <meta http-equiv="Pragma" content="no-cache">\n  <meta http-equiv="Expires" content="0">\n  </head>`
+        );
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'inline',
