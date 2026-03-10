@@ -41,6 +41,7 @@ import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/context/CurrencyContext';
 import { toast } from 'sonner';
 import { useSalesHubStore } from '@/store/salesHubStore';
+import { useAuthStore } from '@/store/authStore';
 import { StockTransfers } from '@/components/inventory/StockTransfers';
 import { useOptimisticCache } from '@/lib/optimisticCache';
 
@@ -2471,19 +2472,24 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 
 const SalesHub: React.FC = () => {
   const { formatCurrency } = useCurrency();
+  const user = useAuthStore((state) => state.user);
   const [activeSubsection, setActiveSubsection] = useState<Subsection>('updates');
   
   // Instant loading with optimistic cache - zero spinners
   const { data: rawProducts } = useOptimisticCache<Product>({
     table: 'products',
     query: 'id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, location_id, image_url, brands(id, name), categories(id, name), location:locations(id, name, type)',
+    queryFilters: user?.id ? [{ column: 'created_by', operator: 'eq', value: user.id }] : [],
     orderBy: { column: 'name', ascending: true },
   });
   
   const { data: rawCustomers } = useOptimisticCache<any>({
     table: 'companies',
     query: '*',
-    queryFilters: [{ column: 'is_own_company', operator: 'eq', value: false }],
+    queryFilters: user?.id ? [
+      { column: 'is_own_company', operator: 'eq', value: false },
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [{ column: 'is_own_company', operator: 'eq', value: false }],
     orderBy: { column: 'name', ascending: true },
   });
   

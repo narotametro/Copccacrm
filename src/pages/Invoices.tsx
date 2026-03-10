@@ -15,6 +15,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useOptimisticCache } from '@/lib/optimisticCache';
+import { useAuthStore } from '@/store/authStore';
 import { useCurrency } from '@/context/CurrencyContext';
 
 interface Invoice {
@@ -35,11 +36,13 @@ interface Invoice {
 const Invoices: React.FC = () => {
   const navigate = useNavigate();
   const { formatCurrency: formatCurrencyFn } = useCurrency();
+  const user = useAuthStore((state) => state.user);
   
   // Use optimistic cache for instant loading
   const { data: invoicesData } = useOptimisticCache<Invoice>({
     table: 'invoices',
     query: '*, companies(name)',
+    queryFilters: user?.id ? [{ column: 'created_by', operator: 'eq', value: user.id }] : [],
     orderBy: { column: 'created_at', ascending: false },
   });
 
