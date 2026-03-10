@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Database } from '@/lib/types/database';
 import { useOptimisticCache } from '@/lib/optimisticCache';
+import { useAuthStore } from '@/store/authStore';
 import {
   Plus,
   Search,
@@ -104,6 +105,7 @@ export const Customers: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const { getCustomerFinancialMetrics, customers: contextCustomers, setSupportTickets, supportTickets } = useSharedData();
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   // Use optimistic cache for instant loading
   const { 
@@ -114,8 +116,13 @@ export const Customers: React.FC = () => {
   } = useOptimisticCache<Database['public']['Tables']['companies']['Row']>({
     table: 'companies',
     query: '*',
+    queryFilters: user?.id ? [
+      { column: 'is_own_company', operator: 'eq', value: false },
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [
+      { column: 'is_own_company', operator: 'eq', value: false }
+    ],
     orderBy: { column: 'created_at', ascending: false },
-    filter: (company) => company.is_own_company === false,
   });
 
   // Transform database companies to Business format
