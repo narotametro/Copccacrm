@@ -4072,16 +4072,7 @@ const SalesHub: React.FC = () => {
           // Refresh order history immediately so user can print invoice
           await loadOrderHistory();
 
-          // Update products state
-          setProducts(prevProducts =>
-            prevProducts.map(product => {
-              const cartItem = orderSnapshot.items.find(item => item.product.id === product.id);
-              if (cartItem) {
-                return { ...product, stock_quantity: Math.max(0, (product.stock_quantity || 0) - cartItem.quantity) };
-              }
-              return product;
-            })
-          );
+          // Products state will auto-update via useOptimisticCache real-time subscriptions
         } catch (error) {
           console.error('Error processing order in background:', error);
         }
@@ -4337,14 +4328,7 @@ const SalesHub: React.FC = () => {
         console.log('Stock history entry created successfully:', historyResult);
       }
 
-      // Update local products state
-      setProducts(prevProducts =>
-        prevProducts.map(product =>
-          product.id === selectedProductForRestock.id
-            ? { ...product, stock_quantity: stockAfter }
-            : product
-        )
-      );
+      // Products state will auto-update via useOptimisticCache real-time subscriptions
 
       // Close modal and reset state
       setShowRestockModal(false);
@@ -4647,16 +4631,7 @@ const SalesHub: React.FC = () => {
         }
       }
 
-      // Update local products state
-      setProducts(prevProducts => [...prevProducts, {
-        ...newProduct,
-        brands: Array.isArray(newProduct.brands) && newProduct.brands.length > 0 ? newProduct.brands[0] : (newProduct.brands || null),
-        categories: Array.isArray(newProduct.categories) && newProduct.categories.length > 0 ? newProduct.categories[0] : (newProduct.categories || null),
-        sales_velocity: 0
-      }]);
-
-      // Reload products to ensure consistency and calculate velocity
-      setTimeout(() => loadProductsWithVelocity(), 100);
+      // Products state will auto-update via useOptimisticCache real-time subscriptions
 
       // Close modal and reset state
       setShowAddProductModal(false);
@@ -4751,17 +4726,7 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Update local products state
-      setProducts(prevProducts =>
-        prevProducts.map(product =>
-          product.id === selectedProductForEdit.id ? {
-            ...updatedProduct,
-            brands: Array.isArray(updatedProduct.brands) && updatedProduct.brands.length > 0 ? updatedProduct.brands[0] : (updatedProduct.brands || null),
-            categories: Array.isArray(updatedProduct.categories) && updatedProduct.categories.length > 0 ? updatedProduct.categories[0] : (updatedProduct.categories || null),
-            sales_velocity: product.sales_velocity || 0
-          } : product
-        )
-      );
+      // Products state will auto-update via useOptimisticCache real-time subscriptions
 
       // Reload products to ensure consistency
       setTimeout(() => loadProductsWithVelocity(), 100);
@@ -4817,7 +4782,7 @@ const SalesHub: React.FC = () => {
       }
 
       // Update local state
-      setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
+      // Products state will auto-update via useOptimisticCache real-time subscriptions
 
       toast.success(`Successfully deleted product: ${product.name}`);
     } catch (error) {
