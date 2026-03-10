@@ -8071,13 +8071,14 @@ const CustomerBuyingPatternsSection = () => {
 
     {/* Add Product Modal */}
     {showAddProductModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Add New Product</h3>
-            <button
-              onClick={() => {
-                setShowAddProductModal(false);
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+        <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white p-6 pb-4 border-b border-gray-200 z-10">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Add New Product</h3>
+              <button
+                onClick={() => {
+                  setShowAddProductModal(false);
                 setNewProductData({
                   name: '',
                   sku: '',
@@ -8097,8 +8098,9 @@ const CustomerBuyingPatternsSection = () => {
               ✕
             </button>
           </div>
+          </div>
 
-          <div className="space-y-4">
+          <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Product Name *
@@ -8336,34 +8338,36 @@ const CustomerBuyingPatternsSection = () => {
 
     {/* Edit Product Modal */}
     {showEditProductModal && selectedProductForEdit && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Edit Product</h3>
-            <button
-              onClick={() => {
-                setShowEditProductModal(false);
-                setSelectedProductForEdit(null);
-                setEditProductData({
-                  name: '',
-                  sku: '',
-                  price: '',
-                  stock_quantity: '',
-                  min_stock_level: '',
-                  brand_id: '',
-                  category_id: '',
-                  image_url: ''
-                });
-                setEditImageFile(null);
-                setEditImagePreview('');
-              }}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+        <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white p-6 pb-4 border-b border-gray-200 z-10">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Edit Product</h3>
+              <button
+                onClick={() => {
+                  setShowEditProductModal(false);
+                  setSelectedProductForEdit(null);
+                  setEditProductData({
+                    name: '',
+                    sku: '',
+                    price: '',
+                    stock_quantity: '',
+                    min_stock_level: '',
+                    brand_id: '',
+                    category_id: '',
+                    image_url: ''
+                  });
+                  setEditImageFile(null);
+                  setEditImagePreview('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Product Name *
