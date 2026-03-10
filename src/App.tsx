@@ -58,9 +58,16 @@ const AdminSubscriptions = lazy(() => import('@/pages/admin/AdminSubscriptions')
 const AdminSystem = lazy(() => import('@/pages/admin/AdminSystem').then(module => ({ default: module.AdminSystem })));
 const SMSAdminPanel = lazy(() => import('@/pages/admin/SMSAdminPanel').then(module => ({ default: module.SMSAdminPanel })));
 
-// Ultra-minimal instant loading component
+// Ultra-minimal instant loading component (for full-page auth routes)
 const InstantLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+  </div>
+);
+
+// Inline page loader (doesn't hide sidebar/layout)
+const PageLoader = () => (
+  <div className="flex items-center justify-center py-20">
     <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
   </div>
 );
@@ -75,27 +82,26 @@ const AppRoutes = () => {
   // React Router handles navigation state properly without manual intervention
   // No loading check - render immediately!
   return (
-    <Suspense fallback={<InstantLoader />}>
-      <Routes>
+    <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/invite" element={<AcceptInvite />} />
+        <Route path="/" element={<Suspense fallback={<InstantLoader />}><LandingPage /></Suspense>} />
+        <Route path="/pricing" element={<Suspense fallback={<InstantLoader />}><PricingPage /></Suspense>} />
+        <Route path="/invite" element={<Suspense fallback={<InstantLoader />}><AcceptInvite /></Suspense>} />
         <Route
           path="/login"
-          element={user ? <Navigate to="/app/dashboard" replace /> : <Login />}
+          element={user ? <Navigate to="/app/dashboard" replace /> : <Suspense fallback={<InstantLoader />}><Login /></Suspense>}
         />
         <Route
           path="/register"
-          element={user ? <Navigate to="/app/dashboard" replace /> : <Register />}
+          element={user ? <Navigate to="/app/dashboard" replace /> : <Suspense fallback={<InstantLoader />}><Register /></Suspense>}
         />
         <Route
           path="/forgot-password"
-          element={user ? <Navigate to="/app/dashboard" replace /> : <ForgotPassword />}
+          element={user ? <Navigate to="/app/dashboard" replace /> : <Suspense fallback={<InstantLoader />}><ForgotPassword /></Suspense>}
         />
         <Route
           path="/reset-password"
-          element={user ? <Navigate to="/app/dashboard" replace /> : <ResetPassword />}
+          element={user ? <Navigate to="/app/dashboard" replace /> : <Suspense fallback={<InstantLoader />}><ResetPassword /></Suspense>}
         />
         
         {/* Plan Selection - Required before app access */}
@@ -103,13 +109,13 @@ const AppRoutes = () => {
           path="/select-plan"
           element={
             <ProtectedRoute>
-              <PlanSelection />
+              <Suspense fallback={<InstantLoader />}><PlanSelection /></Suspense>
             </ProtectedRoute>
           }
         />
 
         {/* COPCCA Admin Routes - Completely Separate */}
-        <Route path="/copcca-admin/login" element={<COPCCAAdminLogin />} />
+        <Route path="/copcca-admin/login" element={<Suspense fallback={<InstantLoader />}><COPCCAAdminLogin /></Suspense>} />
         <Route
           path="/copcca-admin/*"
           element={
@@ -118,12 +124,12 @@ const AppRoutes = () => {
             </COPCCAProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="companies" element={<AdminCompanies />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="subscriptions" element={<AdminSubscriptions />} />
-          <Route path="sms" element={<SMSAdminPanel />} />
-          <Route path="system" element={<AdminSystem />} />
+          <Route path="dashboard" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
+          <Route path="companies" element={<Suspense fallback={<PageLoader />}><AdminCompanies /></Suspense>} />
+          <Route path="users" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
+          <Route path="subscriptions" element={<Suspense fallback={<PageLoader />}><AdminSubscriptions /></Suspense>} />
+          <Route path="sms" element={<Suspense fallback={<PageLoader />}><SMSAdminPanel /></Suspense>} />
+          <Route path="system" element={<Suspense fallback={<PageLoader />}><AdminSystem /></Suspense>} />
           <Route path="" element={<Navigate to="/copcca-admin/dashboard" replace />} />
         </Route>
 
@@ -140,37 +146,37 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="customers" element={<Customers />} />
-          <Route path="customers/:id" element={<CustomerDetailPage />} />
-          <Route path="support" element={<Support />} />
-          <Route path="sales" element={<Sales />} />
+          <Route path="customers/:id" element={<Suspense fallback={<PageLoader />}><CustomerDetailPage /></Suspense>} />
+          <Route path="support" element={<Suspense fallback={<PageLoader />}><Support /></Suspense>} />
+          <Route path="sales" element={<Suspense fallback={<PageLoader />}><Sales /></Suspense>} />
           <Route path="sales-hub" element={<SalesHub />} />
-          <Route path="pipeline" element={<FeatureGate feature="sales_pipeline"><Pipeline /></FeatureGate>} />
-          <Route path="after-sales" element={<FeatureGate feature="after_sales"><AfterSales /></FeatureGate>} />
-          <Route path="debt-collection" element={<FeatureGate feature="debt_collection"><DebtCollection /></FeatureGate>} />
-          <Route path="competitors" element={<Competitors />} />
-          <Route path="competitors/:id" element={<CompetitorDetailPage />} />
-          <Route path="marketing" element={<Marketing />} />
-          <Route path="kpi-tracking" element={<FeatureGate feature="kpi_dashboard"><KPITracking /></FeatureGate>} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="products" element={<Products />} />
-          <Route path="products/:id" element={<ProductDetailPage />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="invoices" element={<Invoices />} />
-          <Route path="invoices/dashboard" element={<InvoiceDashboard />} />
-          <Route path="invoices/create" element={<CreateInvoice />} />
-          <Route path="invoices/:id" element={<InvoiceDetail />} />
-          <Route path="invoices/:id/edit" element={<CreateInvoice />} />
+          <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><FeatureGate feature="sales_pipeline"><Pipeline /></FeatureGate></Suspense>} />
+          <Route path="after-sales" element={<Suspense fallback={<PageLoader />}><FeatureGate feature="after_sales"><AfterSales /></FeatureGate></Suspense>} />
+          <Route path="debt-collection" element={<Suspense fallback={<PageLoader />}><FeatureGate feature="debt_collection"><DebtCollection /></FeatureGate></Suspense>} />
+          <Route path="competitors" element={<Suspense fallback={<PageLoader />}><Competitors /></Suspense>} />
+          <Route path="competitors/:id" element={<Suspense fallback={<PageLoader />}><CompetitorDetailPage /></Suspense>} />
+          <Route path="marketing" element={<Suspense fallback={<PageLoader />}><Marketing /></Suspense>} />
+          <Route path="kpi-tracking" element={<Suspense fallback={<PageLoader />}><FeatureGate feature="kpi_dashboard"><KPITracking /></FeatureGate></Suspense>} />
+          <Route path="reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+          <Route path="products" element={<Suspense fallback={<PageLoader />}><Products /></Suspense>} />
+          <Route path="products/:id" element={<Suspense fallback={<PageLoader />}><ProductDetailPage /></Suspense>} />
+          <Route path="notifications" element={<Suspense fallback={<PageLoader />}><Notifications /></Suspense>} />
+          <Route path="invoices" element={<Suspense fallback={<PageLoader />}><Invoices /></Suspense>} />
+          <Route path="invoices/dashboard" element={<Suspense fallback={<PageLoader />}><InvoiceDashboard /></Suspense>} />
+          <Route path="invoices/create" element={<Suspense fallback={<PageLoader />}><CreateInvoice /></Suspense>} />
+          <Route path="invoices/:id" element={<Suspense fallback={<PageLoader />}><InvoiceDetail /></Suspense>} />
+          <Route path="invoices/:id/edit" element={<Suspense fallback={<PageLoader />}><CreateInvoice /></Suspense>} />
           <Route 
             path="users" 
             element={
               <ProtectedRoute requiredRole="admin">
-                <UserManagement />
+                <Suspense fallback={<PageLoader />}><UserManagement /></Suspense>
               </ProtectedRoute>
             } 
           />
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="my-workplace" element={<MyWorkplace />} />
+          <Route path="profile" element={<Suspense fallback={<PageLoader />}><Profile /></Suspense>} />
+          <Route path="settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
+          <Route path="my-workplace" element={<Suspense fallback={<PageLoader />}><MyWorkplace /></Suspense>} />
           <Route path="" element={<Navigate to="/app/dashboard" replace />} />
         </Route>
 
@@ -180,7 +186,6 @@ const AppRoutes = () => {
           element={<Navigate to="/" replace />}
         />
       </Routes>
-    </Suspense>
   );
 };
 

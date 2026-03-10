@@ -2781,9 +2781,12 @@ const SalesHub: React.FC = () => {
     min_stock_level: '' as number | '',
     brand_id: '',
     category_id: '' as string,
-    location_id: ''
+    location_id: '',
+    image_url: ''
   });
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState<string>('');
 
   // Edit product modal state
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -2795,9 +2798,12 @@ const SalesHub: React.FC = () => {
     stock_quantity: '' as number | '',
     min_stock_level: '' as number | '',
     brand_id: '',
-    category_id: '' as string
+    category_id: '' as string,
+    image_url: ''
   });
   const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string>('');
 
   // Categories state
   const [categories, setCategories] = useState<Array<{id: string, name: string, description?: string}>>([]);
@@ -4440,6 +4446,101 @@ const SalesHub: React.FC = () => {
     }
   };
 
+  // Handle image upload for products
+  const handleProductImageUpload = async (file: File): Promise<string | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to upload images');
+        return null;
+      }
+
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `product-images/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('products')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading image:', error);
+        toast.error('Failed to upload image');
+        return null;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error in image upload:', error);
+      toast.error('An error occurred while uploading the image');
+      return null;
+    }
+  };
+
+  // Handle image file selection (Add Product)
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setProductImageFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProductImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle image file selection (Edit Product)
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setEditImageFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleAddProduct = async () => {
     const price = typeof newProductData.price === 'string' ? parseFloat(newProductData.price) || 0 : newProductData.price;
     if (!newProductData.name || price <= 0) {
@@ -4486,6 +4587,15 @@ const SalesHub: React.FC = () => {
         return;
       }
 
+      // Upload image if selected
+      let imageUrl = '';
+      if (productImageFile) {
+        const uploadedUrl = await handleProductImageUpload(productImageFile);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      }
+
       // Insert new product with location_id
       const { data: newProduct, error: insertError } = await supabase
         .from('products')
@@ -4498,6 +4608,7 @@ const SalesHub: React.FC = () => {
           brand_id: newProductData.brand_id || null,
           category_id: newProductData.category_id || null,
           location_id: newProductData.location_id,
+          image_url: imageUrl || null,
           created_by: user.id,
           company_id: userData?.company_id || null
         })
@@ -4557,8 +4668,11 @@ const SalesHub: React.FC = () => {
         min_stock_level: '',
         brand_id: '',
         category_id: '',
-        location_id: ''
+        location_id: '',
+        image_url: ''
       });
+      setProductImageFile(null);
+      setProductImagePreview('');
 
       toast.success(`Successfully added product: ${newProductData.name}`);
 
@@ -4579,8 +4693,11 @@ const SalesHub: React.FC = () => {
       stock_quantity: product.stock_quantity,
       min_stock_level: product.min_stock_level || '',
       brand_id: product.brand_id || '',
-      category_id: product.category_id || ''
+      category_id: product.category_id || '',
+      image_url: product.image_url || ''
     });
+    setEditImageFile(null);
+    setEditImagePreview(product.image_url || '');
     setShowEditProductModal(true);
   };
 
@@ -4601,6 +4718,15 @@ const SalesHub: React.FC = () => {
         return;
       }
 
+      // Upload new image if selected
+      let imageUrl = editProductData.image_url || null;
+      if (editImageFile) {
+        const uploadedImageUrl = await handleProductImageUpload(editImageFile);
+        if (uploadedImageUrl) {
+          imageUrl = uploadedImageUrl;
+        }
+      }
+
       // Update product
       const { data: updatedProduct, error: updateError } = await supabase
         .from('products')
@@ -4612,6 +4738,7 @@ const SalesHub: React.FC = () => {
           min_stock_level: typeof editProductData.min_stock_level === 'string' ? parseInt(editProductData.min_stock_level) || 0 : editProductData.min_stock_level,
           brand_id: editProductData.brand_id || null,
           category_id: editProductData.category_id || null,
+          image_url: imageUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedProductForEdit.id)
@@ -4649,8 +4776,11 @@ const SalesHub: React.FC = () => {
         stock_quantity: '',
         min_stock_level: '',
         brand_id: '',
-        category_id: ''
+        category_id: '',
+        image_url: ''
       });
+      setEditImageFile(null);
+      setEditImagePreview('');
 
       toast.success(`Successfully updated product: ${editProductData.name}`);
 
@@ -7991,8 +8121,11 @@ const CustomerBuyingPatternsSection = () => {
                   min_stock_level: '',
                   brand_id: '',
                   category_id: '',
-                  location_id: ''
+                  location_id: '',
+                  image_url: ''
                 });
+                setProductImageFile(null);
+                setProductImagePreview('');
               }}
               className="text-gray-500 hover:text-gray-700"
             >
@@ -8155,6 +8288,51 @@ const CustomerBuyingPatternsSection = () => {
               )}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Image
+              </label>
+              <div className="space-y-2">
+                {productImagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={productImagePreview}
+                      alt="Product preview"
+                      className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                    />
+                    <button
+                      onClick={() => {
+                        setProductImageFile(null);
+                        setProductImagePreview('');
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      id="product-image-input"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="product-image-input"
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg cursor-pointer text-sm font-medium text-gray-700"
+                    >
+                      Choose Image
+                    </label>
+                    <span className="text-xs text-gray-500">Max 5MB, image files only</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={() => {
@@ -8167,8 +8345,11 @@ const CustomerBuyingPatternsSection = () => {
                     min_stock_level: '',
                     brand_id: '',
                     category_id: '',
-                    location_id: ''
+                    location_id: '',
+                    image_url: ''
                   });
+                  setProductImageFile(null);
+                  setProductImagePreview('');
                 }}
                 variant="outline"
                 className="flex-1"
@@ -8205,8 +8386,11 @@ const CustomerBuyingPatternsSection = () => {
                   stock_quantity: '',
                   min_stock_level: '',
                   brand_id: '',
-                  category_id: ''
+                  category_id: '',
+                  image_url: ''
                 });
+                setEditImageFile(null);
+                setEditImagePreview('');
               }}
               className="text-gray-500 hover:text-gray-700"
             >
@@ -8346,6 +8530,51 @@ const CustomerBuyingPatternsSection = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Image
+              </label>
+              <div className="space-y-2">
+                {editImagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={editImagePreview}
+                      alt="Product preview"
+                      className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                    />
+                    <button
+                      onClick={() => {
+                        setEditImageFile(null);
+                        setEditImagePreview('');
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      id="edit-product-image-input"
+                      accept="image/*"
+                      onChange={handleEditImageSelect}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="edit-product-image-input"
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg cursor-pointer text-sm font-medium text-gray-700"
+                    >
+                      Choose Image
+                    </label>
+                    <span className="text-xs text-gray-500">Max 5MB, image files only</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={() => {
@@ -8358,8 +8587,11 @@ const CustomerBuyingPatternsSection = () => {
                     stock_quantity: '',
                     min_stock_level: '',
                     brand_id: '',
-                    category_id: ''
+                    category_id: '',
+                    image_url: ''
                   });
+                  setEditImageFile(null);
+                  setEditImagePreview('');
                 }}
                 variant="outline"
                 className="flex-1"
