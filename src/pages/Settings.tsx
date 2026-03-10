@@ -68,7 +68,8 @@ export const Settings: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-user's actual subscription plan
+
+  // Load user's actual subscription plan
   useEffect(() => {
     const loadUserSubscription = async () => {
       const subscription = await getUserSubscription();
@@ -82,7 +83,7 @@ user's actual subscription plan
     }
   }, [user]);
 
-  // Load 
+  // Load company information
   // Load company information
   useEffect(() => {
     const loadCompanyData = async () => {
