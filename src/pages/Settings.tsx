@@ -8,10 +8,12 @@ import { supabase } from '@/lib/supabase';
 import { BillingHistory } from '@/components/ui/BillingHistory';
 import { SubscriptionManagement } from '@/components/ui/SubscriptionManagement';
 import { SMSSettings } from '@/components/settings/SMSSettings';
+import { getUserSubscription } from '@/lib/subscription';
 
 export const Settings: React.FC = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'general' | 'billing' | 'subscription' | 'locations' | 'sms'>('general');
+  const [currentSubscriptionPlan, setCurrentSubscriptionPlan] = useState<string>('start');
   const [companyInfo, setCompanyInfo] = useState({
     name: '',
     phone: '',
@@ -66,7 +68,21 @@ export const Settings: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+user's actual subscription plan
+  useEffect(() => {
+    const loadUserSubscription = async () => {
+      const subscription = await getUserSubscription();
+      if (subscription) {
+        setCurrentSubscriptionPlan(subscription.plan.name);
+      }
+    };
+    
+    if (user) {
+      loadUserSubscription();
+    }
+  }, [user]);
 
+  // Load 
   // Load company information
   useEffect(() => {
     const loadCompanyData = async () => {
@@ -796,7 +812,7 @@ export const Settings: React.FC = () => {
           onSave={saveLocation}
           onUpdate={updateLocation}
           onDelete={deleteLocation}
-          userSubscriptionPlan={companyInfo.subscription_plan || 'start'}
+          userSubscriptionPlan={currentSubscriptionPlan}
         />
       )}
     </div>
