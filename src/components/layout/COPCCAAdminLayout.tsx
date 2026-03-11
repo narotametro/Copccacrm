@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LogOut, Users, BarChart3, Clock, Database, Banknote, MessageSquare } from 'lucide-react';
+import { Shield, LogOut, Users, BarChart3, Clock, Database, Banknote, MessageSquare, Package } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useCurrency, currencies } from '@/context/CurrencyContext';
@@ -112,6 +112,15 @@ export const COPCCAAdminLayout: React.FC = () => {
             >
               <Clock size={16} />
               <span className="text-sm font-medium">Subscriptions</span>
+            </button>
+            <button
+              onClick={() => navigate('/copcca-admin/plans')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors ${
+                location.pathname === '/copcca-admin/plans' ? 'bg-white/10 ring-2 ring-white/30' : ''
+              }`}
+            >
+              <Package size={16} />
+              <span className="text-sm font-medium">Plans</span>
             </button>
             <button
               onClick={() => navigate('/copcca-admin/sms')}

@@ -92,7 +92,7 @@ export const StockTransfers: React.FC = () => {
 
       // Try to fetch subscription, fallback to 'start' plan if table doesn't exist
       const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .select('plan')
         .eq('company_id', userData.company_id)
         .eq('status', 'active')
@@ -327,10 +327,21 @@ export const StockTransfers: React.FC = () => {
         updates.actual_delivery_date = new Date().toISOString();
         
         // Update all items to mark quantities as received
-        await supabase
+        // Fetch items first to get quantity_sent values
+        const { data: items } = await supabase
           .from('stock_transfer_items')
-          .update({ quantity_received: supabase.raw('quantity_sent') })
+          .select('id, quantity_sent')
           .eq('transfer_id', transferId);
+        
+        // Update each item's quantity_received to match quantity_sent
+        if (items) {
+          for (const item of items) {
+            await supabase
+              .from('stock_transfer_items')
+              .update({ quantity_received: item.quantity_sent })
+              .eq('id', item.id);
+          }
+        }
       }
 
       const { error } = await supabase

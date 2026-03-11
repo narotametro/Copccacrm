@@ -55,6 +55,7 @@ const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then(mo
 const AdminCompanies = lazy(() => import('@/pages/admin/AdminCompanies').then(module => ({ default: module.AdminCompanies })));
 const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers').then(module => ({ default: module.AdminUsers })));
 const AdminSubscriptions = lazy(() => import('@/pages/admin/AdminSubscriptions').then(module => ({ default: module.AdminSubscriptions })));
+const AdminPlans = lazy(() => import('@/pages/admin/AdminPlans').then(module => ({ default: module.AdminPlans })));
 const AdminSystem = lazy(() => import('@/pages/admin/AdminSystem').then(module => ({ default: module.AdminSystem })));
 const SMSAdminPanel = lazy(() => import('@/pages/admin/SMSAdminPanel').then(module => ({ default: module.SMSAdminPanel })));
 
@@ -128,6 +129,7 @@ const AppRoutes = () => {
           <Route path="companies" element={<Suspense fallback={<PageLoader />}><AdminCompanies /></Suspense>} />
           <Route path="users" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
           <Route path="subscriptions" element={<Suspense fallback={<PageLoader />}><AdminSubscriptions /></Suspense>} />
+          <Route path="plans" element={<Suspense fallback={<PageLoader />}><AdminPlans /></Suspense>} />
           <Route path="sms" element={<Suspense fallback={<PageLoader />}><SMSAdminPanel /></Suspense>} />
           <Route path="system" element={<Suspense fallback={<PageLoader />}><AdminSystem /></Suspense>} />
           <Route path="" element={<Navigate to="/copcca-admin/dashboard" replace />} />
