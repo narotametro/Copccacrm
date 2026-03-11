@@ -328,19 +328,30 @@ export const StockTransfers: React.FC = () => {
         
         // Update all items to mark quantities as received
         // Fetch items first to get quantity_sent values
-        const { data: items } = await supabase
+        const { data: items, error: itemsError } = await supabase
           .from('stock_transfer_items')
           .select('id, quantity_sent')
           .eq('transfer_id', transferId);
         
+        if (itemsError) {
+          console.error('Error fetching transfer items:', itemsError);
+          throw new Error(`Failed to fetch transfer items: ${itemsError.message}`);
+        }
+        
         // Update each item's quantity_received to match quantity_sent
-        if (items) {
+        if (items && items.length > 0) {
           for (const item of items) {
-            await supabase
+            const { error: updateItemError } = await supabase
               .from('stock_transfer_items')
               .update({ quantity_received: item.quantity_sent })
               .eq('id', item.id);
+            
+            if (updateItemError) {
+              console.error('Error updating transfer item:', updateItemError);
+              throw new Error(`Failed to update item: ${updateItemError.message}`);
+            }
           }
+          console.log(`✅ Updated ${items.length} transfer items with received quantities`);
         }
       }
 
@@ -349,13 +360,16 @@ export const StockTransfers: React.FC = () => {
         .update(updates)
         .eq('id', transferId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating transfer status:', error);
+        throw new Error(`Failed to update transfer: ${error.message}`);
+      }
 
       toast.success(`Transfer ${status === 'completed' ? 'completed' : 'updated'} successfully`);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating transfer:', error);
-      toast.error('Failed to update transfer status');
+      toast.error(error?.message || 'Failed to update transfer status');
     }
   };
 
