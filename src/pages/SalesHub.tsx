@@ -2476,7 +2476,7 @@ const SalesHub: React.FC = () => {
   const [activeSubsection, setActiveSubsection] = useState<Subsection>('updates');
   
   // Instant loading with optimistic cache - zero spinners
-  const { data: rawProducts } = useOptimisticCache<Product>({
+  const { data: rawProducts, reload: reloadProducts } = useOptimisticCache<Product>({
     table: 'products',
     query: 'id, name, sku, price, stock_quantity, min_stock_level, category_id, brand_id, location_id, image_url, brands(id, name), categories(id, name), location:locations(id, name, type)',
     queryFilters: user?.id ? [{ column: 'created_by', operator: 'eq', value: user.id }] : [],
@@ -4345,7 +4345,8 @@ const SalesHub: React.FC = () => {
 
       toast.success(`Successfully restocked ${quantity} units of ${selectedProductForRestock.name}`);
 
-      // Products refresh automatically via optimistic cache real-time subscriptions
+      // Force immediate product list refresh
+      reloadProducts();
 
     } catch (error) {
       console.error('Error during restock:', error);
@@ -4637,7 +4638,8 @@ const SalesHub: React.FC = () => {
         }
       }
 
-      // Products state will auto-update via useOptimisticCache real-time subscriptions
+      // Force immediate product list refresh
+      reloadProducts();
 
       // Close modal and reset state
       setShowAddProductModal(false);
@@ -4989,7 +4991,7 @@ const SalesHub: React.FC = () => {
   };
 
 const CustomerBuyingPatternsSection = () => {
-  const [dateRange, setDateRange] = useState('this-week');
+  const [dateRange, setDateRange] = useState('this-year');
   const [customerFilter, setCustomerFilter] = useState('all');
   const [productBreakdownDateRange, setProductBreakdownDateRange] = useState('this-month');
   const [ matrixView, setMatrixView] = useState(false);
@@ -5151,12 +5153,24 @@ const CustomerBuyingPatternsSection = () => {
         .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
 
+      console.log('📊 Customer Buying Patterns - Date Range:', {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        ordersFound: ordersData?.length || 0,
+        error: ordersError?.message
+      });
+
       if (ordersError) {
         console.error('Error loading orders:', ordersError);
+        toast.error('Failed to load customer buying patterns: ' + ordersError.message);
         return;
       }
 
       const orders = ordersData || [];
+
+      if (orders.length === 0) {
+        console.log('⚠️ No orders found in date range. Complete some orders to see patterns.');
+      }
 
       // Process customer data
       const customerMap = new Map<string, {
