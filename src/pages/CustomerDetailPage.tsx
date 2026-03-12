@@ -1464,14 +1464,19 @@ export const CustomerDetailPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
-            <input
-              type="text"
+            <select
               value={feedbackData.category}
               onChange={(e) => setFeedbackData({ ...feedbackData, category: e.target.value })}
-              placeholder="e.g., Product, Support, Performance"
               className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
               required
-            />
+            >
+              <option value="">Select category...</option>
+              <option value="survey">📊 Survey</option>
+              <option value="review">⭐ Review</option>
+              <option value="complaint">⚠️ Complaint</option>
+              <option value="suggestion">💡 Suggestion</option>
+              <option value="testimonial">🎯 Testimonial</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Comment</label>
