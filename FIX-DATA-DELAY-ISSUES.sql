@@ -198,13 +198,14 @@ SELECT
   TO_CHAR(sh.created_at, 'Mon DD, HH24:MI') as when_changed,
   p.name as product_name,
   p.sku,
-  p.brand,
+  COALESCE(b.name, 'No Brand') as brand,
   sh.change_type as action,
   sh.quantity_change as change,
   sh.quantity_before || ' → ' || sh.quantity_after as stock_level,
   sh.reference_type || ': ' || sh.reference_id as reference
 FROM stock_history sh
 LEFT JOIN products p ON sh.product_id = p.id
+LEFT JOIN brands b ON p.brand_id = b.id
 ORDER BY sh.created_at DESC
 LIMIT 20;
 
