@@ -3680,9 +3680,28 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      if ((customerSelectionMode !== 'walk-in' && !selectedCustomer) || cart.length === 0) {
-        toast.error('Please select a customer and add items to cart');
+      if (cart.length === 0) {
+        toast.error('Please add items to cart');
         return;
+      }
+
+      if (customerSelectionMode !== 'walk-in' && !selectedCustomer) {
+        toast.error('Please select a customer');
+        return;
+      }
+
+      // ⚠️ CRITICAL: Prevent credit sales to Walk-in customers
+      if (paymentMethod === 'credit' && customerSelectionMode === 'walk-in') {
+        toast.error('❌ Credit sales require a real customer. Please select a customer before completing this order.', {
+          duration: 5000,
+          icon: '⚠️'
+        });
+        return;
+      }
+
+      // Warn user about Walk-in sales for analytics
+      if (customerSelectionMode === 'walk-in' && paymentMethod === 'cash') {
+        console.warn('⚠️ Completing order as Walk-in Customer - this will not appear in Customer Buying Patterns per customer');
       }
 
       // ============================================
@@ -5254,6 +5273,13 @@ const CustomerBuyingPatternsSection = () => {
         .sort((a, b) => b.totalValue - a.totalValue);
 
       setCustomers(customersArray);
+      
+      // AUTO-SELECT FIRST CUSTOMER (Walk-in if that's where all sales went)
+      // This prevents "Select a customer" message when data exists
+      if (customersArray.length > 0 && !selectedCustomerForPatterns) {
+        setSelectedCustomerForPatterns(customersArray[0]);
+        console.log('✅ Auto-selected customer:', customersArray[0].name);
+      }
 
       // Calculate KPIs
       const topCustomerData = customersArray[0];
@@ -6331,15 +6357,21 @@ const CustomerBuyingPatternsSection = () => {
 
                     {/* Customer Selection Interface */}
                     {customerSelectionMode === 'walk-in' ? (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-sm">👤</span>
+                      <div className="space-y-2">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-sm">👤</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900">Walk-in Customer</p>
+                              <p className="text-xs text-slate-600">Quick retail sales (Cash only)</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900">Walk-in Customer</p>
-                            <p className="text-xs text-slate-600">No customer details required</p>
-                          </div>
+                        </div>
+                        {/* Impact Notice */}
+                        <div className="bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-600">
+                          <strong>Note:</strong> Walk-in sales appear in overall reports but not in individual Customer Buying Patterns or Customer Analytics.
                         </div>
                       </div>
                     ) : selectedCustomer ? (
@@ -6369,13 +6401,26 @@ const CustomerBuyingPatternsSection = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="border border-slate-200 rounded-lg p-3">
-                        <CustomerSelector
-                          customers={customers}
-                          loading={false}
-                          onSelectCustomer={setSelectedCustomer}
-                          selectedCustomer={selectedCustomer}
-                        />
+                      <div className="space-y-2">
+                        <div className="border border-slate-200 rounded-lg p-3">
+                          <CustomerSelector
+                            customers={customers}
+                            loading={false}
+                            onSelectCustomer={setSelectedCustomer}
+                            selectedCustomer={selectedCustomer}
+                          />
+                        </div>
+                        
+                        {/* HELPFUL TIP: Customer Selection Impact */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                          <div className="flex items-start gap-2">
+                            <div className="text-blue-600 flex-shrink-0 mt-0.5">ℹ️</div>
+                            <div className="text-blue-900">
+                              <strong>Track Customer Purchases:</strong> Select a customer to see their buying patterns. 
+                              Unselected orders go to "Walk-in Customer".
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -6493,6 +6538,37 @@ const CustomerBuyingPatternsSection = () => {
                       <span className="ml-2 text-sm text-slate-700">💳 Credit</span>
                     </label>
                   </div>
+
+                  {/* ⚠️ CREDIT + WALK-IN WARNING */}
+                  {paymentMethod === 'credit' && customerSelectionMode === 'walk-in' && (
+                    <div className="mt-3 bg-red-50 border-2 border-red-300 rounded-lg p-3 animate-pulse">
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-600 text-lg">⚠️</span>
+                        <div>
+                          <p className="text-sm font-bold text-red-800">Credit sales require a real customer</p>
+                          <p className="text-xs text-red-700 mt-1">
+                            Please switch to "Select Customer" mode above to complete this credit sale.
+                            Walk-in customers cannot buy on credit.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ℹ️ WALK-IN ANALYTICS WARNING */}
+                  {paymentMethod === 'cash' && customerSelectionMode === 'walk-in' && cart.length > 0 && (
+                    <div className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-yellow-600 text-sm">💡</span>
+                        <div>
+                          <p className="text-xs text-yellow-800">
+                            <strong>Tip:</strong> Walk-in sales won't appear in Customer Buying Patterns per customer.
+                            Select a specific customer to track their purchases.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Due Date Picker - Only show when Credit is selected */}
                   {paymentMethod === 'credit' && (
@@ -6635,10 +6711,24 @@ const CustomerBuyingPatternsSection = () => {
                 </Button>
                 <Button
                   onClick={handleCompleteOrder}
-                  disabled={isProcessingOrder || cart.length === 0}
+                  disabled={
+                    isProcessingOrder || 
+                    cart.length === 0 || 
+                    (paymentMethod === 'credit' && customerSelectionMode === 'walk-in') ||
+                    (customerSelectionMode !== 'walk-in' && !selectedCustomer)
+                  }
                   className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    paymentMethod === 'credit' && customerSelectionMode === 'walk-in' 
+                      ? 'Credit sales require a real customer - switch to Select Customer mode'
+                      : customerSelectionMode !== 'walk-in' && !selectedCustomer
+                      ? 'Please select a customer'
+                      : ''
+                  }
                 >
-                  {isProcessingOrder ? '⏳ Processing...' : '🛒 Checkout & Complete Sale'}
+                  {isProcessingOrder ? '⏳ Processing...' : 
+                   paymentMethod === 'credit' && customerSelectionMode === 'walk-in' ? '❌ Credit Not Allowed for Walk-in' :
+                   '🛒 Checkout & Complete Sale'}
                 </Button>
               </div>
             )}
