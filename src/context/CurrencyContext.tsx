@@ -41,7 +41,9 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const user = useAuthStore((state) => state.user);
-  const [currency, setCurrencyState] = useState<Currency>(currencies[0]); // USD default
+  // Default to Tanzanian Shilling (TSh)
+  const defaultCurrency = currencies.find(c => c.code === 'TZS') || currencies[0];
+  const [currency, setCurrencyState] = useState<Currency>(defaultCurrency);
 
   // Load saved currency preference on mount and when user changes
   useEffect(() => {
@@ -58,12 +60,12 @@ export const CurrencyProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
           }
         }
-        // Fallback to USD if no saved preference or user not logged in
-        console.log('Using default currency: USD');
-        setCurrencyState(currencies[0]);
+        // Fallback to Tanzanian Shilling if no saved preference or user not logged in
+        console.log('Using default currency: TZS');
+        setCurrencyState(defaultCurrency);
       } catch (error) {
         console.warn('Failed to load saved currency preference:', error);
-        setCurrencyState(currencies[0]);
+        setCurrencyState(defaultCurrency);
       }
     };
 
