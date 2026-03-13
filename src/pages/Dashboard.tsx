@@ -764,8 +764,8 @@ const Dashboard = () => {
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Money IN</p>
-                      <p className="text-[9px] text-slate-500">Sales</p>
+                      <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Total Sales</p>
+                      <p className="text-[9px] text-slate-500">Revenue</p>
                     </div>
                   </div>
                   <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
@@ -801,7 +801,7 @@ const Dashboard = () => {
                       <TrendingDown className="h-4 w-4 text-red-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Money OUT</p>
+                      <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Cost of Goods Sold</p>
                       <p className="text-[9px] text-slate-500">COGS</p>
                     </div>
                   </div>
