@@ -42,8 +42,11 @@ const Dashboard = () => {
   const displayName = formatName(profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User');
   const { currency, setCurrency, formatCurrency } = useCurrency();
   
-  // Revenue period state
-  const [revenuePeriod, setRevenuePeriod] = useState<string>('all');
+  // Revenue period state - defaults to current month
+  const [revenuePeriod, setRevenuePeriod] = useState<string>(() => {
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    return currentMonth;
+  });
   
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -654,7 +657,14 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="text-xs text-slate-500">
-                Period: {revenuePeriod === 'all' ? 'All Time' : revenuePeriod.toUpperCase()}
+                Period: {revenuePeriod === 'all' ? 'All Time' : 
+                  revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
+                  revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
+                  revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
+                  revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
+                  revenuePeriod === '6months' ? 'Last 6 Months' :
+                  revenuePeriod === 'annual' ? 'Annual (This Year)' :
+                  revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
               </div>
             </div>
           </Card>
@@ -694,7 +704,14 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="text-xs text-slate-500">
-                Period: {revenuePeriod === 'all' ? 'All Time' : revenuePeriod.toUpperCase()}
+                Period: {revenuePeriod === 'all' ? 'All Time' : 
+                  revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
+                  revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
+                  revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
+                  revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
+                  revenuePeriod === '6months' ? 'Last 6 Months' :
+                  revenuePeriod === 'annual' ? 'Annual (This Year)' :
+                  revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
               </div>
             </div>
           </Card>
