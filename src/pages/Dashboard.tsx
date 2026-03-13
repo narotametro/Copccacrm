@@ -805,21 +805,6 @@ const Dashboard = () => {
               <p className="text-sm text-slate-600">Total Outstanding</p>
               <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
               <p className="text-xs text-slate-500 mt-1">
-                {(debts || []).filter(d => d.status !== 'paid' && d.status !== 'written_off').length} unpaid invoices
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <DollarSign className="text-orange-600" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600">Total Outstanding</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
-              <p className="text-xs text-slate-500 mt-1">
                 {debts.filter(d => d.status !== 'paid' && d.status !== 'written_off').length} unpaid invoices
               </p>
             </div>
