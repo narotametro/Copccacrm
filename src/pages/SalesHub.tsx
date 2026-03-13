@@ -3,9 +3,7 @@ import { shallow } from 'zustand/shallow';
 import {
   ShoppingCart,
   Package,
-  FileText,
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
   Plus,
   Search,
@@ -14,17 +12,10 @@ import {
   Users,
   Receipt,
   Printer,
-  RefreshCw,
-  Activity,
   AlertCircle,
   CheckCircle,
   Banknote,
   User,
-  ArrowUp,
-  ArrowDown,
-  Brain,
-  Info,
-  ExternalLink,
   History,
   Check,
   X,
@@ -32,7 +23,6 @@ import {
   Loader2,
   Edit,
   Eye,
-  Download,
   Truck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -168,7 +158,7 @@ interface AIInsight {
   action: string;
 }
 
-type Subsection = 'updates' | 'products' | 'carts-invoice' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history' | 'stock-transfers';
+type Subsection = 'products' | 'carts-invoice' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history' | 'stock-transfers';
 
 interface ProductCardProps {
   product: Product;
@@ -2473,7 +2463,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 const SalesHub: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const user = useAuthStore((state) => state.user);
-  const [activeSubsection, setActiveSubsection] = useState<Subsection>('updates');
+  const [activeSubsection, setActiveSubsection] = useState<Subsection>('products');
   
   // Instant loading with optimistic cache - zero spinners
   const { data: rawProducts, reload: reloadProducts } = useOptimisticCache<Product>({
@@ -2871,15 +2861,15 @@ const SalesHub: React.FC = () => {
     aiOpportunityScore: 0
   });
 
-  // Dashboard date filter
-  const [dashboardDateRange, setDashboardDateRange] = useState('today');
+  // Dashboard date filter - Removed with Updates section
+  // const [dashboardDateRange, setDashboardDateRange] = useState('today');
 
   // Expenses data - accessible across sections
   const [expenses, setExpenses] = useState<any[]>([]);
 
-  // AI Insights data - loaded from real data
-  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
-  const kpisLoadedRef = useRef(false);
+  // AI Insights data - Removed with Updates section
+  // const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  // const kpisLoadedRef = useRef(false);
 
   const loadOrderHistory = useCallback(async () => {
     try {
@@ -3399,18 +3389,12 @@ const SalesHub: React.FC = () => {
     }
   }, []);
 
-  // Reload KPI data when dashboard date range changes
-  useEffect(() => {
-    if (activeSubsection === 'updates' && kpisLoadedRef.current) {
-      loadKPIData(dashboardDateRange);
-    }
-  }, [dashboardDateRange, activeSubsection]);
+  // Reload KPI data when dashboard date range changes - REMOVED with Updates section
+  // useEffect(() => {
+  //   // Updates section removed - no longer needed
+  // }, [dashboardDateRange, activeSubsection]);
 
   useEffect(() => {
-    if (activeSubsection === 'updates' && !kpisLoadedRef.current) {
-      loadKPIData(dashboardDateRange);
-      loadAIInsights();
-    }
     if (activeSubsection === 'products') {
       // Products loaded instantly via optimistic cache - no need to fetch
       loadCategories();
@@ -5869,298 +5853,6 @@ const CustomerBuyingPatternsSection = () => {
   );
 };
 
-  const UpdatesSection = () => {
-    const handleRefreshInsights = async () => {
-      kpisLoadedRef.current = false;
-      await loadKPIData(dashboardDateRange);
-      await loadAIInsights();
-      toast.success('Insights refreshed successfully');
-    };
-
-    const handleInsightAction = (insightId: string, action: string) => {
-      switch (insightId) {
-        case 'sales-trend':
-          // Navigate to order history to view sales details
-          setActiveSubsection('carts-invoice');
-          setTimeout(() => {
-            const orderHistorySection = document.getElementById('order-history-section');
-            if (orderHistorySection) {
-              orderHistorySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 100);
-          toast.success('Navigating to sales order history...');
-          break;
-        case 'stock-alert':
-          // Navigate to inventory with low stock filter
-          setActiveSubsection('inventory-status');
-          // Note: inventoryStockFilter is local to InventoryStatusSection, it will show all by default
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-          toast.success('Showing inventory status...');
-          break;
-        case 'high-value-products':
-          // Navigate to products and reset filter to show all
-          setActiveSubsection('products');
-          setSearchTerm(''); // Clear search to show all
-          setStockFilter('all'); // Reset stock filter
-          setCategoryFilter('all'); // Reset category filter
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-          toast.success('Showing product catalog...');
-          break;
-        case 'customer-segmentation':
-          // Navigate to customers in carts section
-          setActiveSubsection('carts-invoice');
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-          toast.success('Viewing customer management...');
-          break;
-        default:
-          setActiveSubsection('products');
-          setStockFilter('all'); // Reset filters
-          break;
-      }
-    };
-
-    return (
-      <div className="space-y-8"  style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
-        <div className="text-center">
-          <h3 className="text-2xl font-bold text-slate-900 mb-2">🧠 AI Command Center</h3>
-          <p className="text-slate-600">Smart insights to boost your sales today</p>
-        </div>
-
-        {/* Date Range Filter */}
-        <div className="flex justify-center">
-          <div className="inline-flex bg-white rounded-lg border border-slate-200 p-1">
-            <button
-              onClick={() => setDashboardDateRange('today')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                dashboardDateRange === 'today'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setDashboardDateRange('yesterday')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                dashboardDateRange === 'yesterday'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Yesterday
-            </button>
-            <button
-              onClick={() => setDashboardDateRange('week')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                dashboardDateRange === 'week'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => setDashboardDateRange('month')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                dashboardDateRange === 'month'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              This Month
-            </button>
-          </div>
-        </div>
-
-        {/* Today Snapshot Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="p-6 bg-gradient-to-br from-green-400 via-emerald-400 to-teal-500 border-0 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-md">
-                <Banknote className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="flex items-center text-white bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
-                {todaySnapshot.salesChange >= 0 ? (
-                  <ArrowUp className="h-4 w-4 mr-1" />
-                ) : (
-                  <ArrowDown className="h-4 w-4 mr-1" />
-                )}
-                <span className="text-sm font-medium">{todaySnapshot.salesChange >= 0 ? '+' : ''}{todaySnapshot.salesChange}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-white/90 mb-1 font-medium">Sales {dashboardDateRange === 'today' ? 'Today' : dashboardDateRange === 'yesterday' ? 'Yesterday' : dashboardDateRange === 'week' ? 'This Week' : 'This Month'}</p>
-              <p className="text-3xl font-bold text-white drop-shadow-md">{formatCurrency(todaySnapshot.salesToday)}</p>
-              <p className="text-xs text-white/80 mt-1">vs previous period</p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-red-400 via-pink-400 to-rose-500 border-0 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-md">
-                <TrendingDown className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="flex items-center text-white bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
-                {todaySnapshot.expensesChange >= 0 ? (
-                  <ArrowUp className="h-4 w-4 mr-1" />
-                ) : (
-                  <ArrowDown className="h-4 w-4 mr-1" />
-                )}
-                <span className="text-sm font-medium">{todaySnapshot.expensesChange >= 0 ? '+' : ''}{todaySnapshot.expensesChange}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-white/90 mb-1 font-medium">Expenses {dashboardDateRange === 'today' ? 'Today' : dashboardDateRange === 'yesterday' ? 'Yesterday' : dashboardDateRange === 'week' ? 'This Week' : 'This Month'}</p>
-              <p className="text-3xl font-bold text-white drop-shadow-md">{formatCurrency(todaySnapshot.expensesToday)}</p>
-              <p className="text-xs text-white/80 mt-1">vs previous period</p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-blue-400 via-cyan-400 to-teal-500 border-0 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-md">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className={`flex items-center text-white bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full`}>
-                {todaySnapshot.netRevenueChange >= 0 ? (
-                  <ArrowUp className="h-4 w-4 mr-1" />
-                ) : (
-                  <ArrowDown className="h-4 w-4 mr-1" />
-                )}
-                <span className="text-sm font-medium">{todaySnapshot.netRevenueChange >= 0 ? '+' : ''}{todaySnapshot.netRevenueChange}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-white/90 mb-1 font-medium">Net Revenue {dashboardDateRange === 'today' ? 'Today' : dashboardDateRange === 'yesterday' ? 'Yesterday' : dashboardDateRange === 'week' ? 'This Week' : 'This Month'}</p>
-              <p className="text-3xl font-bold text-white drop-shadow-md">{formatCurrency(todaySnapshot.netRevenue)}</p>
-              <p className="text-xs text-white/80 mt-1">sales - expenses</p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-blue-500 rounded-full">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex items-center text-red-600">
-                <span className="text-sm font-medium">{todaySnapshot.invoicesOverdue} overdue</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 mb-1">Invoices Pending</p>
-              <p className="text-2xl font-bold text-slate-900">{todaySnapshot.invoicesPending}</p>
-              <p className="text-xs text-blue-600 mt-1">total pending</p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-orange-500 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex items-center text-red-600">
-                <span className="text-sm font-medium">{todaySnapshot.criticalStockItems} critical</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 mb-1">Low Stock Alerts</p>
-              <p className="text-2xl font-bold text-slate-900">{todaySnapshot.lowStockItems}</p>
-              <p className="text-xs text-orange-600 mt-1">need attention</p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-purple-500 rounded-full">
-                <Brain className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex items-center text-green-600">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                <span className="text-sm font-medium">+{todaySnapshot.aiOpportunityScore}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-slate-600 mb-1">AI Opportunity Score</p>
-              <p className="text-2xl font-bold text-slate-900">Revenue Boost</p>
-              <p className="text-xs text-purple-600 mt-1">potential today</p>
-            </div>
-          </Card>
-        </div>
-
-        {/* AI Action Feed */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h4 className="text-xl font-semibold text-slate-900">🎯 Actionable AI Insights</h4>
-              <p className="text-slate-600">Smart recommendations to improve your business</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleRefreshInsights}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {aiInsights.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                <Brain className="h-12 w-12 mx-auto mb-3 text-slate-400" />
-                <p>No insights available yet.</p>
-                <p className="text-sm mt-2">Add products and start making sales to unlock AI insights.</p>
-              </div>
-            ) : (
-              aiInsights.map((insight) => {
-                const IconComponent = insight.icon;
-                return (
-                  <div key={insight.id} className={`p-4 rounded-lg border-2 ${insight.bgColor} hover:shadow-md transition-all duration-200`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`p-2 rounded-full ${insight.color.replace('text-', 'bg-').replace('-700', '-500')} flex-shrink-0`}>
-                        <IconComponent className="h-5 w-5 text-white" />
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h5 className={`font-semibold ${insight.color}`}>{insight.title}</h5>
-                            <p className="text-slate-700 mt-1">{insight.message}</p>
-                            {insight.explanation && (
-                              <div className="flex items-start gap-2 mt-2 text-xs text-slate-600">
-                                <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                <span>{insight.explanation}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <Button 
-                            size="sm" 
-                            className="ml-4 flex-shrink-0"
-                            onClick={() => handleInsightAction(insight.id, insight.action)}
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            {insight.action}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </Card>
-      </div>
-    );
-  };
-
   const ProductsSection = () => (
     <div className="space-y-6">
       {/* Search, Filter & Actions Bar */}
@@ -7685,7 +7377,6 @@ const CustomerBuyingPatternsSection = () => {
   };
 
   const subsections = [
-    { id: "updates", label: "Updates", icon: Activity },
     { id: "products", label: "Products", icon: Package },
     { id: "carts-invoice", label: "Carts & Invoice", icon: Receipt },
     { id: "inventory-status", label: "Inventory Management", icon: BarChart3 },
@@ -7824,7 +7515,6 @@ const CustomerBuyingPatternsSection = () => {
           })}
         </div>
       </div>
-      {activeSubsection === 'updates' && <UpdatesSection />}
       {activeSubsection === 'products' && <ProductsSection />}
       {activeSubsection === 'carts-invoice' && <CartsInvoiceSection />}
       {activeSubsection === 'inventory-status' && <InventoryStatusSection />}
