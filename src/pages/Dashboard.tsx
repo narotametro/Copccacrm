@@ -873,8 +873,8 @@ const Dashboard = () => {
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
         <div className="mb-4">
           <div>
-            <h3 className="text-xl font-bold">Quick Track Money Flow</h3>
-            <p className="text-blue-100">Real-time financial overview</p>
+            <h3 className="text-xl font-bold">Gross Profit = Total Sales - Cost of Goods Sold</h3>
+            <p className="text-blue-100">COGS-based profitability tracking</p>
           </div>
         </div>
         
