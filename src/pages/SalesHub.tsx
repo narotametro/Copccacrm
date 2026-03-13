@@ -158,7 +158,7 @@ interface AIInsight {
   action: string;
 }
 
-type Subsection = 'products' | 'carts-invoice' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history' | 'stock-transfers';
+type Subsection = 'products' | 'carts-invoice' | 'order-history' | 'inventory-status' | 'customer-buying-patterns' | 'expenses' | 'product-stocking-history' | 'stock-transfers';
 
 interface ProductCardProps {
   product: Product;
@@ -3410,6 +3410,9 @@ const SalesHub: React.FC = () => {
       loadCompanyPaymentInfo();
       loadCompanyInfo();
     }
+    if (activeSubsection === 'order-history') {
+      loadOrderHistory();
+    }
   }, [activeSubsection, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load user subscription plan on component mount
@@ -5960,10 +5963,9 @@ const CustomerBuyingPatternsSection = () => {
         <p className="text-slate-600">Complete your sales and generate invoices</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Cart Panel */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="p-4 cart-print-area" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
+      {/* Active Cart Panel */}
+      <div className="max-w-4xl mx-auto">
+        <Card className="p-4 cart-print-area" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
             <h4 className="text-lg font-semibold mb-4 flex items-center justify-between">
               <div className="flex items-center">
                 <ShoppingCart className="h-5 w-5 mr-2" />
@@ -6427,112 +6429,109 @@ const CustomerBuyingPatternsSection = () => {
             )}
           </Card>
         </div>
-
-        {/* Order History Panel */}
-        <div className="space-y-4" id="order-history-section">
-          <Card className="p-4" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
-            <h4 className="text-lg font-semibold mb-1 flex items-center justify-between">
-              <div className="flex items-center">
-                <History className="h-5 w-5 mr-2" />
-                Order History
-              </div>
-            </h4>
-            <p className="text-xs text-slate-500 mb-4">View past orders and print invoices</p>
-
-            {/* Customer Search */}
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search orders by customer..."
-                  value={orderSearchTerm}
-                  onChange={(e) => setOrderSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Order History List */}
-            {orderHistory.length === 0 ? (
-              <div className="text-center py-8">
-                <History className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600 font-medium">No orders found</p>
-                <p className="text-sm text-slate-500 mt-2">Completed orders will appear here</p>
-                <p className="text-xs text-slate-400 mt-1">You can print invoices directly from this section</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {orderHistory
-                  .filter(order => {
-                    if (!orderSearchTerm) return true;
-                    const customerName = order.sales_hub_customers?.name || '';
-                    const companyName = order.sales_hub_customers?.company_name || '';
-                    const orderNumber = order.order_number || '';
-                    const searchLower = orderSearchTerm.toLowerCase();
-                    return customerName.toLowerCase().includes(searchLower) ||
-                           companyName.toLowerCase().includes(searchLower) ||
-                           orderNumber.toLowerCase().includes(searchLower);
-                  })
-                  .map(order => (
-                    <div key={order.id} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {order.sales_hub_customers?.name || 'Walk-in Customer'}
-                          </p>
-                          {order.sales_hub_customers?.company_name && (
-                            <p className="text-sm text-slate-600">{order.sales_hub_customers.company_name}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-slate-900">{formatCurrency(order.total_amount)}</p>
-                          <p className="text-xs text-slate-500">{order.order_number}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
-                        <span className="font-medium">{formatOrderDate(order.created_at)}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => printOrderInvoice(order)}
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 text-xs"
-                        >
-                          <Printer className="h-3 w-3 mr-1" />
-                          Print Invoice
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedOrderForDetails(order);
-                            setShowOrderDetailsModal(true);
-                          }}
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 text-xs"
-                        >
-                          <Receipt className="h-3 w-3 mr-1" />
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </Card>
-        </div>
       </div>
+  );
+
+  const OrderHistorySection = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-xl font-semibold text-slate-900 mb-2">📜 Order History</h3>
+        <p className="text-slate-600">View past orders and print invoices</p>
+      </div>
+
+      <Card className="p-4" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
+        {/* Customer Search */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search orders by customer..."
+              value={orderSearchTerm}
+              onChange={(e) => setOrderSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Order History List */}
+        {orderHistory.length === 0 ? (
+          <div className="text-center py-8">
+            <History className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600 font-medium">No orders found</p>
+            <p className="text-sm text-slate-500 mt-2">Completed orders will appear here</p>
+            <p className="text-xs text-slate-400 mt-1">You can print invoices directly from this section</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {orderHistory
+              .filter(order => {
+                if (!orderSearchTerm) return true;
+                const customerName = order.sales_hub_customers?.name || '';
+                const companyName = order.sales_hub_customers?.company_name || '';
+                const orderNumber = order.order_number || '';
+                const searchLower = orderSearchTerm.toLowerCase();
+                return customerName.toLowerCase().includes(searchLower) ||
+                       companyName.toLowerCase().includes(searchLower) ||
+                       orderNumber.toLowerCase().includes(searchLower);
+              })
+              .map(order => (
+                <div key={order.id} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {order.sales_hub_customers?.name || 'Walk-in Customer'}
+                      </p>
+                      {order.sales_hub_customers?.company_name && (
+                        <p className="text-sm text-slate-600">{order.sales_hub_customers.company_name}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">{formatCurrency(order.total_amount)}</p>
+                      <p className="text-xs text-slate-500">{order.order_number}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
+                    <span className="font-medium">{formatOrderDate(order.created_at)}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      order.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => printOrderInvoice(order)}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                    >
+                      <Printer className="h-3 w-3 mr-1" />
+                      Print Invoice
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedOrderForDetails(order);
+                        setShowOrderDetailsModal(true);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                    >
+                      <Receipt className="h-3 w-3 mr-1" />
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 
@@ -7379,6 +7378,7 @@ const CustomerBuyingPatternsSection = () => {
   const subsections = [
     { id: "products", label: "Products", icon: Package },
     { id: "carts-invoice", label: "Carts & Invoice", icon: Receipt },
+    { id: "order-history", label: "Order History", icon: History },
     { id: "inventory-status", label: "Inventory Management", icon: BarChart3 },
     { id: "stock-transfers", label: "Stock Transfers", icon: Truck },
     { id: "customer-buying-patterns", label: "Customer Buying Patterns", icon: Users },
@@ -7517,6 +7517,7 @@ const CustomerBuyingPatternsSection = () => {
       </div>
       {activeSubsection === 'products' && <ProductsSection />}
       {activeSubsection === 'carts-invoice' && <CartsInvoiceSection />}
+      {activeSubsection === 'order-history' && <OrderHistorySection />}
       {activeSubsection === 'inventory-status' && <InventoryStatusSection />}
       {activeSubsection === 'stock-transfers' && <StockTransfers />}
       {activeSubsection === 'customer-buying-patterns' && <CustomerBuyingPatternsSection />}

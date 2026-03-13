@@ -34,6 +34,13 @@ type ProductRow = {
   min_stock_level: number | null;
   created_by: string;
 };
+type DebtRow = {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  created_by: string;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -116,6 +123,15 @@ const Dashboard = () => {
   const { data: products } = useOptimisticCache<ProductRow>({
     table: 'products',
     query: 'id, name, stock_quantity, min_stock_level',
+    queryFilters: user?.id ? [
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
+
+  const { data: debts } = useOptimisticCache<DebtRow>({
+    table: 'debts',
+    query: 'id, amount, status, created_at',
     queryFilters: user?.id ? [
       { column: 'created_by', operator: 'eq', value: user.id }
     ] : [],
@@ -305,6 +321,16 @@ const Dashboard = () => {
   const criticalStockProducts = useMemo(() => {
     return products.filter(product => product.stock_quantity === 0);
   }, [products]);
+
+  // Calculate total outstanding (unpaid debts)
+  const totalOutstanding = useMemo(() => {
+    return debts.reduce((sum, debt) => {
+      if (debt.status !== 'paid' && debt.status !== 'written_off') {
+        return sum + debt.amount;
+      }
+      return sum;
+    }, 0);
+  }, [debts]);
 
   // Calculate pipeline data
   const pipelineData = useMemo(() => {
@@ -766,6 +792,36 @@ const Dashboard = () => {
                   {criticalStockProducts.length} critical (out of stock)
                 </p>
               )}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <DollarSign className="text-orange-600" size={24} />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Total Outstanding</p>
+              <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {(debts || []).filter(d => d.status !== 'paid' && d.status !== 'written_off').length} unpaid invoices
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <DollarSign className="text-orange-600" size={24} />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Total Outstanding</p>
+              <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {debts.filter(d => d.status !== 'paid' && d.status !== 'written_off').length} unpaid invoices
+              </p>
             </div>
           </div>
         </Card>
