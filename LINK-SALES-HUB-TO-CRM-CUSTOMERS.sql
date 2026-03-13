@@ -140,7 +140,7 @@ ORDER BY revenue DESC NULLS LAST;
 SELECT 
   '⚠️  POTENTIAL MISATTRIBUTED ORDERS' as warning,
   sho.id,
-  sho.invoice_number,
+  sho.order_number,
   sho.total_amount,
   sho.created_at,
   'Walk-in order - customer may have been in system' as issue
