@@ -1,5 +1,5 @@
 
-import { TrendingUp, TrendingDown, Users, Banknote, BarChart3, Activity, Globe, ShoppingCart, Calendar, ChevronUp, ChevronDown, Sparkles, ArrowUp, ArrowDown, ArrowRight, Minus, Equal, Eye, EyeOff, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Banknote, BarChart3, Activity, Globe, ShoppingCart, Calendar, ChevronUp, ChevronDown, Sparkles, ArrowUp, ArrowDown, ArrowRight, Minus, Equal, Eye, EyeOff, DollarSign, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,13 @@ type SalesHubOrderRow = {
   id: string;
   total_amount: number;
   created_at: string;
+  created_by: string;
+};
+type ProductRow = {
+  id: string;
+  name: string;
+  stock_quantity: number;
+  min_stock_level: number | null;
   created_by: string;
 };
 
@@ -97,6 +104,15 @@ const Dashboard = () => {
   const { data: expenses } = useOptimisticCache<ExpenseRow>({
     table: 'expenses',
     query: 'id, amount, expense_date, created_at',
+    queryFilters: user?.id ? [
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
+
+  const { data: products } = useOptimisticCache<ProductRow>({
+    table: 'products',
+    query: 'id, name, stock_quantity, min_stock_level',
     queryFilters: user?.id ? [
       { column: 'created_by', operator: 'eq', value: user.id }
     ] : [],
@@ -274,6 +290,18 @@ const Dashboard = () => {
 
   // Calculate active customers
   const activeCustomers = useMemo(() => companies.length, [companies]);
+
+  // Calculate low stock alerts
+  const lowStockProducts = useMemo(() => {
+    return products.filter(product => {
+      const minLevel = product.min_stock_level || 10; // Default to 10 if not set
+      return product.stock_quantity <= minLevel;
+    });
+  }, [products]);
+
+  const criticalStockProducts = useMemo(() => {
+    return products.filter(product => product.stock_quantity === 0);
+  }, [products]);
 
   // Calculate pipeline data
   const pipelineData = useMemo(() => {
@@ -680,6 +708,47 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-slate-600">Active Customers</p>
               <p className="text-2xl font-bold text-slate-900">{activeCustomers.toLocaleString()}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-6 cursor-pointer hover:shadow-lg transition-shadow" 
+          onClick={() => {
+            navigate('/app/inventory');
+            localStorage.setItem('inventoryActiveTab', 'stock-alerts');
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-lg ${
+              criticalStockProducts.length > 0 
+                ? 'bg-red-100' 
+                : lowStockProducts.length > 0 
+                  ? 'bg-orange-100' 
+                  : 'bg-green-100'
+            }`}>
+              <AlertTriangle 
+                className={`${
+                  criticalStockProducts.length > 0 
+                    ? 'text-red-600' 
+                    : lowStockProducts.length > 0 
+                      ? 'text-orange-600' 
+                      : 'text-green-600'
+                }`} 
+                size={24} 
+              />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Low Stock Alerts</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold text-slate-900">{lowStockProducts.length}</p>
+                <span className="text-xs text-slate-500">need attention</span>
+              </div>
+              {criticalStockProducts.length > 0 && (
+                <p className="text-xs text-red-600 font-semibold mt-1">
+                  {criticalStockProducts.length} critical (out of stock)
+                </p>
+              )}
             </div>
           </div>
         </Card>
