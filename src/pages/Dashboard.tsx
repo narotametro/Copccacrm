@@ -41,11 +41,11 @@ const Dashboard = () => {
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedDateSales, setSelectedDateSales] = useState<number>(0);
-  const [selectedDateExpenses, setSelectedDateExpenses] = useState<number>(0);
-  const [selectedDateNetProfit, setSelectedDateNetProfit] = useState<number>(0);
+  const [selectedDateCOGS, setSelectedDateCOGS] = useState<number>(0);
+  const [selectedDateGrossProfit, setSelectedDateGrossProfit] = useState<number>(0);
   const [selectedDateGrowth, setSelectedDateGrowth] = useState<number>(0);
-  const [selectedDateExpensesGrowth, setSelectedDateExpensesGrowth] = useState<number>(0);
-  const [selectedDateNetProfitGrowth, setSelectedDateNetProfitGrowth] = useState<number>(0);
+  const [selectedDateCOGSGrowth, setSelectedDateCOGSGrowth] = useState<number>(0);
+  const [selectedDateGrossProfitGrowth, setSelectedDateGrossProfitGrowth] = useState<number>(0);
   
   // Floating button state
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -348,7 +348,7 @@ const Dashboard = () => {
       // Fetch sales for the selected date from sales_hub_orders (YOUR sales for now)
       const { data: dateOrders, error: dateOrdersError } = await supabase
         .from('sales_hub_orders')
-        .select('total_amount, created_at')
+        .select('total_amount, items, created_at')
         .eq('created_by', userData.user.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
@@ -357,26 +357,33 @@ const Dashboard = () => {
         const sales = dateOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         setSelectedDateSales(sales);
         
-        // Fetch expenses from the expenses table for the selected date
-        const { data: dateExpenses, error: expensesError } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('created_by', userData.user.id)
-          .eq('expense_date', date);
+        // Calculate COGS from order items
+        let cogs = 0;
+        for (const order of dateOrders) {
+          if (order.items && Array.isArray(order.items)) {
+            for (const item of order.items) {
+              // Fetch product cost_price
+              const { data: product } = await supabase
+                .from('products')
+                .select('cost_price')
+                .eq('id', item.product_id)
+                .single();
+              
+              if (product && product.cost_price) {
+                cogs += item.quantity * product.cost_price;
+              }
+            }
+          }
+        }
+        setSelectedDateCOGS(cogs);
         
-        const expenses = !expensesError && dateExpenses
-          ? dateExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
-          : 0;
-        setSelectedDateExpenses(expenses);
-        
-        // Calculate net profit
-        const netProfit = sales - expenses;
-        setSelectedDateNetProfit(netProfit);
+        // Calculate gross profit (Sales - COGS)
+        const grossProfit = sales - cogs;
+        setSelectedDateGrossProfit(grossProfit);
         
         // Calculate growth compared to previous day
         const prevDay = new Date(date);
         prevDay.setDate(prevDay.getDate() - 1);
-        const prevDayStr = prevDay.toISOString().split('T')[0];
         const prevStart = new Date(prevDay);
         prevStart.setHours(0, 0, 0, 0);
         const prevEnd = new Date(prevDay);
@@ -384,58 +391,66 @@ const Dashboard = () => {
         
         const { data: prevOrders, error: prevError } = await supabase
           .from('sales_hub_orders')
-          .select('total_amount')
+          .select('total_amount, items')
           .eq('created_by', userData.user.id)
           .gte('created_at', prevStart.toISOString())
           .lte('created_at', prevEnd.toISOString());
         
-        // Fetch previous day expenses
-        const { data: prevExpensesData, error: prevExpensesError } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('created_by', userData.user.id)
-          .eq('expense_date', prevDayStr);
-        
-        const prevExpenses = !prevExpensesError && prevExpensesData
-          ? prevExpensesData.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
-          : 0;
-        
         if (!prevError && prevOrders) {
           const prevSales = prevOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
-          const prevNetProfit = prevSales - prevExpenses;
+          
+          // Calculate previous day COGS
+          let prevCogs = 0;
+          for (const order of prevOrders) {
+            if (order.items && Array.isArray(order.items)) {
+              for (const item of order.items) {
+                const { data: product } = await supabase
+                  .from('products')
+                  .select('cost_price')
+                  .eq('id', item.product_id)
+                  .single();
+                
+                if (product && product.cost_price) {
+                  prevCogs += item.quantity * product.cost_price;
+                }
+              }
+            }
+          }
+          
+          const prevGrossProfit = prevSales - prevCogs;
           
           // Sales growth
           const growth = prevSales > 0 ? ((sales - prevSales) / prevSales) * 100 : 0;
           setSelectedDateGrowth(growth);
           
-          // Expenses growth
-          const expensesGrowth = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : 0;
-          setSelectedDateExpensesGrowth(expensesGrowth);
+          // COGS growth
+          const cogsGrowth = prevCogs > 0 ? ((cogs - prevCogs) / prevCogs) * 100 : 0;
+          setSelectedDateCOGSGrowth(cogsGrowth);
           
-          // Net profit growth
-          const netProfitGrowth = prevNetProfit !== 0 ? ((netProfit - prevNetProfit) / Math.abs(prevNetProfit)) * 100 : 0;
-          setSelectedDateNetProfitGrowth(netProfitGrowth);
+          // Gross profit growth
+          const grossProfitGrowth = prevGrossProfit !== 0 ? ((grossProfit - prevGrossProfit) / Math.abs(prevGrossProfit)) * 100 : 0;
+          setSelectedDateGrossProfitGrowth(grossProfitGrowth);
         } else {
           setSelectedDateGrowth(0);
-          setSelectedDateExpensesGrowth(0);
-          setSelectedDateNetProfitGrowth(0);
+          setSelectedDateCOGSGrowth(0);
+          setSelectedDateGrossProfitGrowth(0);
         }
       } else {
         setSelectedDateSales(0);
-        setSelectedDateExpenses(0);
-        setSelectedDateNetProfit(0);
+        setSelectedDateCOGS(0);
+        setSelectedDateGrossProfit(0);
         setSelectedDateGrowth(0);
-        setSelectedDateExpensesGrowth(0);
-        setSelectedDateNetProfitGrowth(0);
+        setSelectedDateCOGSGrowth(0);
+        setSelectedDateGrossProfitGrowth(0);
       }
     } catch (error) {
       console.error('Error fetching sales for date:', error);
       setSelectedDateSales(0);
-      setSelectedDateExpenses(0);
-      setSelectedDateNetProfit(0);
+      setSelectedDateCOGS(0);
+      setSelectedDateGrossProfit(0);
       setSelectedDateGrowth(0);
-      setSelectedDateExpensesGrowth(0);
-      setSelectedDateNetProfitGrowth(0);
+      setSelectedDateCOGSGrowth(0);
+      setSelectedDateGrossProfitGrowth(0);
     }
   };
 
@@ -777,7 +792,7 @@ const Dashboard = () => {
               <Minus className="h-5 w-5 text-white font-bold" />
             </div>
 
-            {/* Money OUT (Expenses) */}
+            {/* Money OUT (COGS) */}
             <div className="flex-1 max-w-[200px]">
               <div className="bg-white rounded-xl p-4 shadow-md border-2 border-red-300 hover:shadow-lg transition-shadow">
                 <div className="flex items-center justify-between mb-2">
@@ -787,22 +802,22 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Money OUT</p>
-                      <p className="text-[9px] text-slate-500">Expenses</p>
+                      <p className="text-[9px] text-slate-500">COGS</p>
                     </div>
                   </div>
                   <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                    selectedDateExpensesGrowth >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    selectedDateCOGSGrowth >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                   }`}>
-                    {selectedDateExpensesGrowth >= 0 ? (
+                    {selectedDateCOGSGrowth >= 0 ? (
                       <ArrowUp className="h-2.5 w-2.5" />
                     ) : (
                       <ArrowDown className="h-2.5 w-2.5" />
                     )}
-                    <span className="text-[10px] font-bold">{selectedDateExpensesGrowth >= 0 ? '+' : ''}{selectedDateExpensesGrowth.toFixed(0)}%</span>
+                    <span className="text-[10px] font-bold">{selectedDateCOGSGrowth >= 0 ? '+' : ''}{selectedDateCOGSGrowth.toFixed(0)}%</span>
                   </div>
                 </div>
                 <p className="text-xl font-bold text-red-700">
-                  {formatCurrency(selectedDateExpenses)}
+                  {formatCurrency(selectedDateCOGS)}
                 </p>
               </div>
             </div>
@@ -814,44 +829,44 @@ const Dashboard = () => {
               <Equal className="h-5 w-5 text-white font-bold" />
             </div>
 
-            {/* NET PROFIT */}
+            {/* GROSS PROFIT */}
             <div className="flex-1 max-w-[200px]">
               <div className={`bg-white rounded-xl p-4 shadow-md border-2 ${
-                selectedDateNetProfit >= 0 
+                selectedDateGrossProfit >= 0 
                   ? 'border-emerald-400 hover:border-emerald-500' 
                   : 'border-orange-400 hover:border-orange-500'
               } hover:shadow-lg transition-all`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1">
                     <div className={`p-1.5 rounded-lg ${
-                      selectedDateNetProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'
+                      selectedDateGrossProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'
                     }`}>
                       <Banknote className={`h-4 w-4 ${
-                        selectedDateNetProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'
+                        selectedDateGrossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'
                       }`} />
                     </div>
                     <div>
                       <p className={`text-[10px] font-semibold uppercase tracking-wide ${
-                        selectedDateNetProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
-                      }`}>Net {selectedDateNetProfit >= 0 ? 'PROFIT' : 'LOSS'}</p>
-                      <p className="text-[9px] text-slate-500">Bottom Line</p>
+                        selectedDateGrossProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
+                      }`}>Gross Profit</p>
+                      <p className="text-[9px] text-slate-500">Sales - COGS</p>
                     </div>
                   </div>
                   <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                    selectedDateNetProfitGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                    selectedDateGrossProfitGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   }`}>
-                    {selectedDateNetProfitGrowth >= 0 ? (
+                    {selectedDateGrossProfitGrowth >= 0 ? (
                       <ArrowUp className="h-2.5 w-2.5" />
                     ) : (
                       <ArrowDown className="h-2.5 w-2.5" />
                     )}
-                    <span className="text-[10px] font-bold">{selectedDateNetProfitGrowth >= 0 ? '+' : ''}{selectedDateNetProfitGrowth.toFixed(0)}%</span>
+                    <span className="text-[10px] font-bold">{selectedDateGrossProfitGrowth >= 0 ? '+' : ''}{selectedDateGrossProfitGrowth.toFixed(0)}%</span>
                   </div>
                 </div>
                 <p className={`text-xl font-bold ${
-                  selectedDateNetProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
+                  selectedDateGrossProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
                 }`}>
-                  {formatCurrency(selectedDateNetProfit)}
+                  {formatCurrency(selectedDateGrossProfit)}
                 </p>
               </div>
             </div>
@@ -861,9 +876,9 @@ const Dashboard = () => {
           <div className="mt-3 pt-3 border-t border-white/20 text-center">
             <p className="text-sm text-blue-100">
               <span className="font-semibold">Financial Health:</span> 
-              {selectedDateNetProfit >= 0 ? (
+              {selectedDateGrossProfit >= 0 ? (
                 <span className="text-green-300 font-bold ml-2">
-                  Profitable ({selectedDateSales > 0 ? ((selectedDateNetProfit / selectedDateSales) * 100).toFixed(1) : '0'}% margin)
+                  Profitable ({selectedDateSales > 0 ? ((selectedDateGrossProfit / selectedDateSales) * 100).toFixed(1) : '0'}% gross margin)
                 </span>
               ) : (
                 <span className="text-orange-300 font-bold ml-2">
