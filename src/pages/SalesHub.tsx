@@ -3922,6 +3922,7 @@ const SalesHub: React.FC = () => {
                 .from('sales_hub_customers')
                 .insert({
                   customer_id: selectedCustomer!.customer_id,
+                  company_id: selectedCustomer!.id, // 🔗 Link to CRM companies table
                   name: selectedCustomer!.name,
                   company_name: selectedCustomer!.company_name,
                   email: selectedCustomer!.email,

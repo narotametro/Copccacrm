@@ -523,24 +523,47 @@ export const CustomerDetailPage: React.FC = () => {
         // Set customer notes
         setCustomerNotes(notesData);
         
-        // Try to find matching sales hub customer by name/email
-        // Note: companies and sales_hub_customers are separate entities with no direct FK relationship
+        // Try to find matching sales hub customer by company_id (direct link)
+        // Falls back to name/email matching for legacy data
         let totalRevenue = 0;
         let totalPurchases = 0;
         let avgOrderValue = 0;
         let lastPurchaseDate = '';
         
-        // Attempt to find sales hub customer by matching company name or email
+        // 🔗 PRIMARY: Query by company_id (direct FK link)
         const salesHubCustomerResult = await supabase
           .from('sales_hub_customers')
           .select('id')
-          .or(`name.eq.${company.name},email.eq.${company.email}`)
+          .eq('company_id', id) // Direct link via company_id FK
           .limit(1)
           .maybeSingle();
         
-        if (!salesHubCustomerResult.error && salesHubCustomerResult.data) {
-          const salesHubCustomerId = salesHubCustomerResult.data.id;
+        let salesHubCustomerId = salesHubCustomerResult.data?.id;
+        
+        // FALLBACK: If no match by company_id, try name/email (legacy data)
+        if (!salesHubCustomerId) {
+          console.log('⚠️ No company_id match, trying name/email match for:', company.name);
+          const fallbackResult = await supabase
+            .from('sales_hub_customers')
+            .select('id')
+            .or(`name.ilike.${company.name},email.ilike.${company.email}`)
+            .limit(1)
+            .maybeSingle();
           
+          salesHubCustomerId = fallbackResult.data?.id;
+          
+          if (salesHubCustomerId) {
+            console.log('✅ Found legacy match by name/email, updating company_id link');
+            // Update the record to add company_id for next time
+            await supabase
+              .from('sales_hub_customers')
+              .update({ company_id: id })
+              .eq('id', salesHubCustomerId);
+          }
+        }
+        
+        // If we found a sales_hub_customer (by either method), get their orders
+        if (salesHubCustomerId) {
           const ordersResult = await supabase
             .from('sales_hub_orders')
             .select('total_amount, created_at, status')
@@ -559,6 +582,8 @@ export const CustomerDetailPage: React.FC = () => {
               lastPurchaseDate = new Date(mostRecentOrder.created_at).toLocaleDateString();
             }
           }
+        } else {
+          console.log('ℹ️ No sales_hub_customer found for:', company.name);
         }
 
         // Calculate performance metrics from Sales Hub data
