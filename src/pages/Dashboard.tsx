@@ -287,6 +287,18 @@ const Dashboard = () => {
         return;
       }
 
+      // Get user's company_id
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', userData.user.id)
+        .single();
+      
+      if (!userProfile?.company_id) {
+        console.warn('User has no company_id, cannot fetch company sales');
+        return;
+      }
+
       // Create date range for the selected date (start of day to end of day)
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -294,27 +306,34 @@ const Dashboard = () => {
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
       
-      // Fetch sales for the selected date from sales_hub_orders
+      // 🔧 FIX: Fetch ALL company sales, not just user's sales
       const { data: dateOrders, error: dateOrdersError } = await supabase
         .from('sales_hub_orders')
-        .select('total_amount, created_at')
-        .eq('created_by', userData.user.id)
+        .select('total_amount, created_at, created_by, users!sales_hub_orders_created_by_fkey(company_id)')
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
       
       if (!dateOrdersError && dateOrders) {
-        const sales = dateOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+        // Filter orders by company_id
+        const companyOrders = dateOrders.filter((order: any) => 
+          order.users?.company_id === userProfile.company_id
+        );
+        
+        const sales = companyOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         setSelectedDateSales(sales);
         
-        // Fetch expenses from the expenses table for the selected date
+        // 🔧 FIX: Fetch ALL company expenses, not just user's expenses
         const { data: dateExpenses, error: expensesError } = await supabase
           .from('expenses')
-          .select('amount')
+          .select('amount, created_by, users!expenses_created_by_fkey(company_id)')
           .eq('expense_date', date);
         
-        const expenses = !expensesError && dateExpenses
-          ? dateExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
-          : 0;
+        // Filter expenses by company
+        const companyExpenses = !expensesError && dateExpenses
+          ? dateExpenses.filter((exp: any) => exp.users?.company_id === userProfile.company_id)
+          : [];
+        
+        const expenses = companyExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
         setSelectedDateExpenses(expenses);
         
         // Calculate net profit
@@ -330,26 +349,33 @@ const Dashboard = () => {
         const prevEnd = new Date(prevDay);
         prevEnd.setHours(23, 59, 59, 999);
         
+        // 🔧 FIX: Fetch ALL company sales for previous day
         const { data: prevOrders, error: prevError } = await supabase
           .from('sales_hub_orders')
-          .select('total_amount')
-          .eq('created_by', userData.user.id)
+          .select('total_amount, users!sales_hub_orders_created_by_fkey(company_id)')
           .gte('created_at', prevStart.toISOString())
           .lte('created_at', prevEnd.toISOString());
         
-        // Fetch previous day expenses
+        // 🔧 FIX: Fetch ALL company expenses for previous day
         const { data: prevExpensesData, error: prevExpensesError } = await supabase
           .from('expenses')
-          .select('amount')
-          .eq('created_by', userData.user.id)
+          .select('amount, users!expenses_created_by_fkey(company_id)')
           .eq('expense_date', prevDayStr);
         
-        const prevExpenses = !prevExpensesError && prevExpensesData
-          ? prevExpensesData.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0)
-          : 0;
+        // Filter previous orders by company
+        const prevCompanyOrders = !prevError && prevOrders
+          ? prevOrders.filter((order: any) => order.users?.company_id === userProfile.company_id)
+          : [];
         
-        if (!prevError && prevOrders) {
-          const prevSales = prevOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+        // Filter previous expenses by company
+        const prevCompanyExpenses = !prevExpensesError && prevExpensesData
+          ? prevExpensesData.filter((exp: any) => exp.users?.company_id === userProfile.company_id)
+          : [];
+        
+        const prevExpenses = prevCompanyExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
+        
+        if (!prevError && prevCompanyOrders.length >= 0) {
+          const prevSales = prevCompanyOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
           const prevNetProfit = prevSales - prevExpenses;
           
           // Sales growth
