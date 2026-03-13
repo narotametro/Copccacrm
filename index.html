@@ -35,12 +35,12 @@
     </div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Auto-reload on new deployment detection -->
+    <!-- Silent version check - NO automatic reloads -->
     <script>
-      // Version check - auto-reload if new build is deployed
+      // Version check - notify user only, never force reload
       const BUILD_VERSION = '2026-02-25-09:45';
       
-      // Check for new version every 5 minutes
+      // Check for new version every 30 minutes (less aggressive)
       setInterval(async () => {
         try {
           const response = await fetch('/index.html', { 
@@ -51,42 +51,19 @@
           const match = html.match(/Build: ([\d-:]+)/);
           
           if (match && match[1] !== BUILD_VERSION) {
-            console.log('New version detected! Reloading...');
-            // Clear all caches
+            console.log('New version available - will apply on next page navigation');
+            // Just clear caches silently - NO reload
+            // User continues working uninterrupted
             if ('caches' in window) {
               const cacheNames = await caches.keys();
               await Promise.all(cacheNames.map(name => caches.delete(name)));
             }
-            // Force reload
-            window.location.reload(true);
+            localStorage.setItem('update_available', 'true');
           }
         } catch (e) {
           // Silently fail - network might be offline
         }
-      }, 5 * 60 * 1000); // Check every 5 minutes
-      
-      // Also check on page visibility change (user returns to tab)
-      document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible') {
-          try {
-            const response = await fetch('/index.html', { 
-              cache: 'no-store',
-              headers: { 'Cache-Control': 'no-cache' }
-            });
-            const html = await response.text();
-            const match = html.match(/Build: ([\d-:]+)/);
-            
-            if (match && match[1] !== BUILD_VERSION) {
-              console.log('New version detected! Reloading...');
-              if ('caches' in window) {
-                const cacheNames = await caches.keys();
-                await Promise.all(cacheNames.map(name => caches.delete(name)));
-              }
-              window.location.reload(true);
-            }
-          } catch (e) {}
-        }
-      });
+      }, 30 * 60 * 1000); // Check every 30 minutes (less disruptive)
     </script>
   </body>
 </html>

@@ -82,14 +82,19 @@ window.addEventListener('error', (event) => {
   if (is404Error && !errorRecoveryInProgress) {
     errorRecoveryInProgress = true;
     
-    // SILENT FIX: Clear caches in background without disrupting user
+    // SILENT FIX: Clear caches in background - NO RELOAD unless it's critical
     clearAllServiceWorkersAndCaches().then(() => {
-      // Clear version to force fresh start
-      localStorage.removeItem('app_build_version');
-      sessionStorage.clear();
-      
-      // Reload quietly (page should already be loading)
-      setTimeout(() => window.location.reload(), 300);
+      // Only reload if this is a critical startup error
+      // Don't reload if user is actively working
+      if (document.readyState === 'loading' || !document.getElementById('root')?.children.length) {
+        // App hasn't rendered yet - safe to reload
+        localStorage.removeItem('app_build_version');
+        setTimeout(() => window.location.reload(), 100);
+      } else {
+        // App is already running - let user continue
+        // Error was likely a lazy-loaded chunk they don't need right now
+        console.log('Non-critical error detected - continuing without reload');
+      }
     });
     
     // Prevent error from showing in console (user never sees it)
