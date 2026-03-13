@@ -1,5 +1,5 @@
 
-import { TrendingUp, TrendingDown, Users, Banknote, Target, BarChart3, Activity, Globe, ShoppingCart, Calendar, ChevronUp, ChevronDown, Sparkles, ArrowUp, ArrowDown, ArrowRight, Minus, Equal } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Banknote, BarChart3, Activity, Globe, ShoppingCart, Calendar, ChevronUp, ChevronDown, Sparkles, ArrowUp, ArrowDown, ArrowRight, Minus, Equal, Eye, EyeOff, DollarSign } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,13 @@ import { useOptimisticCache } from '@/lib/optimisticCache';
 type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
 type DealRow = Database['public']['Tables']['deals']['Row'];
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
+type ExpenseRow = {
+  id: string;
+  amount: number;
+  expense_date: string;
+  created_at: string;
+  created_by: string;
+};
 type SalesHubOrderRow = {
   id: string;
   total_amount: number;
@@ -42,6 +49,11 @@ const Dashboard = () => {
   
   // Floating button state
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  
+  // KPI boxes visibility state
+  const [showRevenue, setShowRevenue] = useState<boolean>(true);
+  const [showExpenses, setShowExpenses] = useState<boolean>(true);
+  const [showProfit, setShowProfit] = useState<boolean>(true);
   
   // Optimistic caches for instant loading
   const { data: invoices } = useOptimisticCache<InvoiceRow>({
@@ -82,12 +94,26 @@ const Dashboard = () => {
     orderBy: { column: 'created_at', ascending: false },
   });
 
+  const { data: expenses } = useOptimisticCache<ExpenseRow>({
+    table: 'expenses',
+    query: 'id, amount, expense_date, created_at',
+    queryFilters: user?.id ? [
+      { column: 'created_by', operator: 'eq', value: user.id }
+    ] : [],
+    orderBy: { column: 'created_at', ascending: false },
+  });
+
   // Calculate total revenue from cached data
   const totalRevenue = useMemo(() => {
     const invoiceRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
     const ordersRevenue = salesHubOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
     return invoiceRevenue + ordersRevenue;
   }, [invoices, salesHubOrders]);
+
+  // Calculate total expenses from cached data
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+  }, [expenses]);
 
   // Calculate filtered revenue by period
   const filteredRevenue = useMemo(() => {
@@ -169,60 +195,85 @@ const Dashboard = () => {
     return invoiceRev + ordersRev;
   }, [revenuePeriod, totalRevenue, invoices, salesHubOrders]);
 
+  // Calculate filtered expenses by period
+  const filteredExpenses = useMemo(() => {
+    if (revenuePeriod === 'all') return totalExpenses;
+
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (revenuePeriod) {
+      case 'january':
+      case 'february':
+      case 'march':
+      case 'april':
+      case 'may':
+      case 'june':
+      case 'july':
+      case 'august':
+      case 'september':
+      case 'october':
+      case 'november':
+      case 'december':
+        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const monthIndex = monthNames.indexOf(revenuePeriod);
+        startDate = new Date(now.getFullYear(), monthIndex, 1);
+        endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
+        break;
+
+      case 'q1':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
+        break;
+
+      case 'q2':
+        startDate = new Date(now.getFullYear(), 3, 1);
+        endDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
+        break;
+
+      case 'q3':
+        startDate = new Date(now.getFullYear(), 6, 1);
+        endDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
+        break;
+
+      case 'q4':
+        startDate = new Date(now.getFullYear(), 9, 1);
+        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+        break;
+
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        endDate = now;
+        break;
+
+      case 'annual':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+        break;
+
+      default:
+        return totalExpenses;
+    }
+
+    const startTime = startDate.getTime();
+    const endTime = endDate.getTime();
+
+    const filteredExpensesData = expenses.filter(exp => {
+      const expenseTime = new Date(exp.expense_date || exp.created_at).getTime();
+      return expenseTime >= startTime && expenseTime <= endTime;
+    });
+
+    return filteredExpensesData.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+  }, [revenuePeriod, totalExpenses, expenses]);
+
+  // Calculate filtered profit
+  const filteredProfit = useMemo(() => {
+    return filteredRevenue - filteredExpenses;
+  }, [filteredRevenue, filteredExpenses]);
+
   // Calculate active customers
   const activeCustomers = useMemo(() => companies.length, [companies]);
-
-  // Calculate deals won
-  const dealsWon = useMemo(() => deals.filter(d => d.stage === 'won').length, [deals]);
-
-  // Calculate growth rate
-  const growthRate = useMemo(() => {
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-
-    const currentMonthStartTime = currentMonthStart.getTime();
-    const lastMonthStartTime = lastMonthStart.getTime();
-    const lastMonthEndTime = lastMonthEnd.getTime();
-
-    // Current month revenue
-    const currentMonthInvoices = invoices.filter(inv => {
-      const time = new Date(inv.created_at).getTime();
-      return time >= currentMonthStartTime;
-    });
-    const currentMonthOrders = salesHubOrders.filter(order => {
-      const time = new Date(order.created_at).getTime();
-      return time >= currentMonthStartTime;
-    });
-
-    const currentMonthRevenue = 
-      currentMonthInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) +
-      currentMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-
-    // Last month revenue
-    const lastMonthInvoices = invoices.filter(inv => {
-      const time = new Date(inv.created_at).getTime();
-      return time >= lastMonthStartTime && time <= lastMonthEndTime;
-    });
-    const lastMonthOrders = salesHubOrders.filter(order => {
-      const time = new Date(order.created_at).getTime();
-      return time >= lastMonthStartTime && time <= lastMonthEndTime;
-    });
-
-    const lastMonthRevenue = 
-      lastMonthInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) +
-      lastMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-
-    // Calculate percentage growth
-    if (lastMonthRevenue > 0) {
-      const growth = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-      return Math.round(growth * 10) / 10;
-    } else if (currentMonthRevenue > 0) {
-      return 100;
-    }
-    return 0;
-  }, [invoices, salesHubOrders]);
 
   // Calculate pipeline data
   const pipelineData = useMemo(() => {
@@ -482,52 +533,129 @@ const Dashboard = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <Banknote className="text-green-600" size={24} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-600">Total Revenue</p>
-                  <p className="text-lg font-bold text-slate-900 break-words">{formatCurrency(filteredRevenue)}</p>
+        {showRevenue && (
+          <Card className="p-6 relative">
+            <button
+              onClick={() => setShowRevenue(false)}
+              className="absolute top-2 right-2 p-1 hover:bg-slate-100 rounded transition-colors"
+              title="Hide"
+            >
+              <EyeOff className="text-slate-400" size={16} />
+            </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Banknote className="text-green-600" size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-600">Total Revenue</p>
+                    <p className="text-lg font-bold text-slate-900 break-words">{formatCurrency(filteredRevenue)}</p>
+                  </div>
                 </div>
               </div>
+              <select
+                value={revenuePeriod}
+                onChange={(e) => setRevenuePeriod(e.target.value)}
+                className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">All Time</option>
+                <optgroup label="Monthly">
+                  <option value="january">January</option>
+                  <option value="february">February</option>
+                  <option value="march">March</option>
+                  <option value="april">April</option>
+                  <option value="may">May</option>
+                  <option value="june">June</option>
+                  <option value="july">July</option>
+                  <option value="august">August</option>
+                  <option value="september">September</option>
+                  <option value="october">October</option>
+                  <option value="november">November</option>
+                  <option value="december">December</option>
+                </optgroup>
+                <optgroup label="Quarterly">
+                  <option value="q1">Q1 (Jan-Mar)</option>
+                  <option value="q2">Q2 (Apr-Jun)</option>
+                  <option value="q3">Q3 (Jul-Sep)</option>
+                  <option value="q4">Q4 (Oct-Dec)</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="6months">Last 6 Months</option>
+                  <option value="annual">Annual (This Year)</option>
+                </optgroup>
+              </select>
             </div>
-            <select
-              value={revenuePeriod}
-              onChange={(e) => setRevenuePeriod(e.target.value)}
-              className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          </Card>
+        )}
+
+        {showExpenses && (
+          <Card className="p-6 relative">
+            <button
+              onClick={() => setShowExpenses(false)}
+              className="absolute top-2 right-2 p-1 hover:bg-slate-100 rounded transition-colors"
+              title="Hide"
             >
-              <option value="all">All Time</option>
-              <optgroup label="Monthly">
-                <option value="january">January</option>
-                <option value="february">February</option>
-                <option value="march">March</option>
-                <option value="april">April</option>
-                <option value="may">May</option>
-                <option value="june">June</option>
-                <option value="july">July</option>
-                <option value="august">August</option>
-                <option value="september">September</option>
-                <option value="october">October</option>
-                <option value="november">November</option>
-                <option value="december">December</option>
-              </optgroup>
-              <optgroup label="Quarterly">
-                <option value="q1">Q1 (Jan-Mar)</option>
-                <option value="q2">Q2 (Apr-Jun)</option>
-                <option value="q3">Q3 (Jul-Sep)</option>
-                <option value="q4">Q4 (Oct-Dec)</option>
-              </optgroup>
-              <optgroup label="Other">
-                <option value="6months">Last 6 Months</option>
-                <option value="annual">Annual (This Year)</option>
-              </optgroup>
-            </select>
-          </div>
-        </Card>
+              <EyeOff className="text-slate-400" size={16} />
+            </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <DollarSign className="text-red-600" size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-600">Total Expenses</p>
+                    <p className="text-lg font-bold text-slate-900 break-words">{formatCurrency(filteredExpenses)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
+                Period: {revenuePeriod === 'all' ? 'All Time' : revenuePeriod.toUpperCase()}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {showProfit && (
+          <Card className="p-6 relative">
+            <button
+              onClick={() => setShowProfit(false)}
+              className="absolute top-2 right-2 p-1 hover:bg-slate-100 rounded transition-colors"
+              title="Hide"
+            >
+              <EyeOff className="text-slate-400" size={16} />
+            </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-lg ${
+                    filteredProfit > 0 ? 'bg-emerald-100' : 
+                    filteredProfit < 0 ? 'bg-orange-100' : 
+                    'bg-slate-100'
+                  }`}>
+                    <TrendingUp className={
+                      filteredProfit > 0 ? 'text-emerald-600' : 
+                      filteredProfit < 0 ? 'text-orange-600' : 
+                      'text-slate-600'
+                    } size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-600">Total Profit</p>
+                    <p className={`text-lg font-bold break-words ${
+                      filteredProfit > 0 ? 'text-emerald-600' : 
+                      filteredProfit < 0 ? 'text-orange-600' : 
+                      'text-slate-900'
+                    }`}>{formatCurrency(filteredProfit)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
+                Period: {revenuePeriod === 'all' ? 'All Time' : revenuePeriod.toUpperCase()}
+              </div>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-6">
           <div className="flex items-center gap-4">
@@ -540,48 +668,49 @@ const Dashboard = () => {
             </div>
           </div>
         </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Target className="text-purple-600" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-600">Deals Won</p>
-              <p className="text-2xl font-bold text-slate-900">{dealsWon}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${
-              growthRate > 0 ? 'bg-green-100' : 
-              growthRate < 0 ? 'bg-red-100' : 
-              'bg-slate-100'
-            }`}>
-              {growthRate > 0 ? (
-                <ArrowUp className="text-green-600" size={24} />
-              ) : growthRate < 0 ? (
-                <ArrowDown className="text-red-600" size={24} />
-              ) : (
-                <TrendingUp className="text-slate-600" size={24} />
-              )}
-            </div>
-            <div>
-              <p className="text-sm text-slate-600">Growth Rate</p>
-              <p className={`text-2xl font-bold ${
-                growthRate > 0 ? 'text-green-600' : 
-                growthRate < 0 ? 'text-red-600' : 
-                'text-slate-900'
-              }`}>
-                {growthRate === 0 && totalRevenue === 0 ? 'No data' : 
-                 `${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}%`}
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
+
+      {/* Hidden Cards Control */}
+      {(!showRevenue || !showExpenses || !showProfit) && (
+        <Card className="p-4 bg-slate-50">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-slate-600">Show hidden cards:</span>
+            {!showRevenue && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowRevenue(true)}
+                className="flex items-center gap-1"
+              >
+                <Eye size={14} />
+                Total Revenue
+              </Button>
+            )}
+            {!showExpenses && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowExpenses(true)}
+                className="flex items-center gap-1"
+              >
+                <Eye size={14} />
+                Total Expenses
+              </Button>
+            )}
+            {!showProfit && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowProfit(true)}
+                className="flex items-center gap-1"
+              >
+                <Eye size={14} />
+                Total Profit
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Quick Track Money Flow */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
