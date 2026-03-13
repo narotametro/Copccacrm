@@ -763,24 +763,6 @@ const Dashboard = () => {
           }}
         >
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${
-              criticalStockProducts.length > 0 
-                ? 'bg-red-100' 
-                : lowStockProducts.length > 0 
-                  ? 'bg-orange-100' 
-                  : 'bg-green-100'
-            }`}>
-              <AlertTriangle 
-                className={`${
-                  criticalStockProducts.length > 0 
-                    ? 'text-red-600' 
-                    : lowStockProducts.length > 0 
-                      ? 'text-orange-600' 
-                      : 'text-green-600'
-                }`} 
-                size={24} 
-              />
-            </div>
             <div>
               <p className="text-sm text-slate-600">Low Stock Alerts</p>
               <div className="flex items-baseline gap-2">
@@ -798,9 +780,6 @@ const Dashboard = () => {
 
         <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <DollarSign className="text-orange-600" size={24} />
-            </div>
             <div>
               <p className="text-sm text-slate-600">Total Outstanding</p>
               <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
@@ -885,26 +864,9 @@ const Dashboard = () => {
             {/* Money IN (Sales) */}
             <div className="flex-1 max-w-[200px]">
               <div className="bg-white rounded-xl p-4 shadow-md border-2 border-green-300 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <div className="p-1.5 bg-green-100 rounded-lg">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Total Sales</p>
-                      <p className="text-[9px] text-slate-500">Revenue</p>
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                    selectedDateGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {selectedDateGrowth >= 0 ? (
-                      <ArrowUp className="h-2.5 w-2.5" />
-                    ) : (
-                      <ArrowDown className="h-2.5 w-2.5" />
-                    )}
-                    <span className="text-[10px] font-bold">{selectedDateGrowth >= 0 ? '+' : ''}{selectedDateGrowth.toFixed(0)}%</span>
-                  </div>
+                <div className="mb-2">
+                  <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Total Sales</p>
+                  <p className="text-[9px] text-slate-500">Revenue</p>
                 </div>
                 <p className="text-xl font-bold text-green-700">
                   {formatCurrency(selectedDateSales)}
@@ -922,26 +884,9 @@ const Dashboard = () => {
             {/* Money OUT (COGS) */}
             <div className="flex-1 max-w-[200px]">
               <div className="bg-white rounded-xl p-4 shadow-md border-2 border-red-300 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <div className="p-1.5 bg-red-100 rounded-lg">
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Cost of Goods Sold</p>
-                      <p className="text-[9px] text-slate-500">COGS</p>
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                    selectedDateCOGSGrowth >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                  }`}>
-                    {selectedDateCOGSGrowth >= 0 ? (
-                      <ArrowUp className="h-2.5 w-2.5" />
-                    ) : (
-                      <ArrowDown className="h-2.5 w-2.5" />
-                    )}
-                    <span className="text-[10px] font-bold">{selectedDateCOGSGrowth >= 0 ? '+' : ''}{selectedDateCOGSGrowth.toFixed(0)}%</span>
-                  </div>
+                <div className="mb-2">
+                  <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wide">Cost of Goods Sold</p>
+                  <p className="text-[9px] text-slate-500">COGS</p>
                 </div>
                 <p className="text-xl font-bold text-red-700">
                   {formatCurrency(selectedDateCOGS)}
@@ -963,32 +908,11 @@ const Dashboard = () => {
                   ? 'border-emerald-400 hover:border-emerald-500' 
                   : 'border-orange-400 hover:border-orange-500'
               } hover:shadow-lg transition-all`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <div className={`p-1.5 rounded-lg ${
-                      selectedDateGrossProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'
-                    }`}>
-                      <Banknote className={`h-4 w-4 ${
-                        selectedDateGrossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'
-                      }`} />
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${
-                        selectedDateGrossProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
-                      }`}>Gross Profit</p>
-                      <p className="text-[9px] text-slate-500">Sales - COGS</p>
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                    selectedDateGrossProfitGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {selectedDateGrossProfitGrowth >= 0 ? (
-                      <ArrowUp className="h-2.5 w-2.5" />
-                    ) : (
-                      <ArrowDown className="h-2.5 w-2.5" />
-                    )}
-                    <span className="text-[10px] font-bold">{selectedDateGrossProfitGrowth >= 0 ? '+' : ''}{selectedDateGrossProfitGrowth.toFixed(0)}%</span>
-                  </div>
+                <div className="mb-2">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide ${
+                    selectedDateGrossProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
+                  }`}>Gross Profit</p>
+                  <p className="text-[9px] text-slate-500">Sales - COGS</p>
                 </div>
                 <p className={`text-xl font-bold ${
                   selectedDateGrossProfit >= 0 ? 'text-emerald-700' : 'text-orange-700'
