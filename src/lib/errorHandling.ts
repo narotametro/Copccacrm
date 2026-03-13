@@ -259,10 +259,8 @@ export function initNetworkMonitoring(): void {
     
     showNetworkNotification('Connection restored! You\'re back online.', 'success');
     
-    // Automatically retry failed operations or reload page
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
+    // No automatic reload - let user continue working
+    // They can manually refresh if needed
   });
 }
 
