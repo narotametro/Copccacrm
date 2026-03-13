@@ -3412,6 +3412,8 @@ const SalesHub: React.FC = () => {
     }
     if (activeSubsection === 'order-history') {
       loadOrderHistory();
+      loadCategories();
+      loadBrands();
     }
   }, [activeSubsection, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -6432,7 +6434,13 @@ const CustomerBuyingPatternsSection = () => {
       </div>
   );
 
-  const OrderHistorySection = () => (
+  const OrderHistorySection = () => {
+    const [customerFilter, setCustomerFilter] = useState('all');
+    const [productFilter, setProductFilter] = useState('all');
+    const [brandFilter, setBrandFilterHistory] = useState('all');
+    const [categoryFilter, setCategoryFilterHistory] = useState('all');
+
+    return (
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-xl font-semibold text-slate-900 mb-2">📜 Order History</h3>
@@ -6440,18 +6448,142 @@ const CustomerBuyingPatternsSection = () => {
       </div>
 
       <Card className="p-4" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
-        {/* Customer Search */}
-        <div className="mb-4">
+        {/* Search and Filters */}
+        <div className="mb-4 space-y-3">
+          {/* Search Bar */}
           <div className="relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search orders by customer..."
+              placeholder="Search orders by customer or order number..."
               value={orderSearchTerm}
               onChange={(e) => setOrderSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
+
+          {/* Filter Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Customer Filter */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Customer</label>
+              <select
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Customers</option>
+                <option value="walk-in">Walk-in Only</option>
+                {customers
+                  .filter((c, index, self) => 
+                    index === self.findIndex((t) => t.name === c.name)
+                  )
+                  .map(customer => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Product Filter */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Product</label>
+              <select
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Products</option>
+                {products
+                  .filter((p, index, self) => 
+                    index === self.findIndex((t) => t.name === p.name)
+                  )
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Brand Filter */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Brand</label>
+              <select
+                value={brandFilter}
+                onChange={(e) => setBrandFilterHistory(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Brands</option>
+                {brands.map(brand => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Category</label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilterHistory(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(customerFilter !== 'all' || productFilter !== 'all' || brandFilter !== 'all' || categoryFilter !== 'all') && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-600">Active filters:</span>
+              {customerFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                  Customer: {customerFilter === 'walk-in' ? 'Walk-in' : customers.find(c => c.id === customerFilter)?.name || customerFilter}
+                  <button onClick={() => setCustomerFilter('all')} className="hover:text-blue-900">×</button>
+                </span>
+              )}
+              {productFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                  Product: {products.find(p => p.id === productFilter)?.name || productFilter}
+                  <button onClick={() => setProductFilter('all')} className="hover:text-green-900">×</button>
+                </span>
+              )}
+              {brandFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                  Brand: {brands.find(b => b.id === brandFilter)?.name || brandFilter}
+                  <button onClick={() => setBrandFilterHistory('all')} className="hover:text-purple-900">×</button>
+                </span>
+              )}
+              {categoryFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
+                  Category: {categories.find(c => c.id === categoryFilter)?.name || categoryFilter}
+                  <button onClick={() => setCategoryFilterHistory('all')} className="hover:text-orange-900">×</button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setCustomerFilter('all');
+                  setProductFilter('all');
+                  setBrandFilterHistory('all');
+                  setCategoryFilterHistory('all');
+                }}
+                className="text-xs text-slate-600 hover:text-slate-900 underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Order History List */}
@@ -6466,14 +6598,63 @@ const CustomerBuyingPatternsSection = () => {
           <div className="space-y-3">
             {orderHistory
               .filter(order => {
-                if (!orderSearchTerm) return true;
-                const customerName = order.sales_hub_customers?.name || '';
-                const companyName = order.sales_hub_customers?.company_name || '';
-                const orderNumber = order.order_number || '';
-                const searchLower = orderSearchTerm.toLowerCase();
-                return customerName.toLowerCase().includes(searchLower) ||
-                       companyName.toLowerCase().includes(searchLower) ||
-                       orderNumber.toLowerCase().includes(searchLower);
+                // Text search filter
+                if (orderSearchTerm) {
+                  const customerName = order.sales_hub_customers?.name || '';
+                  const companyName = order.sales_hub_customers?.company_name || '';
+                  const orderNumber = order.order_number || '';
+                  const searchLower = orderSearchTerm.toLowerCase();
+                  const matchesSearch = customerName.toLowerCase().includes(searchLower) ||
+                         companyName.toLowerCase().includes(searchLower) ||
+                         orderNumber.toLowerCase().includes(searchLower);
+                  if (!matchesSearch) return false;
+                }
+
+                // Customer filter
+                if (customerFilter !== 'all') {
+                  if (customerFilter === 'walk-in') {
+                    if (order.sales_hub_customers?.name && order.sales_hub_customers.name !== 'Walk-in Customer') {
+                      return false;
+                    }
+                  } else {
+                    if (order.customer_id !== customerFilter) {
+                      return false;
+                    }
+                  }
+                }
+
+                // Product/Brand/Category filters - check order items
+                if (productFilter !== 'all' || brandFilter !== 'all' || categoryFilter !== 'all') {
+                  const orderItems = Array.isArray(order.items) ? order.items : [];
+                  
+                  if (orderItems.length === 0) return false;
+
+                  const hasMatchingItem = orderItems.some((item: any) => {
+                    const product = products.find(p => p.id === item.product_id);
+                    if (!product) return false;
+
+                    // Check product filter
+                    if (productFilter !== 'all' && product.id !== productFilter) {
+                      return false;
+                    }
+
+                    // Check brand filter
+                    if (brandFilter !== 'all' && product.brand_id !== brandFilter) {
+                      return false;
+                    }
+
+                    // Check category filter
+                    if (categoryFilter !== 'all' && product.category_id !== categoryFilter) {
+                      return false;
+                    }
+
+                    return true;
+                  });
+
+                  if (!hasMatchingItem) return false;
+                }
+
+                return true;
               })
               .map(order => (
                 <div key={order.id} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition-colors">
@@ -6534,6 +6715,7 @@ const CustomerBuyingPatternsSection = () => {
       </Card>
     </div>
   );
+  };
 
   const InventoryStatusSection = () => {
     const [inventoryStockFilter, setInventoryStockFilter] = useState('all');
