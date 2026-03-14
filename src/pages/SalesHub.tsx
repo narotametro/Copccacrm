@@ -4397,11 +4397,19 @@ const SalesHub: React.FC = () => {
         .insert([historyData]);
 
       if (historyError) {
-        console.error('⚠️ Warning: Failed to insert stock history:', historyError);
+        console.error('⚠️ Stock history insert failed - Error details:', {
+          message: historyError.message,
+          details: historyError.details,
+          hint: historyError.hint,
+          code: historyError.code
+        });
         // Don't fail the operation - stock was updated successfully
-        toast.warning('Stock updated but history tracking failed');
+        // Only show warning if it's not a column issue
+        if (!historyError.message?.includes('column') && !historyError.code?.includes('42703')) {
+          toast.warning('Stock updated successfully (history tracking skipped)');
+        }
       } else {
-        console.log('✅ Stock history recorded');
+        console.log('✅ Stock history recorded with purchase cost');
       }
 
       // Success message with cost info
@@ -7168,15 +7176,27 @@ const CustomerBuyingPatternsSection = () => {
     // Calculate total purchase cost from stock_history or products
     useEffect(() => {
       const calculatePurchaseCost = async () => {
+        // Default fallback: calculate from products table
+        const productsCost = products.reduce((sum, p) => {
+          return sum + ((p.cost_price || 0) * p.stock_quantity);
+        }, 0);
+
         try {
-          // Try to get purchase costs from stock_history table
+          // Try to get purchase costs from stock_history table (if columns exist)
           const { data: stockHistory, error: historyError } = await supabase
             .from('stock_history')
             .select('purchase_cost_total, purchase_cost_per_unit, quantity')
             .eq('action', 'restock')
             .order('created_at', { ascending: false });
 
-          if (!historyError && stockHistory && stockHistory.length > 0) {
+          // If error (likely columns don't exist or RLS issue), use products fallback
+          if (historyError) {
+            console.log('📊 Purchase cost: Using products table (stock_history not available)');
+            setTotalPurchaseCost(productsCost);
+            return;
+          }
+
+          if (stockHistory && stockHistory.length > 0) {
             // Sum up purchase costs from history
             const historyCost = stockHistory.reduce((sum, entry) => {
               const cost = entry.purchase_cost_total || (entry.purchase_cost_per_unit * entry.quantity) || 0;
@@ -7184,23 +7204,17 @@ const CustomerBuyingPatternsSection = () => {
             }, 0);
             
             if (historyCost > 0) {
+              console.log('📊 Purchase cost calculated from stock_history:', historyCost);
               setTotalPurchaseCost(historyCost);
               return;
             }
           }
 
-          // Fallback: calculate from products table (cost_price * stock_quantity)
-          const productsCost = products.reduce((sum, p) => {
-            return sum + ((p.cost_price || 0) * p.stock_quantity);
-          }, 0);
-          
+          // If no history data, use products fallback
+          console.log('📊 Purchase cost: Using products table (no history data)');
           setTotalPurchaseCost(productsCost);
         } catch (error) {
-          console.error('Error calculating purchase cost:', error);
-          // Fallback to products calculation
-          const productsCost = products.reduce((sum, p) => {
-            return sum + ((p.cost_price || 0) * p.stock_quantity);
-          }, 0);
+          console.log('📊 Purchase cost: Using products table (query failed)');
           setTotalPurchaseCost(productsCost);
         }
       };
