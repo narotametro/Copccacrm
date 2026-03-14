@@ -7132,6 +7132,50 @@ const CustomerBuyingPatternsSection = () => {
     const [inventoryBrandFilter, setInventoryBrandFilter] = useState('all');
     const [inventoryLocationFilter, setInventoryLocationFilter] = useState('all');
     const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+    const [totalPurchaseCost, setTotalPurchaseCost] = useState(0);
+
+    // Calculate total purchase cost from stock_history or products
+    useEffect(() => {
+      const calculatePurchaseCost = async () => {
+        try {
+          // Try to get purchase costs from stock_history table
+          const { data: stockHistory, error: historyError } = await supabase
+            .from('stock_history')
+            .select('purchase_cost_total, purchase_cost_per_unit, quantity')
+            .eq('action', 'restock')
+            .order('created_at', { ascending: false });
+
+          if (!historyError && stockHistory && stockHistory.length > 0) {
+            // Sum up purchase costs from history
+            const historyCost = stockHistory.reduce((sum, entry) => {
+              const cost = entry.purchase_cost_total || (entry.purchase_cost_per_unit * entry.quantity) || 0;
+              return sum + cost;
+            }, 0);
+            
+            if (historyCost > 0) {
+              setTotalPurchaseCost(historyCost);
+              return;
+            }
+          }
+
+          // Fallback: calculate from products table (cost_price * stock_quantity)
+          const productsCost = products.reduce((sum, p) => {
+            return sum + ((p.cost_price || 0) * p.stock_quantity);
+          }, 0);
+          
+          setTotalPurchaseCost(productsCost);
+        } catch (error) {
+          console.error('Error calculating purchase cost:', error);
+          // Fallback to products calculation
+          const productsCost = products.reduce((sum, p) => {
+            return sum + ((p.cost_price || 0) * p.stock_quantity);
+          }, 0);
+          setTotalPurchaseCost(productsCost);
+        }
+      };
+
+      calculatePurchaseCost();
+    }, [products]);
 
     return (
     <div className="space-y-6">
@@ -7173,7 +7217,7 @@ const CustomerBuyingPatternsSection = () => {
         <Card className="p-4 text-center">
           <Receipt className="h-8 w-8 text-orange-600 mx-auto mb-2" />
           <div className="text-xl font-bold text-slate-900 break-words">
-            {formatCurrency(products.reduce((sum, p) => sum + ((p.cost_price || 0) * p.stock_quantity), 0))}
+            {formatCurrency(totalPurchaseCost)}
           </div>
           <div className="text-sm text-slate-600">Purchase Cost</div>
         </Card>
