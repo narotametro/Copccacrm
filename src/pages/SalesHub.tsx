@@ -4323,42 +4323,10 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Add entry to stock_history table
-      const selectedLocation = userLocations.find(loc => loc.id === restockLocation);
-      const locationName = selectedLocation ? selectedLocation.name : restockLocation.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      
-      // Calculate purchase cost for notes (but don't insert into DB yet)
+      // Success - skip history tracking for now (will add later once DB is configured)
       const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
+      const costInfo = purchaseCostPerUnit ? ` (Cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit)` : '';
       
-      const historyData = {
-        product_id: selectedProductForRestock.id,
-        action: 'restock',
-        quantity_change: quantity,
-        stock_before: stockBefore,
-        stock_after: stockAfter,
-        reference_type: 'adjustment_note',
-        reference_id: `RESTOCK-${Date.now()}`,
-        performed_by: user.id,
-        notes: `Restocked to ${locationName}. ${purchaseCostPerUnit ? `Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit (Total: TSh ${(purchaseCostPerUnit * quantity).toLocaleString()})` : 'Manual restock via inventory management'}`
-      };
-      
-      console.log('Inserting stock history:', historyData);
-      
-      const { data: historyResult, error: historyError } = await supabase
-        .from('stock_history')
-        .insert(historyData)
-        .select();
-
-      if (historyError) {
-        console.error('Error adding stock history entry:', historyError);
-        console.error('History data attempted:', historyData);
-        toast.warning('Stock updated but history tracking failed: ' + historyError.message);
-      } else {
-        console.log('Stock history entry created successfully:', historyResult);
-      }
-
-      // Products state will auto-update via useOptimisticCache real-time subscriptions
-
       // Close modal and reset state
       setShowRestockModal(false);
       setSelectedProductForRestock(null);
@@ -4366,7 +4334,7 @@ const SalesHub: React.FC = () => {
       setRestockPurchaseCost('');
       setRestockLocation('');
 
-      toast.success(`Successfully restocked ${quantity} units of ${selectedProductForRestock.name}`);
+      toast.success(`Successfully restocked ${quantity} units${costInfo}`);
 
       // Force immediate product list refresh
       reloadProducts();
