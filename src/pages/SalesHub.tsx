@@ -3430,11 +3430,17 @@ const SalesHub: React.FC = () => {
       // Restore any valid subsection, not just 'products'
       const validSubsections: Subsection[] = ['products', 'carts-invoice', 'order-history', 'inventory-status', 'customer-buying-patterns', 'expenses', 'product-stocking-history', 'stock-transfers'];
       if (validSubsections.includes(targetSubsection as Subsection)) {
+        console.log('🔵 [SALES HUB] Restoring subsection from localStorage:', targetSubsection);
         setActiveSubsection(targetSubsection as Subsection);
       }
       localStorage.removeItem('salesHubActiveSubsection'); // Clean up
     }
   }, []);
+
+  // DEBUG: Track subsection changes
+  useEffect(() => {
+    console.log('🟢 [SALES HUB] Active subsection changed to:', activeSubsection);
+  }, [activeSubsection]);
 
   const loadCompanyPaymentInfo = async () => {
     try {
@@ -7692,7 +7698,10 @@ const CustomerBuyingPatternsSection = () => {
               <Button
                 key={sub.id}
                 variant={activeSubsection === sub.id ? 'default' : 'outline'}
-                onClick={() => setActiveSubsection(sub.id as Subsection)}
+                onClick={() => {
+                  console.log('🔴 [SALES HUB] Button clicked:', sub.id, '| Current:', activeSubsection);
+                  setActiveSubsection(sub.id as Subsection);
+                }}
               >
                 <IconComponent className="h-4 w-4 mr-2" />
                 {sub.label}
@@ -7704,11 +7713,12 @@ const CustomerBuyingPatternsSection = () => {
       {activeSubsection === 'products' && <ProductsSection />}
       {activeSubsection === 'carts-invoice' && <CartsInvoiceSection />}
       {activeSubsection === 'order-history' && <OrderHistorySection />}
-      {activeSubsection === 'inventory-status' && <InventoryStatusSection />}
+      {activeSubsection === 'inventory-status' && (console.log('🟣 [SALES HUB] Rendering InventoryStatusSection'), <InventoryStatusSection />)}
       {activeSubsection === 'stock-transfers' && <StockTransfers />}
-      {activeSubsection === 'customer-buying-patterns' && <CustomerBuyingPatternsSection />}
+      {activeSubsection === 'customer-buying-patterns' && (console.log('🟣 [SALES HUB] Rendering CustomerBuyingPatternsSection'), <CustomerBuyingPatternsSection />)}
       {activeSubsection === 'expenses' && <ExpensesSection expenses={expenses} setExpenses={setExpenses} />}
-      {activeSubsection === 'product-stocking-history' && <ProductStockingHistorySection />}
+      {activeSubsection === 'product-stocking-history' && (console.log('🟣 [SALES HUB] Rendering ProductStockingHistorySection'), <ProductStockingHistorySection />)}
+
 
       {/* View Cart Button - Always visible when cart has items */}
       {cart.length > 0 && (
