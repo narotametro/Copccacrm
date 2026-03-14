@@ -4327,9 +4327,8 @@ const SalesHub: React.FC = () => {
       const selectedLocation = userLocations.find(loc => loc.id === restockLocation);
       const locationName = selectedLocation ? selectedLocation.name : restockLocation.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       
-      // Calculate purchase cost totals
+      // Calculate purchase cost for notes (but don't insert into DB yet)
       const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
-      const purchaseCostTotal = purchaseCostPerUnit ? purchaseCostPerUnit * quantity : null;
       
       const historyData = {
         product_id: selectedProductForRestock.id,
@@ -4340,9 +4339,7 @@ const SalesHub: React.FC = () => {
         reference_type: 'adjustment_note',
         reference_id: `RESTOCK-${Date.now()}`,
         performed_by: user.id,
-        notes: `Restocked to ${locationName}. ${purchaseCostPerUnit ? `Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit` : 'Manual restock via inventory management'}`,
-        purchase_cost_per_unit: purchaseCostPerUnit,
-        purchase_cost_total: purchaseCostTotal
+        notes: `Restocked to ${locationName}. ${purchaseCostPerUnit ? `Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit (Total: TSh ${(purchaseCostPerUnit * quantity).toLocaleString()})` : 'Manual restock via inventory management'}`
       };
       
       console.log('Inserting stock history:', historyData);
