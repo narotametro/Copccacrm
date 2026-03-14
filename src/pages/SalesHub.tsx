@@ -4319,10 +4319,17 @@ const SalesHub: React.FC = () => {
     }
 
     setIsRestocking(true);
+    
     try {
+      console.log('🔵 Starting restock for:', selectedProductForRestock.name);
+      console.log('🔵 Quantity:', quantity);
+      console.log('🔵 Location:', restockLocation);
+      console.log('🔵 Purchase Cost:', restockPurchaseCost || 'none');
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('You must be logged in to restock products');
+        setIsRestocking(false);
         return;
       }
 
@@ -4334,13 +4341,17 @@ const SalesHub: React.FC = () => {
         .single();
 
       if (fetchError) {
-        console.error('Error fetching current product stock:', fetchError);
+        console.error('🔴 Error fetching current product stock:', fetchError);
         toast.error('Failed to fetch current stock information');
+        setIsRestocking(false);
         return;
       }
 
       const stockBefore = currentProduct.stock_quantity || 0;
       const stockAfter = stockBefore + quantity;
+      
+      console.log('🔵 Stock before:', stockBefore);
+      console.log('🔵 Stock after:', stockAfter);
 
       // Update product stock
       const { error: updateError } = await supabase
@@ -4352,10 +4363,13 @@ const SalesHub: React.FC = () => {
         .eq('id', selectedProductForRestock.id);
 
       if (updateError) {
-        console.error('Error updating product stock:', updateError);
-        toast.error('Failed to update product stock');
+        console.error('🔴 Error updating product stock:', updateError);
+        toast.error(`Failed to update product stock: ${updateError.message}`);
+        setIsRestocking(false);
         return;
       }
+
+      console.log('✅ Stock updated successfully');
 
       // Success - skip history tracking for now (will add later once DB is configured)
       const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
@@ -4368,10 +4382,16 @@ const SalesHub: React.FC = () => {
       setRestockPurchaseCost('');
       setRestockLocation('');
 
-      toast.success(`Successfully restocked ${quantity} units${costInfo}`);
+      toast.success(`✅ Successfully restocked ${quantity} units${costInfo}`);
 
       // Force immediate product list refresh
-      reloadProducts();
+      try {
+        await reloadProducts();
+        console.log('✅ Products reloaded');
+      } catch (reloadError) {
+        console.error('⚠️ Failed to reload products:', reloadError);
+        // Don't show error to user - the restock itself succeeded
+      }
 
     } catch (error) {
       console.error('🔴 RESTOCK ERROR - Full details:', error);
