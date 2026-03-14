@@ -31,7 +31,7 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1500,
-    sourcemap: false,
+    sourcemap: true, // Enable source maps for better debugging
     // Remove console.log in production (keep console.error and console.warn for debugging)
     minify: 'terser',
     terserOptions: {
