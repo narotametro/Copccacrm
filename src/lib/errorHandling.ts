@@ -82,7 +82,7 @@ export function getUserFriendlyError(error: unknown): UserFriendlyError {
       return {
         message: ERROR_MESSAGES.AUTH_EXPIRED,
         canRetry: false,
-        shouldReload: true,
+        shouldReload: false, // NEVER auto-reload - users hate this
         isTransient: false,
       };
     }
@@ -161,7 +161,7 @@ function handlePostgrestError(error: PostgrestError): UserFriendlyError {
     return {
       message: ERROR_MESSAGES.DB_NOT_FOUND,
       canRetry: false,
-      shouldReload: true,
+      shouldReload: false, // NEVER auto-reload - users hate this
       isTransient: false,
     };
   }

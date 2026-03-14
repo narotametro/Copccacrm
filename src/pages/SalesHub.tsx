@@ -4375,8 +4375,13 @@ const SalesHub: React.FC = () => {
       reloadProducts();
 
     } catch (error) {
-      console.error('Error during restock:', error);
-      toast.error('Failed to restock product. Please try again.');
+      console.error('🔴 RESTOCK ERROR - Full details:', error);
+      console.error('🔴 Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('🔴 Error message:', error instanceof Error ? error.message : String(error));
+      
+      // Show detailed error message to help debug
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Restock failed: ${errorMessage}`);
     } finally {
       setIsRestocking(false);
     }
