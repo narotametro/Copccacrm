@@ -4372,10 +4372,21 @@ const SalesHub: React.FC = () => {
 
       console.log('✅ Stock updated successfully');
 
-      // Insert stock history record with purchase cost
+      // Stock history tracking temporarily disabled until database is properly configured
+      // To enable: Run fix-stock-history-rls-policies.sql in Supabase
       const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
       const purchaseCostTotal = purchaseCostPerUnit ? purchaseCostPerUnit * quantity : null;
+      
+      console.log('📊 Restock completed:', {
+        product: selectedProductForRestock.name,
+        quantity,
+        stockBefore,
+        stockAfter,
+        purchaseCostPerUnit,
+        purchaseCostTotal
+      });
 
+      /* STOCK HISTORY INSERT - DISABLED UNTIL DB CONFIGURED
       const historyData = {
         product_id: selectedProductForRestock.id,
         action: 'restock',
@@ -4403,14 +4414,10 @@ const SalesHub: React.FC = () => {
           hint: historyError.hint,
           code: historyError.code
         });
-        // Don't fail the operation - stock was updated successfully
-        // Only show warning if it's not a column issue
-        if (!historyError.message?.includes('column') && !historyError.code?.includes('42703')) {
-          toast.warning('Stock updated successfully (history tracking skipped)');
-        }
       } else {
         console.log('✅ Stock history recorded with purchase cost');
       }
+      */
 
       // Success message with cost info
       const costInfo = purchaseCostPerUnit ? ` (Cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit, Total: TSh ${purchaseCostTotal?.toLocaleString()})` : '';
@@ -7173,50 +7180,16 @@ const CustomerBuyingPatternsSection = () => {
     const [inventorySearchTerm, setInventorySearchTerm] = useState('');
     const [totalPurchaseCost, setTotalPurchaseCost] = useState(0);
 
-    // Calculate total purchase cost from stock_history or products
+    // Calculate total purchase cost from products table (stock_history disabled until DB setup)
     useEffect(() => {
-      const calculatePurchaseCost = async () => {
-        // Default fallback: calculate from products table
+      const calculatePurchaseCost = () => {
+        // Calculate from products table: cost_price * stock_quantity
         const productsCost = products.reduce((sum, p) => {
           return sum + ((p.cost_price || 0) * p.stock_quantity);
         }, 0);
-
-        try {
-          // Try to get purchase costs from stock_history table (if columns exist)
-          const { data: stockHistory, error: historyError } = await supabase
-            .from('stock_history')
-            .select('purchase_cost_total, purchase_cost_per_unit, quantity')
-            .eq('action', 'restock')
-            .order('created_at', { ascending: false });
-
-          // If error (likely columns don't exist or RLS issue), use products fallback
-          if (historyError) {
-            console.log('📊 Purchase cost: Using products table (stock_history not available)');
-            setTotalPurchaseCost(productsCost);
-            return;
-          }
-
-          if (stockHistory && stockHistory.length > 0) {
-            // Sum up purchase costs from history
-            const historyCost = stockHistory.reduce((sum, entry) => {
-              const cost = entry.purchase_cost_total || (entry.purchase_cost_per_unit * entry.quantity) || 0;
-              return sum + cost;
-            }, 0);
-            
-            if (historyCost > 0) {
-              console.log('📊 Purchase cost calculated from stock_history:', historyCost);
-              setTotalPurchaseCost(historyCost);
-              return;
-            }
-          }
-
-          // If no history data, use products fallback
-          console.log('📊 Purchase cost: Using products table (no history data)');
-          setTotalPurchaseCost(productsCost);
-        } catch (error) {
-          console.log('📊 Purchase cost: Using products table (query failed)');
-          setTotalPurchaseCost(productsCost);
-        }
+        
+        setTotalPurchaseCost(productsCost);
+        console.log('📊 Purchase cost calculated from products table:', productsCost);
       };
 
       calculatePurchaseCost();
