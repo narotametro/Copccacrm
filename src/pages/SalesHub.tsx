@@ -24,6 +24,7 @@ import {
   Edit,
   Eye,
   Truck,
+  Brain,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
