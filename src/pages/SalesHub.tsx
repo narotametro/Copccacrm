@@ -4372,9 +4372,40 @@ const SalesHub: React.FC = () => {
 
       console.log('✅ Stock updated successfully');
 
-      // Success - skip history tracking for now (will add later once DB is configured)
+      // Insert stock history record with purchase cost
       const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
-      const costInfo = purchaseCostPerUnit ? ` (Cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit)` : '';
+      const purchaseCostTotal = purchaseCostPerUnit ? purchaseCostPerUnit * quantity : null;
+
+      const historyData = {
+        product_id: selectedProductForRestock.id,
+        action: 'restock',
+        quantity: quantity,
+        stock_before: stockBefore,
+        stock_after: stockAfter,
+        location_id: restockLocation,
+        notes: purchaseCostPerUnit ? `Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit` : 'Restocked',
+        created_by: user.id,
+        purchase_cost_per_unit: purchaseCostPerUnit,
+        purchase_cost_total: purchaseCostTotal,
+        created_at: new Date().toISOString()
+      };
+
+      console.log('🔵 Inserting stock history:', historyData);
+
+      const { error: historyError } = await supabase
+        .from('stock_history')
+        .insert([historyData]);
+
+      if (historyError) {
+        console.error('⚠️ Warning: Failed to insert stock history:', historyError);
+        // Don't fail the operation - stock was updated successfully
+        toast.warning('Stock updated but history tracking failed');
+      } else {
+        console.log('✅ Stock history recorded');
+      }
+
+      // Success message with cost info
+      const costInfo = purchaseCostPerUnit ? ` (Cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit, Total: TSh ${purchaseCostTotal?.toLocaleString()})` : '';
       
       // Close modal and reset state
       setShowRestockModal(false);
