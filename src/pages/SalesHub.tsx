@@ -5042,6 +5042,7 @@ const SalesHub: React.FC = () => {
   };
 
 const CustomerBuyingPatternsSection = () => {
+  const [analysisTab, setAnalysisTab] = useState<'customer' | 'product'>('customer');
   const [dateRange, setDateRange] = useState('this-year');
   const [customerFilter, setCustomerFilter] = useState('all');
   const [productBreakdownDateRange, setProductBreakdownDateRange] = useState('this-month');
@@ -5056,6 +5057,19 @@ const CustomerBuyingPatternsSection = () => {
     statusColor: string;
     status: string;
   } | null>(null);
+
+  // Product sales data
+  const [productSales, setProductSales] = useState<Array<{
+    id: string;
+    productName: string;
+    quantity: number;
+    totalValue: number;
+    salesCount: number;
+    lastSale: string;
+    customerName: string;
+    dayOfWeek: string;
+    timeOfDay: string;
+  }>>([]);
 
   // Customer data
   const [customers, setCustomers] = useState<Array<{
@@ -5650,13 +5664,242 @@ const CustomerBuyingPatternsSection = () => {
     }
   };
 
+  // Load product sales data (for Product Analysis tab)
+  const loadProductSales = async () => {
+    try {
+      let endDate = new Date();
+      let startDate = new Date();
+      
+      switch (dateRange) {
+        case 'this-week':
+          startDate.setDate(startDate.getDate() - startDate.getDay());
+          break;
+        case 'this-month':
+          startDate.setDate(1);
+          break;
+        case 'january':
+          startDate = new Date(startDate.getFullYear(), 0, 1);
+          endDate = new Date(startDate.getFullYear(), 1, 0);
+          break;
+        case 'february':
+          startDate = new Date(startDate.getFullYear(), 1, 1);
+          endDate = new Date(startDate.getFullYear(), 2, 0);
+          break;
+        case 'march':
+          startDate = new Date(startDate.getFullYear(), 2, 1);
+          endDate = new Date(startDate.getFullYear(), 3, 0);
+          break;
+        case 'april':
+          startDate = new Date(startDate.getFullYear(), 3, 1);
+          endDate = new Date(startDate.getFullYear(), 4, 0);
+          break;
+        case 'may':
+          startDate = new Date(startDate.getFullYear(), 4, 1);
+          endDate = new Date(startDate.getFullYear(), 5, 0);
+          break;
+        case 'june':
+          startDate = new Date(startDate.getFullYear(), 5, 1);
+          endDate = new Date(startDate.getFullYear(), 6, 0);
+          break;
+        case 'july':
+          startDate = new Date(startDate.getFullYear(), 6, 1);
+          endDate = new Date(startDate.getFullYear(), 7, 0);
+          break;
+        case 'august':
+          startDate = new Date(startDate.getFullYear(), 7, 1);
+          endDate = new Date(startDate.getFullYear(), 8, 0);
+          break;
+        case 'september':
+          startDate = new Date(startDate.getFullYear(), 8, 1);
+          endDate = new Date(startDate.getFullYear(), 9, 0);
+          break;
+        case 'october':
+          startDate = new Date(startDate.getFullYear(), 9, 1);
+          endDate = new Date(startDate.getFullYear(), 10, 0);
+          break;
+        case 'november':
+          startDate = new Date(startDate.getFullYear(), 10, 1);
+          endDate = new Date(startDate.getFullYear(), 11, 0);
+          break;
+        case 'december':
+          startDate = new Date(startDate.getFullYear(), 11, 1);
+          endDate = new Date(startDate.getFullYear() + 1, 0, 0);
+          break;
+        case 'q1':
+          startDate = new Date(startDate.getFullYear(), 0, 1);
+          endDate = new Date(startDate.getFullYear(), 3, 0);
+          break;
+        case 'q2':
+          startDate = new Date(startDate.getFullYear(), 3, 1);
+          endDate = new Date(startDate.getFullYear(), 6, 0);
+          break;
+        case 'q3':
+          startDate = new Date(startDate.getFullYear(), 6, 1);
+          endDate = new Date(startDate.getFullYear(), 9, 0);
+          break;
+        case 'q4':
+          startDate = new Date(startDate.getFullYear(), 9, 1);
+          endDate = new Date(startDate.getFullYear() + 1, 0, 0);
+          break;
+        case 'last-6-months':
+          startDate.setMonth(startDate.getMonth() - 6);
+          break;
+        case 'this-year':
+          startDate = new Date(startDate.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate.setDate(1);
+          break;
+      }
+
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('sales_hub_orders')
+        .select(`
+          *,
+          sales_hub_customers (
+            id,
+            name,
+            company_name
+          )
+        `)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Error loading product sales:', ordersError);
+        return;
+      }
+
+      const orders = ordersData || [];
+      const productSalesMap = new Map<string, {
+        productName: string;
+        quantity: number;
+        totalValue: number;
+        salesCount: number;
+        sales: Array<{
+          date: string;
+          customerName: string;
+          quantity: number;
+          value: number;
+        }>;
+      }>();
+
+      // Aggregate sales by product
+      orders.forEach(order => {
+        const customerName = (order as any).sales_hub_customers?.name || 
+                           (order as any).sales_hub_customers?.company_name || 
+                           'Walk-in Customer';
+        
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const productName = item.name || 'Unknown Product';
+            
+            if (!productSalesMap.has(productName)) {
+              productSalesMap.set(productName, {
+                productName,
+                quantity: 0,
+                totalValue: 0,
+                salesCount: 0,
+                sales: []
+              });
+            }
+            
+            const productData = productSalesMap.get(productName)!;
+            productData.quantity += item.quantity;
+            productData.totalValue += item.subtotal;
+            productData.salesCount += 1;
+            productData.sales.push({
+              date: order.created_at,
+              customerName,
+              quantity: item.quantity,
+              value: item.subtotal
+            });
+          });
+        }
+      });
+
+      // Convert to array and add day/time info
+      const productsArray = Array.from(productSalesMap.values())
+        .flatMap(product => 
+          product.sales.map(sale => {
+            const saleDate = new Date(sale.date);
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayOfWeek = days[saleDate.getDay()];
+            const timeOfDay = saleDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const dateFormatted = saleDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+            return {
+              id: `${product.productName}-${sale.date}`,
+              productName: product.productName,
+              quantity: sale.quantity,
+              totalValue: sale.value,
+              salesCount: 1,
+              lastSale: dateFormatted,
+              customerName: sale.customerName,
+              dayOfWeek,
+              timeOfDay
+            };
+          })
+        )
+        .sort((a, b) => new Date(b.lastSale).getTime() - new Date(a.lastSale).getTime());
+
+      setProductSales(productsArray);
+    } catch (error) {
+      console.error('Error loading product sales:', error);
+    }
+  };
+
+  // Load product sales when tab changes or date range changes
+  useEffect(() => {
+    if (analysisTab === 'product') {
+      loadProductSales();
+    }
+  }, [analysisTab, dateRange]);
+
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-2xl font-bold text-slate-900 mb-2">Customer × Product Intelligence</h3>
-        <p className="text-slate-600">"Who buys what, how often, and when?"</p>
+        <h3 className="text-2xl font-bold text-slate-900 mb-2">📊 Selling & Buying Pattern</h3>
+        <p className="text-slate-600">Track customers and products - who buys what, when, and how often</p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex justify-center gap-4 mb-6">
+        <button
+          onClick={() => setAnalysisTab('customer')}
+          className={`px-6 py-3 rounded-lg font-medium transition-all ${
+            analysisTab === 'customer'
+              ? 'bg-blue-600 text-white shadow-lg'
+              : 'bg-white text-slate-600 border border-slate-300 hover:border-blue-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            <span>Customer Analysis</span>
+          </div>
+          <div className="text-xs mt-1 opacity-80">Who buys what, how often, and when</div>
+        </button>
+        
+        <button
+          onClick={() => setAnalysisTab('product')}
+          className={`px-6 py-3 rounded-lg font-medium transition-all ${
+            analysisTab === 'product'
+              ? 'bg-green-600 text-white shadow-lg'
+              : 'bg-white text-slate-600 border border-slate-300 hover:border-green-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            <span>Product Analysis</span>
+          </div>
+          <div className="text-xs mt-1 opacity-80">Which sold, how often, and when</div>
+        </button>
+      </div>
+
+      {/* Customer Analysis Tab */}
+      {analysisTab === 'customer' && (
+      <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer List (Left Panel) */}
         <Card className="p-6">
@@ -5896,6 +6139,131 @@ const CustomerBuyingPatternsSection = () => {
           Real-time data analysis creates actionable business insights.
         </p>
       </Card>
+      </div>
+      )}
+
+      {/* Product Analysis Tab */}
+      {analysisTab === 'product' && (
+        <div className="space-y-6">
+          {/* Date Range Filter */}
+          <Card className="p-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-lg font-semibold">Product Sales Timeline</h4>
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="this-week">This Week</option>
+                <option value="this-month">This Month</option>
+                <option value="january">January</option>
+                <option value="february">February</option>
+                <option value="march">March</option>
+                <option value="april">April</option>
+                <option value="may">May</option>
+                <option value="june">June</option>
+                <option value="july">July</option>
+                <option value="august">August</option>
+                <option value="september">September</option>
+                <option value="october">October</option>
+                <option value="november">November</option>
+                <option value="december">December</option>
+                <option value="q1">Q1 (Jan-Mar)</option>
+                <option value="q2">Q2 (Apr-Jun)</option>
+                <option value="q3">Q3 (Jul-Sep)</option>
+                <option value="q4">Q4 (Oct-Dec)</option>
+                <option value="last-6-months">Last 6 Months</option>
+                <option value="this-year">This Year</option>
+              </select>
+            </div>
+          </Card>
+
+          {/* Product Sales Table */}
+          <Card className="p-6">
+            <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Package className="h-5 w-5 text-green-600" />
+              Products Sold - When & To Whom
+            </h4>
+            
+            {productSales.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600">No product sales data available</p>
+                <p className="text-sm text-slate-500 mt-2">Complete some orders to see product sales patterns</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b-2 border-slate-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Product</th>
+                      <th className="text-center py-3 px-4 font-semibold text-slate-700">Quantity</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Value</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Customer</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Date</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Day</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {productSales.map((sale, index) => (
+                      <tr key={sale.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-slate-900">{sale.productName}</div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {sale.quantity} pcs
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold text-slate-900">
+                          {formatCurrency(sale.totalValue)}
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">
+                          {sale.customerName}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {sale.lastSale}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                            {sale.dayOfWeek}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                            {sale.timeOfDay}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          {/* Product Sales Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-4 text-center bg-gradient-to-br from-green-50 to-emerald-50">
+              <div className="text-sm text-slate-600 mb-1">Total Sales Events</div>
+              <div className="font-bold text-2xl text-green-700">{productSales.length}</div>
+            </Card>
+            <Card className="p-4 text-center bg-gradient-to-br from-blue-50 to-cyan-50">
+              <div className="text-sm text-slate-600 mb-1">Unique Products</div>
+              <div className="font-bold text-2xl text-blue-700">
+                {new Set(productSales.map(s => s.productName)).size}
+              </div>
+            </Card>
+            <Card className="p-4 text-center bg-gradient-to-br from-purple-50 to-pink-50">
+              <div className="text-sm text-slate-600 mb-1">Total Revenue</div>
+              <div className="font-bold text-2xl text-purple-700">
+                {formatCurrency(productSales.reduce((sum, s) => sum + s.totalValue, 0))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -7600,14 +7968,14 @@ const CustomerBuyingPatternsSection = () => {
   };
 
   const subsections = [
-    { id: "products", label: "Products", icon: Package },
-    { id: "carts-invoice", label: "Carts & Invoice", icon: Receipt },
-    { id: "order-history", label: "Order History", icon: History },
-    { id: "inventory-status", label: "Inventory Management", icon: BarChart3 },
-    { id: "stock-transfers", label: "Stock Transfers", icon: Truck },
-    { id: "customer-buying-patterns", label: "Customer Buying Patterns", icon: Users },
-    { id: "expenses", label: "Expenses", icon: Banknote },
-    { id: "product-stocking-history", label: "Product Stocking History", icon: History },
+    { id: "products", label: "Products" },
+    { id: "carts-invoice", label: "Carts & Invoice" },
+    { id: "order-history", label: "Order History" },
+    { id: "inventory-status", label: "Inventory Management" },
+    { id: "stock-transfers", label: "Stock Transfers" },
+    { id: "customer-buying-patterns", label: "Selling & Buying Pattern" },
+    { id: "expenses", label: "Expenses" },
+    { id: "product-stocking-history", label: "Product Stocking History" },
   ];
 
   // Printable Invoice Component - REMOVED
@@ -7725,7 +8093,6 @@ const CustomerBuyingPatternsSection = () => {
           <h2 className="text-2xl font-bold mb-4">Sales Hub</h2>
         <div className="flex gap-2 mb-4">
           {subsections.map(sub => {
-            const IconComponent = sub.icon;
             return (
               <Button
                 key={sub.id}
@@ -7735,7 +8102,6 @@ const CustomerBuyingPatternsSection = () => {
                   setActiveSubsection(sub.id as Subsection);
                 }}
               >
-                <IconComponent className="h-4 w-4 mr-2" />
                 {sub.label}
               </Button>
             );
