@@ -6803,11 +6803,11 @@ const CustomerBuyingPatternsSection = () => {
         </Card>
 
         <Card className="p-4 text-center">
-          <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-slate-900">
-            {products.filter(p => (p.sales_velocity || 0) > 5).length}
+          <Receipt className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+          <div className="text-xl font-bold text-slate-900 break-words">
+            {formatCurrency(products.reduce((sum, p) => sum + ((p.cost_price || 0) * p.stock_quantity), 0))}
           </div>
-          <div className="text-sm text-slate-600">Fast Movers</div>
+          <div className="text-sm text-slate-600">Purchase Cost</div>
         </Card>
       </div>
 
