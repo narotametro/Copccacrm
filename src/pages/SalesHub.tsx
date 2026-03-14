@@ -2725,7 +2725,7 @@ const SalesHub: React.FC = () => {
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [selectedProductForRestock, setSelectedProductForRestock] = useState<Product | null>(null);
   const [restockQuantity, setRestockQuantity] = useState<number | ''>('');
-  const [restockNotes, setRestockNotes] = useState('');
+  const [restockPurchaseCost, setRestockPurchaseCost] = useState('');
   const [restockLocation, setRestockLocation] = useState('');
   const [isRestocking, setIsRestocking] = useState(false);
 
@@ -4327,6 +4327,10 @@ const SalesHub: React.FC = () => {
       const selectedLocation = userLocations.find(loc => loc.id === restockLocation);
       const locationName = selectedLocation ? selectedLocation.name : restockLocation.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       
+      // Calculate purchase cost totals
+      const purchaseCostPerUnit = restockPurchaseCost ? parseFloat(restockPurchaseCost) : null;
+      const purchaseCostTotal = purchaseCostPerUnit ? purchaseCostPerUnit * quantity : null;
+      
       const historyData = {
         product_id: selectedProductForRestock.id,
         change_type: 'restock',
@@ -4336,7 +4340,9 @@ const SalesHub: React.FC = () => {
         reference_type: 'adjustment_note',
         reference_id: `RESTOCK-${Date.now()}`,
         performed_by: user.id,
-        notes: `Restocked to ${locationName}. ${restockNotes || 'Manual restock via inventory management'}`
+        notes: `Restocked to ${locationName}. ${purchaseCostPerUnit ? `Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit` : 'Manual restock via inventory management'}`,
+        purchase_cost_per_unit: purchaseCostPerUnit,
+        purchase_cost_total: purchaseCostTotal
       };
       
       console.log('Inserting stock history:', historyData);
@@ -4360,7 +4366,7 @@ const SalesHub: React.FC = () => {
       setShowRestockModal(false);
       setSelectedProductForRestock(null);
       setRestockQuantity('');
-      setRestockNotes('');
+      setRestockPurchaseCost('');
       setRestockLocation('');
 
       toast.success(`Successfully restocked ${quantity} units of ${selectedProductForRestock.name}`);
@@ -7814,15 +7820,22 @@ const CustomerBuyingPatternsSection = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
+                Purchase Cost (Optional)
               </label>
-              <textarea
-                value={restockNotes}
-                onChange={(e) => setRestockNotes(e.target.value)}
+              <input
+                type="number"
+                value={restockPurchaseCost}
+                onChange={(e) => setRestockPurchaseCost(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Add any notes about this restock..."
-                rows={3}
+                placeholder="Enter cost per unit (for COGS calculation)"
+                min="0"
+                step="0.01"
               />
+              {restockPurchaseCost && restockQuantity && (
+                <p className="text-xs text-green-600 mt-1">
+                  💰 Total Cost: TSh {(parseFloat(restockPurchaseCost) * (typeof restockQuantity === 'string' ? parseInt(restockQuantity) || 0 : restockQuantity)).toLocaleString()}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">
@@ -7831,7 +7844,7 @@ const CustomerBuyingPatternsSection = () => {
                   setShowRestockModal(false);
                   setSelectedProductForRestock(null);
                   setRestockQuantity('');
-                  setRestockNotes('');
+                  setRestockPurchaseCost('');
                   setRestockLocation('main-store');
                 }}
                 variant="outline"
