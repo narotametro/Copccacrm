@@ -10,6 +10,7 @@
 
 -- STEP 1: Drop the old restrictive policy
 DROP POLICY IF EXISTS "products_update_secure" ON products;
+DROP POLICY IF EXISTS "products_update_company" ON products;
 
 -- STEP 2: Create new company-based UPDATE policy
 CREATE POLICY "products_update_company" ON products
