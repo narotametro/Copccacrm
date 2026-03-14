@@ -4333,10 +4333,10 @@ const SalesHub: React.FC = () => {
       
       const historyData = {
         product_id: selectedProductForRestock.id,
-        change_type: 'restock',
+        action: 'restock',
         quantity_change: quantity,
-        quantity_before: stockBefore,
-        quantity_after: stockAfter,
+        stock_before: stockBefore,
+        stock_after: stockAfter,
         reference_type: 'adjustment_note',
         reference_id: `RESTOCK-${Date.now()}`,
         performed_by: user.id,
