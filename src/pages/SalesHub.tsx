@@ -6957,7 +6957,7 @@ const CustomerBuyingPatternsSection = () => {
                           onClick={() => {
                             setSelectedProductForRestock(product);
                             setRestockQuantity('');
-                            setRestockNotes('');
+                            setRestockPurchaseCost('');
                             setRestockLocation('main-store'); // Default to main store for all users
                             setShowRestockModal(true);
                           }}
@@ -7022,7 +7022,7 @@ const CustomerBuyingPatternsSection = () => {
                       onClick={() => {
                         setSelectedProductForRestock(restockProduct);
                         setRestockQuantity('');
-                        setRestockNotes('');
+                        setRestockPurchaseCost('');
                         setRestockLocation('main-store');
                         setShowRestockModal(true);
                       }}
@@ -7776,7 +7776,7 @@ const CustomerBuyingPatternsSection = () => {
                 setShowRestockModal(false);
                 setSelectedProductForRestock(null);
                 setRestockQuantity('');
-                setRestockNotes('');
+                setRestockPurchaseCost('');
                 setRestockLocation('');
               }}
               className="text-gray-500 hover:text-gray-700"
