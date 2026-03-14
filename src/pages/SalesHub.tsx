@@ -3423,11 +3423,15 @@ const SalesHub: React.FC = () => {
     // Products loaded instantly via optimistic cache - no need to pre-load
   }, []);
 
-  // Check for navigation from floating button
+  // Check for navigation from floating button or saved subsection
   useEffect(() => {
     const targetSubsection = localStorage.getItem('salesHubActiveSubsection');
-    if (targetSubsection === 'products') {
-      setActiveSubsection('products');
+    if (targetSubsection) {
+      // Restore any valid subsection, not just 'products'
+      const validSubsections: Subsection[] = ['products', 'carts-invoice', 'order-history', 'inventory-status', 'customer-buying-patterns', 'expenses', 'product-stocking-history', 'stock-transfers'];
+      if (validSubsections.includes(targetSubsection as Subsection)) {
+        setActiveSubsection(targetSubsection as Subsection);
+      }
       localStorage.removeItem('salesHubActiveSubsection'); // Clean up
     }
   }, []);
