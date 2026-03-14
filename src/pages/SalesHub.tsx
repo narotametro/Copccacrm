@@ -2890,12 +2890,41 @@ const SalesHub: React.FC = () => {
       if (error) throw error;
 
       setOrderHistory(data || []);
+      console.log(`✅ Loaded ${data?.length || 0} orders from database`);
     } catch (error: unknown) {
       console.error('Error loading order history:', error);
       toast.error('Failed to load order history');
       setOrderHistory([]);
     }
   }, []); // Remove loadingOrders from dependencies to prevent infinite loop
+
+  // Real-time subscription for order updates
+  useEffect(() => {
+    console.log('📡 Setting up real-time subscription for sales_hub_orders');
+    
+    const channel = supabase
+      .channel('sales_hub_orders_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sales_hub_orders'
+        },
+        (payload) => {
+          console.log('📥 New order detected via real-time:', payload.new);
+          // Reload order history to get the full order with joined data
+          loadOrderHistory();
+          toast.success('New order received!', { duration: 2000 });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Cleaning up sales_hub_orders subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [loadOrderHistory]);
 
   const printOrderInvoice = useCallback((order: SalesHubOrder) => {
     const printWindow = window.open('', '_blank');
@@ -3851,6 +3880,11 @@ const SalesHub: React.FC = () => {
 
       // Prepend the new order to show it at the top instantly
       setOrderHistory(prev => [optimisticOrder, ...prev]);
+
+      // AUTO-SWITCH to Order History tab so user sees the new order immediately
+      setActiveSubsection('order-history');
+      console.log('✅ Switched to Order History - new order should be visible at top');
+      toast.success('Order added! Switched to Order History', { duration: 2000 });
 
       // Process backend operations asynchronously without blocking UI
       (async () => {
