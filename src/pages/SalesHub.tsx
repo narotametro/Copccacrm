@@ -5616,7 +5616,7 @@ const CustomerBuyingPatternsSection = () => {
       let ordersData;
       let error;
 
-      // If it's the aggregated Walk-in Customer, fetch all orders without specific customer IDs
+      // If it's the aggregated Walk-in Customer, fetch all orders and filter for walk-ins
       if (customerId === 'walk-in-aggregate') {
         const result = await supabase
           .from('sales_hub_orders')
@@ -5635,11 +5635,13 @@ const CustomerBuyingPatternsSection = () => {
         ordersData = result.data;
         error = result.error;
         
-        // Filter for Walk-in Customers only (those without sales_hub_customers data)
+        // Filter for Walk-in Customers (customer_id is null OR customer name is "Walk-in Customer")
         ordersData = ordersData?.filter(order => 
-          !(order as any).sales_hub_customers?.name && 
-          !(order as any).sales_hub_customers?.company_name
+          !order.customer_id || 
+          (order as any).sales_hub_customers?.name === 'Walk-in Customer'
         );
+        
+        console.log('📊 Walk-in Customer orders found:', ordersData?.length);
       } else {
         const result = await supabase
           .from('sales_hub_orders')
