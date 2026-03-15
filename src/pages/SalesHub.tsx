@@ -517,10 +517,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
                   onClick={() => onEdit(product)}
                   size="sm"
                   variant="outline"
-                  className="h-8 w-8 p-0 border-slate-300 hover:bg-blue-50 hover:border-blue-400"
+                  className="h-8 px-2 gap-1.5 border-slate-300 hover:bg-blue-50 hover:border-blue-400"
                   title="Edit product"
                 >
                   <Edit className="h-4 w-4 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-600">Edit</span>
                 </Button>
               )}
               {onDelete && (
@@ -528,10 +529,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
                   onClick={() => onDelete(product)}
                   size="sm"
                   variant="outline"
-                  className="h-8 w-8 p-0 border-slate-300 hover:bg-red-50 hover:border-red-400"
+                  className="h-8 px-2 gap-1.5 border-slate-300 hover:bg-red-50 hover:border-red-400"
                   title="Delete product"
                 >
                   <Trash2 className="h-4 w-4 text-red-600" />
+                  <span className="text-xs font-medium text-red-600">Delete</span>
                 </Button>
               )}
               <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${stockInfo.color}`}>
