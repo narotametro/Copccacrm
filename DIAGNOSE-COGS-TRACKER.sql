@@ -3,9 +3,13 @@
 -- =====================================================
 -- Track COGS issues across any date range
 -- =====================================================
--- 📝 CHANGE THESE DATES TO ANALYZE DIFFERENT PERIODS:
+-- 📝 HOW TO USE:
+-- 1. Find the date_params in EACH step (lines 10-13, and repeated in each query)
+-- 2. Change start_date and end_date to your desired period
+-- 3. Run the entire script to get 8 result sets
 -- =====================================================
 
+-- Step 1: Daily COGS Summary
 -- Set your date range here (change these values):
 WITH date_params AS (
   SELECT 
@@ -63,6 +67,11 @@ ORDER BY DATE(oi.created_at) DESC;
 -- =====================================================
 -- Step 2: Sales by Date Range
 -- =====================================================
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+)
 SELECT 
   '📦 ORDERS IN DATE RANGE' as section,
   order_number,
@@ -77,7 +86,11 @@ ORDER BY created_at DESC;
 -- =====================================================
 -- Step 3: Products Sold in Date Range
 -- =====================================================
-,
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+),
 products_sold AS (
   SELECT DISTINCT (item->>'product_id')::uuid as product_id
   FROM sales_hub_orders o
@@ -113,7 +126,11 @@ ORDER BY pq.total_quantity_sold DESC;
 -- =====================================================
 -- Step 4: Purchase Cost History for Sold Products
 -- =====================================================
-,
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+),
 sold_product_ids AS (
   SELECT DISTINCT (item->>'product_id')::uuid as product_id
   FROM sales_hub_orders o
@@ -140,7 +157,11 @@ ORDER BY sh.product_id, sh.created_at DESC;
 -- =====================================================
 -- Step 5: Expected COGS by Product (Weighted Average)
 -- =====================================================
-,
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+),
 period_sales AS (
   SELECT 
     (item->>'product_id')::uuid as product_id,
@@ -189,7 +210,11 @@ ORDER BY total_cogs DESC;
 -- =====================================================
 -- Step 6: Period COGS Summary
 -- =====================================================
-,
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+),
 period_sales_summary AS (
   SELECT 
     (item->>'product_id')::uuid as product_id,
@@ -241,7 +266,11 @@ LEFT JOIN products p ON p.id = s.product_id;
 -- =====================================================
 -- Step 7: Products Missing Cost Data
 -- =====================================================
-,
+WITH date_params AS (
+  SELECT 
+    '2026-03-01'::date as start_date,
+    '2026-03-31'::date as end_date
+),
 sold_products_list AS (
   SELECT DISTINCT (item->>'product_id')::uuid as product_id
   FROM sales_hub_orders o
@@ -287,12 +316,26 @@ SELECT '
 6️⃣ Period totals: Revenue, COGS, Gross Profit, Margin
 7️⃣ Products missing cost data
 
-🎯 HOW TO USE:
+🎯 HOW TO CHANGE DATE RANGE:
 
-📅 CHANGE DATE RANGE:
-  Edit lines 10-11 at the top:
-    start_date: ''2026-03-01''::date
-    end_date: ''2026-03-31''::date
+📅 EASY METHOD (Find & Replace):
+  In Supabase SQL Editor:
+  1. Press Ctrl+H (Find & Replace)
+  2. Find: ''2026-03-01''
+  3. Replace with: ''2026-01-01'' (or your start date)
+  4. Replace All
+  5. Repeat for end date: ''2026-03-31'' → your end date
+  6. Run the script
+
+📅 MANUAL METHOD:
+  Edit the date_params in each query:
+  - Line 13-14 (Step 1)
+  - Line 73-74 (Step 2)
+  - Line 95-96 (Step 3)
+  - Line 127-128 (Step 4)
+  - Line 160-161 (Step 5)
+  - Line 214-215 (Step 6)
+  - Line 267-268 (Step 7)
 
 📊 UNDERSTAND RESULTS:
   - Step 1 shows DAILY breakdown (spot problem days)
