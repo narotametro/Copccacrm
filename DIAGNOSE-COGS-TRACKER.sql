@@ -16,68 +16,49 @@ WITH date_params AS (
 -- =====================================================
 -- Step 1: Daily COGS Summary (Overview)
 -- =====================================================
+,
+order_items_expanded AS (
+  SELECT 
+    o.id as order_id,
+    o.created_at,
+    o.total_amount,
+    (item->>'product_id')::uuid as product_id,
+    (item->>'quantity')::int as quantity
+  FROM sales_hub_orders o
+  CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
+  WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
+),
+weighted_costs AS (
+  SELECT 
+    product_id,
+    SUM(purchase_cost_per_unit * quantity) / NULLIF(SUM(quantity), 0) as avg_cost
+  FROM stock_history
+  WHERE action = 'restock'
+  AND purchase_cost_per_unit IS NOT NULL
+  GROUP BY product_id
+)
 SELECT 
   '📊 DAILY COGS SUMMARY' as section,
-  DATE(o.created_at) as sale_date,
-  COUNT(DISTINCT o.id) as orders_count,
-  SUM(o.total_amount) as daily_revenue,
-  SUM(
-    (jsonb_array_elements(o.items::jsonb)->>'quantity')::int * 
-    COALESCE(
-      (SELECT SUM(sh.purchase_cost_per_unit * sh.quantity) / SUM(sh.quantity)
-       FROM stock_history sh
-       WHERE sh.product_id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid
-       AND sh.action = 'restock'
-       AND sh.purchase_cost_per_unit IS NOT NULL),
-      (SELECT p.cost_price FROM products p WHERE p.id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid),
-      0
-    )
-  ) as daily_cogs,
+  DATE(oi.created_at) as sale_date,
+  COUNT(DISTINCT oi.order_id) as orders_count,
+  SUM(oi.total_amount) as daily_revenue,
+  SUM(oi.quantity * COALESCE(wc.avg_cost, p.cost_price, 0)) as daily_cogs,
   ROUND(
-    (SUM(
-      (jsonb_array_elements(o.items::jsonb)->>'quantity')::int * 
-      COALESCE(
-        (SELECT SUM(sh.purchase_cost_per_unit * sh.quantity) / SUM(sh.quantity)
-         FROM stock_history sh
-         WHERE sh.product_id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid
-         AND sh.action = 'restock'
-         AND sh.purchase_cost_per_unit IS NOT NULL),
-        (SELECT p.cost_price FROM products p WHERE p.id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid),
-        0
-      )
-    ) / NULLIF(SUM(o.total_amount), 0)) * 100, 2
+    (SUM(oi.quantity * COALESCE(wc.avg_cost, p.cost_price, 0)) / 
+     NULLIF(SUM(oi.total_amount), 0)) * 100, 2
   ) as cogs_percentage,
   CASE 
-    WHEN SUM(
-      (jsonb_array_elements(o.items::jsonb)->>'quantity')::int * 
-      COALESCE(
-        (SELECT SUM(sh.purchase_cost_per_unit * sh.quantity) / SUM(sh.quantity)
-         FROM stock_history sh
-         WHERE sh.product_id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid
-         AND sh.action = 'restock'
-         AND sh.purchase_cost_per_unit IS NOT NULL),
-        (SELECT p.cost_price FROM products p WHERE p.id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid),
-        0
-      )
-    ) > SUM(o.total_amount) THEN '🚨 LOSS'
-    WHEN (SUM(
-      (jsonb_array_elements(o.items::jsonb)->>'quantity')::int * 
-      COALESCE(
-        (SELECT SUM(sh.purchase_cost_per_unit * sh.quantity) / SUM(sh.quantity)
-         FROM stock_history sh
-         WHERE sh.product_id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid
-         AND sh.action = 'restock'
-         AND sh.purchase_cost_per_unit IS NOT NULL),
-        (SELECT p.cost_price FROM products p WHERE p.id = (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid),
-        0
-      )
-    ) / NULLIF(SUM(o.total_amount), 0)) > 0.7 THEN '⚠️ High COGS'
+    WHEN SUM(oi.quantity * COALESCE(wc.avg_cost, p.cost_price, 0)) > SUM(oi.total_amount) THEN '🚨 LOSS'
+    WHEN (SUM(oi.quantity * COALESCE(wc.avg_cost, p.cost_price, 0)) / 
+          NULLIF(SUM(oi.total_amount), 0)) > 0.7 THEN '⚠️ High COGS'
     ELSE '✅ Healthy'
   END as status
-FROM sales_hub_orders o, date_params dp
-WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
-GROUP BY DATE(o.created_at)
-ORDER BY DATE(o.created_at) DESC;
+FROM order_items_expanded oi
+LEFT JOIN weighted_costs wc ON wc.product_id = oi.product_id
+LEFT JOIN products p ON p.id = oi.product_id
+GROUP BY DATE(oi.created_at)
+ORDER BY DATE(oi.created_at) DESC;
 
 -- =====================================================
 -- Step 2: Sales by Date Range
@@ -96,6 +77,25 @@ ORDER BY created_at DESC;
 -- =====================================================
 -- Step 3: Products Sold in Date Range
 -- =====================================================
+,
+products_sold AS (
+  SELECT DISTINCT (item->>'product_id')::uuid as product_id
+  FROM sales_hub_orders o
+  CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
+  WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
+),
+product_quantities AS (
+  SELECT 
+    (item->>'product_id')::uuid as product_id,
+    COUNT(DISTINCT o.id) as times_sold,
+    SUM((item->>'quantity')::int) as total_quantity_sold
+  FROM sales_hub_orders o
+  CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
+  WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
+  GROUP BY (item->>'product_id')::uuid
+)
 SELECT 
   '🏷️ PRODUCTS SOLD IN PERIOD' as section,
   p.id,
@@ -103,22 +103,24 @@ SELECT
   p.cost_price as product_cost_price,
   p.price as selling_price,
   p.stock_quantity as current_stock,
-  COUNT(DISTINCT o.id) as times_sold,
-  SUM((jsonb_array_elements(o.items::jsonb)->>'quantity')::int) as total_quantity_sold
+  pq.times_sold,
+  pq.total_quantity_sold
 FROM products p
-CROSS JOIN date_params dp
-JOIN sales_hub_orders o ON DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
-  AND p.id IN (
-    SELECT DISTINCT (jsonb_array_elements(o.items::jsonb)->>'product_id')::uuid
-    FROM sales_hub_orders
-    WHERE DATE(created_at) BETWEEN dp.start_date AND dp.end_date
-  )
-GROUP BY p.id, p.name, p.cost_price, p.price, p.stock_quantity
-ORDER BY total_quantity_sold DESC;
+JOIN products_sold ps ON ps.product_id = p.id
+JOIN product_quantities pq ON pq.product_id = p.id
+ORDER BY pq.total_quantity_sold DESC;
 
 -- =====================================================
 -- Step 4: Purchase Cost History for Sold Products
 -- =====================================================
+,
+sold_product_ids AS (
+  SELECT DISTINCT (item->>'product_id')::uuid as product_id
+  FROM sales_hub_orders o
+  CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
+  WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
+)
 SELECT 
   '💰 PURCHASE COST HISTORY' as section,
   sh.product_id,
@@ -130,27 +132,24 @@ SELECT
   DATE(sh.created_at) as restock_date
 FROM stock_history sh
 JOIN products p ON p.id = sh.product_id
-CROSS JOIN date_params dp
-WHERE sh.product_id IN (
-  SELECT DISTINCT (jsonb_array_elements(items::jsonb)->>'product_id')::uuid
-  FROM sales_hub_orders
-  WHERE DATE(created_at) BETWEEN dp.start_date AND dp.end_date
-)
-AND sh.action = 'restock'
+JOIN sold_product_ids sp ON sp.product_id = sh.product_id
+WHERE sh.action = 'restock'
 AND sh.purchase_cost_per_unit IS NOT NULL
 ORDER BY sh.product_id, sh.created_at DESC;
 
 -- =====================================================
 -- Step 5: Expected COGS by Product (Weighted Average)
 -- =====================================================
-WITH period_sales AS (
+,
+period_sales AS (
   SELECT 
-    (jsonb_array_elements(items::jsonb)->>'product_id')::uuid as product_id,
-    (jsonb_array_elements(items::jsonb)->>'name')::text as product_name,
-    ((jsonb_array_elements(items::jsonb)->>'quantity')::int) as quantity_sold,
-    ((jsonb_array_elements(items::jsonb)->>'price')::numeric) as unit_price
+    (item->>'product_id')::uuid as product_id,
+    (item->>'name')::text as product_name,
+    (item->>'quantity')::int as quantity_sold,
+    (item->>'price')::numeric as unit_price
   FROM sales_hub_orders o
   CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
   WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
 ),
 purchase_costs AS (
@@ -190,15 +189,17 @@ ORDER BY total_cogs DESC;
 -- =====================================================
 -- Step 6: Period COGS Summary
 -- =====================================================
-WITH period_sales AS (
+,
+period_sales_summary AS (
   SELECT 
-    (jsonb_array_elements(items::jsonb)->>'product_id')::uuid as product_id,
-    ((jsonb_array_elements(items::jsonb)->>'quantity')::int) as quantity_sold
+    (item->>'product_id')::uuid as product_id,
+    (item->>'quantity')::int as quantity_sold
   FROM sales_hub_orders o
   CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
   WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
 ),
-purchase_costs AS (
+purchase_costs_summary AS (
   SELECT 
     product_id,
     SUM(purchase_cost_per_unit * quantity) / NULLIF(SUM(quantity), 0) as weighted_avg_cost
@@ -213,33 +214,41 @@ SELECT
   (SELECT end_date FROM date_params) as period_end,
   (SELECT SUM(total_amount) FROM sales_hub_orders o CROSS JOIN date_params dp 
    WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date) as total_revenue,
-  SUM(quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) as total_cogs,
+  SUM(s.quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) as total_cogs,
   (SELECT SUM(total_amount) FROM sales_hub_orders o CROSS JOIN date_params dp 
    WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date) - 
-   SUM(quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) as gross_profit,
+   SUM(s.quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) as gross_profit,
   ROUND(
-    (SUM(quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) / 
+    (SUM(s.quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) / 
      NULLIF((SELECT SUM(total_amount) FROM sales_hub_orders o CROSS JOIN date_params dp 
              WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date), 0)) * 100, 2
   ) as cogs_percentage,
   CASE 
-    WHEN SUM(quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) > 
+    WHEN SUM(s.quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) > 
          (SELECT SUM(total_amount) FROM sales_hub_orders o CROSS JOIN date_params dp 
           WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date) 
     THEN '🚨 OPERATING AT LOSS'
-    WHEN (SUM(quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) / 
+    WHEN (SUM(s.quantity_sold * COALESCE(pc.weighted_avg_cost, p.cost_price, 0)) / 
           NULLIF((SELECT SUM(total_amount) FROM sales_hub_orders o CROSS JOIN date_params dp 
                   WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date), 0)) > 0.7 
     THEN '⚠️ HIGH COGS - Check pricing'
     ELSE '✅ Healthy profitability'
   END as status
-FROM period_sales s
-LEFT JOIN purchase_costs pc ON pc.product_id = s.product_id
+FROM period_sales_summary s
+LEFT JOIN purchase_costs_summary pc ON pc.product_id = s.product_id
 LEFT JOIN products p ON p.id = s.product_id;
 
 -- =====================================================
 -- Step 7: Products Missing Cost Data
 -- =====================================================
+,
+sold_products_list AS (
+  SELECT DISTINCT (item->>'product_id')::uuid as product_id
+  FROM sales_hub_orders o
+  CROSS JOIN date_params dp
+  CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) as item
+  WHERE DATE(o.created_at) BETWEEN dp.start_date AND dp.end_date
+)
 SELECT 
   '⚠️ PRODUCTS WITHOUT PURCHASE COST DATA' as section,
   p.id,
@@ -260,12 +269,7 @@ SELECT
     ELSE '❌ No purchase history'
   END as history_status
 FROM products p
-CROSS JOIN date_params dp
-WHERE p.id IN (
-  SELECT DISTINCT (jsonb_array_elements(items::jsonb)->>'product_id')::uuid
-  FROM sales_hub_orders
-  WHERE DATE(created_at) BETWEEN dp.start_date AND dp.end_date
-);
+JOIN sold_products_list sp ON sp.product_id = p.id;
 
 
 SELECT '
