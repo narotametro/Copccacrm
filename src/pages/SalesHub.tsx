@@ -3771,6 +3771,7 @@ const SalesHub: React.FC = () => {
       // ============================================
       console.log('🔍 Validating stock availability for warehouse:', selectedWarehouse);
       
+      // Simplified stock validation - check product stock regardless of warehouse
       const stockErrors: Array<{
         productName: string;
         sku: string;
@@ -3780,42 +3781,26 @@ const SalesHub: React.FC = () => {
         available: number;
       }> = [];
 
-      // Get selected warehouse name
+      // Get selected warehouse name for display
       const selectedLocation = locations.find(loc => loc.id === selectedWarehouse);
-      const warehouseName = selectedLocation ? selectedLocation.name : 'Unknown';
+      const warehouseName = selectedLocation ? selectedLocation.name : 'Main Store';
 
-      // Check each cart item against warehouse stock
+      // Check each cart item against product stock
       for (const cartItem of cart) {
-        // Query the actual product stock at the selected warehouse
-        const { data: productAtWarehouse, error } = await supabase
-          .from('products')
-          .select('id, name, sku, stock_quantity, brands(name)')
-          .eq('id', cartItem.product.id)
-          .eq('location_id', selectedWarehouse)
-          .single();
-
-        if (error || !productAtWarehouse) {
-          // Product doesn't exist at this warehouse
+        // Use the product data we already have in cart (from optimistic cache)
+        const availableStock = cartItem.product.stock_quantity || 0;
+        
+        if (availableStock < cartItem.quantity) {
+          // Insufficient stock
           stockErrors.push({
             productName: cartItem.product.name,
             sku: cartItem.product.sku || 'N/A',
             brand: cartItem.product.brands?.name || 'N/A',
             warehouse: warehouseName,
             needed: cartItem.quantity,
-            available: 0
+            available: availableStock
           });
-          console.warn(`❌ Product "${cartItem.product.name}" not found at warehouse "${warehouseName}"`);
-        } else if (productAtWarehouse.stock_quantity < cartItem.quantity) {
-          // Insufficient stock at this warehouse
-          stockErrors.push({
-            productName: productAtWarehouse.name,
-            sku: productAtWarehouse.sku || 'N/A',
-            brand: (productAtWarehouse.brands as any)?.name || 'N/A',
-            warehouse: warehouseName,
-            needed: cartItem.quantity,
-            available: productAtWarehouse.stock_quantity || 0
-          });
-          console.warn(`❌ Insufficient stock for "${productAtWarehouse.name}" at "${warehouseName}": need ${cartItem.quantity}, have ${productAtWarehouse.stock_quantity}`);
+          console.warn(`❌ Insufficient stock for "${cartItem.product.name}": need ${cartItem.quantity}, have ${availableStock}`);
         }
       }
 
@@ -3824,7 +3809,7 @@ const SalesHub: React.FC = () => {
         console.error('🚫 Cannot complete order - stock validation failed');
         setStockValidationErrors(stockErrors);
         setShowStockValidationModal(true);
-        toast.error(`${stockErrors.length} product${stockErrors.length > 1 ? 's' : ''} unavailable at ${warehouseName}`, { duration: 5000 });
+        toast.error(`${stockErrors.length} product${stockErrors.length > 1 ? 's' : ''} have insufficient stock`, { duration: 5000 });
         return; // STOP checkout process
       }
 
