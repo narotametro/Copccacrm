@@ -54,6 +54,18 @@ const Dashboard = () => {
     return currentMonth;
   });
   
+  // Date range filter state (for custom date tracking)
+  const [startDate, setStartDate] = useState<string>(() => {
+    // Default to start of current month
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    // Default to today
+    return new Date().toISOString().split('T')[0];
+  });
+  const [useCustomDateRange, setUseCustomDateRange] = useState<boolean>(false);
+  
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedDateSales, setSelectedDateSales] = useState<number>(0);
@@ -140,13 +152,21 @@ const Dashboard = () => {
 
   // Calculate filtered revenue by period
   const filteredRevenue = useMemo(() => {
-    if (revenuePeriod === 'all') return totalRevenue;
+    if (revenuePeriod === 'all' && !useCustomDateRange) return totalRevenue;
 
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date;
+    let filterStartDate: Date;
+    let filterEndDate: Date;
 
-    switch (revenuePeriod) {
+    // Use custom date range if enabled
+    if (useCustomDateRange) {
+      filterStartDate = new Date(startDate);
+      filterStartDate.setHours(0, 0, 0, 0);
+      filterEndDate = new Date(endDate);
+      filterEndDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use period dropdown
+      switch (revenuePeriod) {
       case 'january':
       case 'february':
       case 'march':
@@ -159,48 +179,49 @@ const Dashboard = () => {
       case 'october':
       case 'november':
       case 'december':
-        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-        const monthIndex = monthNames.indexOf(revenuePeriod);
-        startDate = new Date(now.getFullYear(), monthIndex, 1);
-        endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
-        break;
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthIndex = monthNames.indexOf(revenuePeriod);
+          filterStartDate = new Date(now.getFullYear(), monthIndex, 1);
+          filterEndDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
+          break;
 
-      case 'q1':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
-        break;
+        case 'q1':
+          filterStartDate = new Date(now.getFullYear(), 0, 1);
+          filterEndDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
+          break;
 
-      case 'q2':
-        startDate = new Date(now.getFullYear(), 3, 1);
-        endDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
-        break;
+        case 'q2':
+          filterStartDate = new Date(now.getFullYear(), 3, 1);
+          filterEndDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
+          break;
 
-      case 'q3':
-        startDate = new Date(now.getFullYear(), 6, 1);
-        endDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
-        break;
+        case 'q3':
+          filterStartDate = new Date(now.getFullYear(), 6, 1);
+          filterEndDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
+          break;
 
-      case 'q4':
-        startDate = new Date(now.getFullYear(), 9, 1);
-        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-        break;
+        case 'q4':
+          filterStartDate = new Date(now.getFullYear(), 9, 1);
+          filterEndDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+          break;
 
-      case '6months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        endDate = now;
-        break;
+        case '6months':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+          filterEndDate = now;
+          break;
 
-      case 'annual':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-        break;
+        case 'annual':
+          filterStartDate = new Date(now.getFullYear(), 0, 1);
+          filterEndDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+          break;
 
-      default:
-        return totalRevenue;
+        default:
+          return totalRevenue;
+      }
     }
 
-    const startTime = startDate.getTime();
-    const endTime = endDate.getTime();
+    const startTime = filterStartDate.getTime();
+    const endTime = filterEndDate.getTime();
 
     const filteredOrders = salesHubOrders.filter(order => {
       const createdTime = new Date(order.created_at).getTime();
@@ -210,17 +231,25 @@ const Dashboard = () => {
     const ordersRev = filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
     return ordersRev;
-  }, [revenuePeriod, totalRevenue, salesHubOrders]);
+  }, [revenuePeriod, totalRevenue, salesHubOrders, useCustomDateRange, startDate, endDate]);
 
   // Calculate filtered expenses by period
   const filteredExpenses = useMemo(() => {
-    if (revenuePeriod === 'all') return totalExpenses;
+    if (revenuePeriod === 'all' && !useCustomDateRange) return totalExpenses;
 
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date;
+    let filterStartDate: Date;
+    let filterEndDate: Date;
 
-    switch (revenuePeriod) {
+    // Use custom date range if enabled
+    if (useCustomDateRange) {
+      filterStartDate = new Date(startDate);
+      filterStartDate.setHours(0, 0, 0, 0);
+      filterEndDate = new Date(endDate);
+      filterEndDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use period dropdown
+      switch (revenuePeriod) {
       case 'january':
       case 'february':
       case 'march':
@@ -233,48 +262,49 @@ const Dashboard = () => {
       case 'october':
       case 'november':
       case 'december':
-        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-        const monthIndex = monthNames.indexOf(revenuePeriod);
-        startDate = new Date(now.getFullYear(), monthIndex, 1);
-        endDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
-        break;
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthIndex = monthNames.indexOf(revenuePeriod);
+          filterStartDate = new Date(now.getFullYear(), monthIndex, 1);
+          filterEndDate = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59);
+          break;
 
-      case 'q1':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
-        break;
+        case 'q1':
+          filterStartDate = new Date(now.getFullYear(), 0, 1);
+          filterEndDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59);
+          break;
 
-      case 'q2':
-        startDate = new Date(now.getFullYear(), 3, 1);
-        endDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
-        break;
+        case 'q2':
+          filterStartDate = new Date(now.getFullYear(), 3, 1);
+          filterEndDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59);
+          break;
 
-      case 'q3':
-        startDate = new Date(now.getFullYear(), 6, 1);
-        endDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
-        break;
+        case 'q3':
+          filterStartDate = new Date(now.getFullYear(), 6, 1);
+          filterEndDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59);
+          break;
 
-      case 'q4':
-        startDate = new Date(now.getFullYear(), 9, 1);
-        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-        break;
+        case 'q4':
+          filterStartDate = new Date(now.getFullYear(), 9, 1);
+          filterEndDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+          break;
 
-      case '6months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        endDate = now;
-        break;
+        case '6months':
+          filterStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+          filterEndDate = now;
+          break;
 
-      case 'annual':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
-        break;
+        case 'annual':
+          filterStartDate = new Date(now.getFullYear(), 0, 1);
+          filterEndDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59);
+          break;
 
-      default:
-        return totalExpenses;
+        default:
+          return totalExpenses;
+      }
     }
 
-    const startTime = startDate.getTime();
-    const endTime = endDate.getTime();
+    const startTime = filterStartDate.getTime();
+    const endTime = filterEndDate.getTime();
 
     const filteredExpensesData = expenses.filter(exp => {
       const expenseTime = new Date(exp.expense_date || exp.created_at).getTime();
@@ -282,7 +312,7 @@ const Dashboard = () => {
     });
 
     return filteredExpensesData.reduce((sum, exp) => sum + (exp.amount || 0), 0);
-  }, [revenuePeriod, totalExpenses, expenses]);
+  }, [revenuePeriod, totalExpenses, expenses, useCustomDateRange, startDate, endDate]);
 
   // Calculate filtered profit
   const filteredProfit = useMemo(() => {
@@ -647,37 +677,85 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-              <select
-                value={revenuePeriod}
-                onChange={(e) => setRevenuePeriod(e.target.value)}
-                className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="all">All Time</option>
-                <optgroup label="Monthly">
-                  <option value="january">January</option>
-                  <option value="february">February</option>
-                  <option value="march">March</option>
-                  <option value="april">April</option>
-                  <option value="may">May</option>
-                  <option value="june">June</option>
-                  <option value="july">July</option>
-                  <option value="august">August</option>
-                  <option value="september">September</option>
-                  <option value="october">October</option>
-                  <option value="november">November</option>
-                  <option value="december">December</option>
-                </optgroup>
-                <optgroup label="Quarterly">
-                  <option value="q1">Q1 (Jan-Mar)</option>
-                  <option value="q2">Q2 (Apr-Jun)</option>
-                  <option value="q3">Q3 (Jul-Sep)</option>
-                  <option value="q4">Q4 (Oct-Dec)</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="6months">Last 6 Months</option>
-                  <option value="annual">Annual (This Year)</option>
-                </optgroup>
-              </select>
+              
+              {/* Toggle between Period and Custom Date Range */}
+              <div className="flex items-center gap-2 mb-1">
+                <button
+                  onClick={() => setUseCustomDateRange(false)}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    !useCustomDateRange 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Period
+                </button>
+                <button
+                  onClick={() => setUseCustomDateRange(true)}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    useCustomDateRange 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Custom Dates
+                </button>
+              </div>
+              
+              {!useCustomDateRange ? (
+                <select
+                  value={revenuePeriod}
+                  onChange={(e) => setRevenuePeriod(e.target.value)}
+                  className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="all">All Time</option>
+                  <optgroup label="Monthly">
+                    <option value="january">January</option>
+                    <option value="february">February</option>
+                    <option value="march">March</option>
+                    <option value="april">April</option>
+                    <option value="may">May</option>
+                    <option value="june">June</option>
+                    <option value="july">July</option>
+                    <option value="august">August</option>
+                    <option value="september">September</option>
+                    <option value="october">October</option>
+                    <option value="november">November</option>
+                    <option value="december">December</option>
+                  </optgroup>
+                  <optgroup label="Quarterly">
+                    <option value="q1">Q1 (Jan-Mar)</option>
+                    <option value="q2">Q2 (Apr-Jun)</option>
+                    <option value="q3">Q3 (Jul-Sep)</option>
+                    <option value="q4">Q4 (Oct-Dec)</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="6months">Last 6 Months</option>
+                    <option value="annual">Annual (This Year)</option>
+                  </optgroup>
+                </select>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1">
+                    <label className="text-xs text-slate-600 w-10">From:</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <label className="text-xs text-slate-600 w-10">To:</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -704,14 +782,22 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="text-xs text-slate-500">
-                Period: {revenuePeriod === 'all' ? 'All Time' : 
-                  revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
-                  revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
-                  revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
-                  revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
-                  revenuePeriod === '6months' ? 'Last 6 Months' :
-                  revenuePeriod === 'annual' ? 'Annual (This Year)' :
-                  revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
+                {useCustomDateRange ? (
+                  <>
+                    Period: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                  </>
+                ) : (
+                  <>
+                    Period: {revenuePeriod === 'all' ? 'All Time' : 
+                      revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
+                      revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
+                      revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
+                      revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
+                      revenuePeriod === '6months' ? 'Last 6 Months' :
+                      revenuePeriod === 'annual' ? 'Annual (This Year)' :
+                      revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -743,14 +829,22 @@ const Dashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-600">Total Profit</p>
                     <p className={`text-lg font-bold break-words ${
-                      filteredProfit > 0 ? 'text-emerald-600' : 
-                      filteredProfit < 0 ? 'text-orange-600' : 
-                      'text-slate-900'
-                    }`}>{formatCurrency(filteredProfit)}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="text-xs text-slate-500">
+                {useCustomDateRange ? (
+                  <>
+                    Period: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                  </>
+                ) : (
+                  <>
+                    Period: {revenuePeriod === 'all' ? 'All Time' : 
+                      revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
+                      revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
+                      revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
+                      revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
+                      revenuePeriod === '6months' ? 'Last 6 Months' :
+                      revenuePeriod === 'annual' ? 'Annual (This Year)' :
+                      revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
+                  </>
+                
                 Period: {revenuePeriod === 'all' ? 'All Time' : 
                   revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
                   revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
