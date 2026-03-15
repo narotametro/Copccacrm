@@ -2467,7 +2467,17 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 const SalesHub: React.FC = () => {
   const { formatCurrency } = useCurrency();
   const user = useAuthStore((state) => state.user);
-  const [activeSubsection, setActiveSubsection] = useState<Subsection>('products');
+  
+  // Restore active subsection from localStorage on mount (for page refresh persistence)
+  const [activeSubsection, setActiveSubsection] = useState<Subsection>(() => {
+    const saved = localStorage.getItem('salesHubCurrentSubsection');
+    const validSubsections: Subsection[] = ['products', 'carts-invoice', 'order-history', 'inventory-status', 'customer-buying-patterns', 'expenses', 'product-stocking-history', 'stock-transfers'];
+    if (saved && validSubsections.includes(saved as Subsection)) {
+      console.log('🔄 Restoring subsection from page refresh:', saved);
+      return saved as Subsection;
+    }
+    return 'products';
+  });
   
   // Instant loading with optimistic cache - zero spinners
   const { data: rawProducts, reload: reloadProducts } = useOptimisticCache<Product>({
@@ -2877,6 +2887,7 @@ const SalesHub: React.FC = () => {
 
   const loadOrderHistory = useCallback(async () => {
     try {
+      console.log('🔄 Loading order history from database...');
       const { data, error } = await supabase
         .from('sales_hub_orders')
         .select(`
@@ -2890,12 +2901,24 @@ const SalesHub: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Order history query error:', error);
+        throw error;
+      }
 
-      setOrderHistory(data || []);
       console.log(`✅ Loaded ${data?.length || 0} orders from database`);
+      if (data && data.length > 0) {
+        console.log('📋 First order:', {
+          invoice: data[0].order_number,
+          customer: data[0].sales_hub_customers?.name,
+          total: data[0].total_amount,
+          status: data[0].status,
+          created: data[0].created_at
+        });
+      }
+      setOrderHistory(data || []);
     } catch (error: unknown) {
-      console.error('Error loading order history:', error);
+      console.error('❌ Error loading order history:', error);
       toast.error('Failed to load order history');
       setOrderHistory([]);
     }
@@ -3450,25 +3473,32 @@ const SalesHub: React.FC = () => {
     }
   }, [activeSubsection, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load user subscription plan on component mount
+  // Load user subscription plan and order history on component mount
   useEffect(() => {
     loadUserSubscriptionPlan();
+    loadOrderHistory(); // Load orders immediately on mount
     // Products loaded instantly via optimistic cache - no need to pre-load
-  }, []);
+  }, [loadUserSubscriptionPlan, loadOrderHistory]);
 
   // Check for navigation from floating button or saved subsection
   useEffect(() => {
     const targetSubsection = localStorage.getItem('salesHubActiveSubsection');
     if (targetSubsection) {
-      // Restore any valid subsection, not just 'products'
+      // Restore any valid subsection from floating button navigation
       const validSubsections: Subsection[] = ['products', 'carts-invoice', 'order-history', 'inventory-status', 'customer-buying-patterns', 'expenses', 'product-stocking-history', 'stock-transfers'];
       if (validSubsections.includes(targetSubsection as Subsection)) {
-        console.log('🔵 [SALES HUB] Restoring subsection from localStorage:', targetSubsection);
+        console.log('🔵 [SALES HUB] Restoring subsection from floating button:', targetSubsection);
         setActiveSubsection(targetSubsection as Subsection);
       }
-      localStorage.removeItem('salesHubActiveSubsection'); // Clean up
+      localStorage.removeItem('salesHubActiveSubsection'); // Clean up floating button flag
     }
   }, []);
+
+  // Save current subsection to localStorage for page refresh persistence
+  useEffect(() => {
+    localStorage.setItem('salesHubCurrentSubsection', activeSubsection);
+    console.log('💾 Saved current subsection:', activeSubsection);
+  }, [activeSubsection]);
 
   // DEBUG: Track subsection changes
   useEffect(() => {
