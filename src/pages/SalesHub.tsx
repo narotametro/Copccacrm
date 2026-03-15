@@ -3478,7 +3478,8 @@ const SalesHub: React.FC = () => {
     loadUserSubscriptionPlan();
     loadOrderHistory(); // Load orders immediately on mount
     // Products loaded instantly via optimistic cache - no need to pre-load
-  }, [loadUserSubscriptionPlan, loadOrderHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   // Check for navigation from floating button or saved subsection
   useEffect(() => {
