@@ -912,7 +912,7 @@ const OrderDetailsModal = ({
                     <tr key={index}>
                       <td className="px-4 py-2 text-sm">
                         <div>
-                          <p className="font-medium">{item.product_name}</p>
+                          <p className="font-medium">{item.name}</p>
                           {item.sku && <p className="text-gray-500 text-xs">SKU: {item.sku}</p>}
                         </div>
                       </td>
