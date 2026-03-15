@@ -42,6 +42,7 @@ interface Product {
   name: string;
   sku: string;
   price: number;
+  cost_price?: number;
   stock_quantity: number;
   min_stock_level?: number;
   brand_id?: string;
@@ -2787,6 +2788,7 @@ const SalesHub: React.FC = () => {
     name: '',
     sku: '',
     price: '' as number | '',
+    cost_price: '' as number | '',
     stock_quantity: '' as number | '',
     min_stock_level: '' as number | '',
     brand_id: '',
@@ -4692,13 +4694,15 @@ const SalesHub: React.FC = () => {
         }
       }
 
-      // Insert new product with location_id
+      // Insert new product with location_id and cost_price
+      const costPrice = typeof newProductData.cost_price === 'string' ? parseFloat(newProductData.cost_price) || null : newProductData.cost_price || null;
       const { data: newProduct, error: insertError } = await supabase
         .from('products')
         .insert({
           name: newProductData.name,
           sku: newProductData.sku,
           price: price,
+          cost_price: costPrice,
           stock_quantity: typeof newProductData.stock_quantity === 'string' ? parseInt(newProductData.stock_quantity) || 0 : newProductData.stock_quantity,
           min_stock_level: typeof newProductData.min_stock_level === 'string' ? parseInt(newProductData.min_stock_level) || 0 : newProductData.min_stock_level,
           brand_id: newProductData.brand_id || null,
@@ -4720,6 +4724,9 @@ const SalesHub: React.FC = () => {
       // Add initial stock history entry if stock_quantity > 0
       const initialStock = typeof newProductData.stock_quantity === 'string' ? parseInt(newProductData.stock_quantity) || 0 : newProductData.stock_quantity;
       if (initialStock > 0) {
+        const purchaseCostPerUnit = costPrice || null;
+        const purchaseCostTotal = purchaseCostPerUnit ? purchaseCostPerUnit * initialStock : null;
+        
         const { error: historyError } = await supabase
           .from('stock_history')
           .insert({
@@ -4731,7 +4738,9 @@ const SalesHub: React.FC = () => {
             reference_type: 'product_creation',
             reference_id: `PRODUCT-${newProduct.id}-${Date.now()}`,
             created_by: user.id,
-            notes: `Initial stock of ${initialStock} units added when product "${newProductData.name}" was created`
+            purchase_cost_per_unit: purchaseCostPerUnit,
+            purchase_cost_total: purchaseCostTotal,
+            notes: purchaseCostPerUnit ? `Initial stock of ${initialStock} units added when product "${newProductData.name}" was created. Purchase cost: TSh ${purchaseCostPerUnit.toLocaleString()}/unit` : `Initial stock of ${initialStock} units added when product "${newProductData.name}" was created`
           });
 
         if (historyError) {
@@ -4752,6 +4761,7 @@ const SalesHub: React.FC = () => {
         name: '',
         sku: '',
         price: '',
+        cost_price: '',
         stock_quantity: '',
         min_stock_level: '',
         brand_id: '',
@@ -8644,6 +8654,7 @@ const CustomerBuyingPatternsSection = () => {
                   name: '',
                   sku: '',
                   price: '',
+                  cost_price: '',
                   stock_quantity: '',
                   min_stock_level: '',
                   brand_id: '',
@@ -8735,6 +8746,24 @@ const CustomerBuyingPatternsSection = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Purchase Cost (TZS)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newProductData.cost_price}
+                  onChange={(e) => setNewProductData(prev => ({ ...prev, cost_price: e.target.value === '' ? '' : parseFloat(e.target.value) || '' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-slate-500 mt-1">Optional: Cost of goods for COGS tracking</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Initial Stock *
                 </label>
                 <input
@@ -8746,9 +8775,7 @@ const CustomerBuyingPatternsSection = () => {
                   placeholder="0"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Reorder Level
@@ -8762,34 +8789,34 @@ const CustomerBuyingPatternsSection = () => {
                   placeholder="0"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={newProductData.category_id}
-                    onChange={(e) => setNewProductData(prev => ({ ...prev, category_id: e.target.value }))}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddCategoryModal(true)}
-                    className="px-3"
-                  >
-                    +
-                  </Button>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={newProductData.category_id}
+                  onChange={(e) => setNewProductData(prev => ({ ...prev, category_id: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddCategoryModal(true)}
+                  className="px-3"
+                >
+                  +
+                </Button>
               </div>
             </div>
 
@@ -8869,6 +8896,7 @@ const CustomerBuyingPatternsSection = () => {
                     name: '',
                     sku: '',
                     price: '',
+                    cost_price: '',
                     stock_quantity: '',
                     min_stock_level: '',
                     brand_id: '',
