@@ -396,21 +396,40 @@ const Dashboard = () => {
         const sales = dateOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         setSelectedDateSales(sales);
         
-        // Calculate COGS from order items
+        // Calculate COGS from order items using weighted average from stock history
         let cogs = 0;
         for (const order of dateOrders) {
           if (order.items && Array.isArray(order.items)) {
             for (const item of order.items) {
-              // Fetch product cost_price
-              const { data: product } = await supabase
-                .from('products')
-                .select('cost_price')
-                .eq('id', item.product_id)
-                .single();
+              // Try to get weighted average purchase cost from stock_history
+              const { data: stockHistory } = await supabase
+                .from('stock_history')
+                .select('purchase_cost_per_unit, quantity')
+                .eq('product_id', item.product_id)
+                .eq('action', 'restock')
+                .not('purchase_cost_per_unit', 'is', null);
               
-              if (product && product.cost_price) {
-                cogs += item.quantity * product.cost_price;
+              let costPerUnit = 0;
+              
+              if (stockHistory && stockHistory.length > 0) {
+                // Calculate weighted average cost
+                const totalCost = stockHistory.reduce((sum, record) => 
+                  sum + (record.purchase_cost_per_unit || 0) * record.quantity, 0);
+                const totalQuantity = stockHistory.reduce((sum, record) => 
+                  sum + record.quantity, 0);
+                costPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+              } else {
+                // Fallback to product cost_price if no stock history
+                const { data: product } = await supabase
+                  .from('products')
+                  .select('cost_price')
+                  .eq('id', item.product_id)
+                  .single();
+                
+                costPerUnit = product?.cost_price || 0;
               }
+              
+              cogs += item.quantity * costPerUnit;
             }
           }
         }
@@ -438,20 +457,40 @@ const Dashboard = () => {
         if (!prevError && prevOrders) {
           const prevSales = prevOrders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
           
-          // Calculate previous day COGS
+          // Calculate previous day COGS using weighted average from stock history
           let prevCogs = 0;
           for (const order of prevOrders) {
             if (order.items && Array.isArray(order.items)) {
               for (const item of order.items) {
-                const { data: product } = await supabase
-                  .from('products')
-                  .select('cost_price')
-                  .eq('id', item.product_id)
-                  .single();
+                // Try to get weighted average purchase cost from stock_history
+                const { data: stockHistory } = await supabase
+                  .from('stock_history')
+                  .select('purchase_cost_per_unit, quantity')
+                  .eq('product_id', item.product_id)
+                  .eq('action', 'restock')
+                  .not('purchase_cost_per_unit', 'is', null);
                 
-                if (product && product.cost_price) {
-                  prevCogs += item.quantity * product.cost_price;
+                let costPerUnit = 0;
+                
+                if (stockHistory && stockHistory.length > 0) {
+                  // Calculate weighted average cost
+                  const totalCost = stockHistory.reduce((sum, record) => 
+                    sum + (record.purchase_cost_per_unit || 0) * record.quantity, 0);
+                  const totalQuantity = stockHistory.reduce((sum, record) => 
+                    sum + record.quantity, 0);
+                  costPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+                } else {
+                  // Fallback to product cost_price if no stock history
+                  const { data: product } = await supabase
+                    .from('products')
+                    .select('cost_price')
+                    .eq('id', item.product_id)
+                    .single();
+                  
+                  costPerUnit = product?.cost_price || 0;
                 }
+                
+                prevCogs += item.quantity * costPerUnit;
               }
             }
           }
