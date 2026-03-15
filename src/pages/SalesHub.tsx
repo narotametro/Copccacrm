@@ -2799,6 +2799,12 @@ const SalesHub: React.FC = () => {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string>('');
+  
+  // COGS tracking preference (persistent across sessions)
+  const [cogsTrackingEnabled, setCogsTrackingEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('cogsTrackingEnabled');
+    return saved === 'true';
+  });
 
   // Edit product modal state
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -4345,6 +4351,15 @@ const SalesHub: React.FC = () => {
       toast.error('Please select a location for restocking');
       return;
     }
+    
+    // Validate purchase cost if COGS tracking is enabled
+    if (cogsTrackingEnabled) {
+      const purchaseCost = typeof restockPurchaseCost === 'string' ? parseFloat(restockPurchaseCost) || 0 : restockPurchaseCost;
+      if (!purchaseCost || purchaseCost <= 0) {
+        toast.error('Purchase Cost is required when COGS tracking is enabled');
+        return;
+      }
+    }
 
     setIsRestocking(true);
     
@@ -4649,6 +4664,15 @@ const SalesHub: React.FC = () => {
     if (!newProductData.location_id) {
       toast.error('Please select a location for this product');
       return;
+    }
+    
+    // Validate purchase cost if COGS tracking is enabled
+    if (cogsTrackingEnabled) {
+      const costPrice = typeof newProductData.cost_price === 'string' ? parseFloat(newProductData.cost_price) || 0 : newProductData.cost_price;
+      if (!costPrice || costPrice <= 0) {
+        toast.error('Purchase Cost is required when COGS tracking is enabled');
+        return;
+      }
     }
 
     setIsAddingProduct(true);
@@ -8379,16 +8403,19 @@ const CustomerBuyingPatternsSection = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Purchase Cost (Optional)
+                Purchase Cost {cogsTrackingEnabled ? '(TZS) *' : '(Optional)'}
               </label>
               <input
                 type="number"
                 value={restockPurchaseCost}
                 onChange={(e) => setRestockPurchaseCost(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  cogsTrackingEnabled ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                }`}
                 placeholder="Enter cost per unit (for COGS calculation)"
                 min="0"
                 step="0.01"
+                required={cogsTrackingEnabled}
               />
               {restockPurchaseCost && restockQuantity && (
                 <p className="text-xs text-green-600 mt-1">
@@ -8728,6 +8755,27 @@ const CustomerBuyingPatternsSection = () => {
               </div>
             </div>
 
+            {/* COGS Tracking Toggle */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cogsTrackingEnabled}
+                  onChange={(e) => {
+                    setCogsTrackingEnabled(e.target.checked);
+                    localStorage.setItem('cogsTrackingEnabled', e.target.checked.toString());
+                  }}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-900">📊 Enable COGS Tracking</span>
+              </label>
+              <p className="text-xs text-slate-600 mt-1 ml-6">
+                {cogsTrackingEnabled 
+                  ? '✅ Purchase Cost is now mandatory - ensures accurate profitability tracking'
+                  : 'Purchase Cost is optional - enable to track Cost of Goods Sold'}
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -8746,7 +8794,7 @@ const CustomerBuyingPatternsSection = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Purchase Cost (TZS)
+                  Purchase Cost (TZS) {cogsTrackingEnabled && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="number"
@@ -8754,10 +8802,17 @@ const CustomerBuyingPatternsSection = () => {
                   step="0.01"
                   value={newProductData.cost_price}
                   onChange={(e) => setNewProductData(prev => ({ ...prev, cost_price: e.target.value === '' ? '' : parseFloat(e.target.value) || '' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    cogsTrackingEnabled ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+                  }`}
                   placeholder="0.00"
+                  required={cogsTrackingEnabled}
                 />
-                <p className="text-xs text-slate-500 mt-1">Optional: Cost of goods for COGS tracking</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {cogsTrackingEnabled 
+                    ? '⚠️ Required: Your actual cost per unit from supplier'
+                    : 'Optional: Cost of goods for COGS tracking'}
+                </p>
               </div>
             </div>
 
