@@ -4116,13 +4116,13 @@ const SalesHub: React.FC = () => {
               supabase.from('stock_history').insert({
                 product_id: item.product.id,
                 action: 'pos_sale',
-                quantity_change: -item.quantity,
+                quantity: item.quantity,
                 stock_before: stockBefore,
                 stock_after: stockAfter,
                 location: locationName,
                 reference_type: 'invoice',
                 reference_id: invoiceNumber,
-                performed_by: (await supabase.auth.getUser()).data.user?.id,
+                created_by: (await supabase.auth.getUser()).data.user?.id,
                 notes: `Sale via order ${invoiceNumber} from ${locationName}`
               })
             ]);
@@ -4131,11 +4131,19 @@ const SalesHub: React.FC = () => {
           await Promise.all(stockPromises);
 
           // Refresh order history immediately so user can print invoice
+          console.log('🔄 Refreshing order history after sale completion...');
           await loadOrderHistory();
+          console.log('✅ Order history refreshed successfully');
 
           // Products state will auto-update via useOptimisticCache real-time subscriptions
         } catch (error) {
-          console.error('Error processing order in background:', error);
+          console.error('❌ Error processing order in background:', error);
+          // Still try to refresh order history even if stock update failed
+          try {
+            await loadOrderHistory();
+          } catch (refreshError) {
+            console.error('❌ Failed to refresh order history:', refreshError);
+          }
         }
       })();
     } catch (error) {
@@ -4699,13 +4707,13 @@ const SalesHub: React.FC = () => {
           .from('stock_history')
           .insert({
             product_id: newProduct.id,
-            change_type: 'initial_stock',
-            quantity_change: initialStock,
-            quantity_before: 0,
-            quantity_after: initialStock,
+            action: 'initial_stock',
+            quantity: initialStock,
+            stock_before: 0,
+            stock_after: initialStock,
             reference_type: 'product_creation',
             reference_id: `PRODUCT-${newProduct.id}-${Date.now()}`,
-            performed_by: user.id,
+            created_by: user.id,
             notes: `Initial stock of ${initialStock} units added when product "${newProductData.name}" was created`
           });
 
@@ -7594,13 +7602,13 @@ const CustomerBuyingPatternsSection = () => {
           .select(`
             id,
             product_id,
-            change_type,
-            quantity_change,
-            quantity_before,
-            quantity_after,
+            action,
+            quantity,
+            stock_before,
+            stock_after,
             reference_type,
             reference_id,
-            performed_by,
+            created_by,
             notes,
             created_at,
             products!inner(name, model, sku, brand_id, brands(name))
@@ -7611,7 +7619,7 @@ const CustomerBuyingPatternsSection = () => {
 
         // Apply filters
         if (filters.actionType) {
-          query = query.eq('change_type', filters.actionType);
+          query = query.eq('action', filters.actionType);
         }
         if (filters.referenceType) {
           query = query.eq('reference_type', filters.referenceType);
@@ -7643,13 +7651,13 @@ const CustomerBuyingPatternsSection = () => {
             sku: product?.sku || '',
             brand: product?.brands?.name || '',
             variant: '',
-            action: entry.change_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown',
-            qtyChange: entry.quantity_change || 0,
-            stockBefore: entry.quantity_before || 0,
-            stockAfter: entry.quantity_after || 0,
+            action: entry.action?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown',
+            qtyChange: entry.quantity || 0,
+            stockBefore: entry.stock_before || 0,
+            stockAfter: entry.stock_after || 0,
             location: 'Main Store',
             reference: entry.reference_id || 'N/A',
-            performedBy: entry.performed_by || 'System',
+            performedBy: entry.created_by || 'System',
             customer: undefined,
             referenceType: entry.reference_type
           };
