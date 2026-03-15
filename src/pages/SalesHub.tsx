@@ -3471,12 +3471,11 @@ const SalesHub: React.FC = () => {
       loadCategories();
       loadBrands();
     }
-  }, [activeSubsection, loadOrderHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSubsection]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load user subscription plan and order history on component mount
+  // Load user subscription plan on component mount
   useEffect(() => {
     loadUserSubscriptionPlan();
-    loadOrderHistory(); // Load orders immediately on mount
     // Products loaded instantly via optimistic cache - no need to pre-load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only run once on mount
