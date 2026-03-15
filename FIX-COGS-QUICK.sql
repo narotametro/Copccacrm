@@ -66,15 +66,11 @@ ORDER BY p.name;
 -- =====================================================
 
 SELECT 
-  format(
-    E'-- %s: Selling at %s, currently costing %s (%.0f%%)\nUPDATE products SET cost_price = %s WHERE name = %L;\n',
-    p.name,
-    p.price,
-    COALESCE(p.cost_price::text, 'NULL'),
-    COALESCE((p.cost_price / NULLIF(p.price, 0)) * 100, 0),
-    ROUND(p.price * 0.5, 2),  -- Assumes 50% margin - CHANGE THIS!
-    p.name
-  ) as suggested_update_statement
+  '-- ' || p.name || ': Selling at ' || p.price || ', currently costing ' || 
+  COALESCE(p.cost_price::text, 'NULL') || ' (' || 
+  COALESCE(ROUND((p.cost_price / NULLIF(p.price, 0)) * 100, 0)::text, '0') || '%' || E')\n' ||
+  'UPDATE products SET cost_price = ' || ROUND(p.price * 0.5, 2) || ' WHERE name = ' || quote_literal(p.name) || ';' || E'\n'
+  as suggested_update_statement
 FROM products p
 WHERE p.id IN (
   SELECT DISTINCT (jsonb_array_elements(items::jsonb)->>'product_id')::uuid
