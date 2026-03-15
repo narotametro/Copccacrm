@@ -11,7 +11,6 @@ import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/types/database';
 import { useOptimisticCache } from '@/lib/optimisticCache';
 
-type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
 type DealRow = Database['public']['Tables']['deals']['Row'];
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
 type ExpenseRow = {
@@ -73,16 +72,6 @@ const Dashboard = () => {
   const [showProfit, setShowProfit] = useState<boolean>(true);
   
   // Optimistic caches for instant loading
-  const { data: invoices } = useOptimisticCache<InvoiceRow>({
-    table: 'invoices',
-    query: 'total_amount, status, created_at',
-    queryFilters: user?.id ? [
-      { column: 'status', operator: 'eq', value: 'paid' },
-      { column: 'created_by', operator: 'eq', value: user.id }
-    ] : [],
-    orderBy: { column: 'created_at', ascending: false },
-  });
-
   const { data: salesHubOrders } = useOptimisticCache<SalesHubOrderRow>({
     table: 'sales_hub_orders',
     query: 'total_amount, created_at',
@@ -138,12 +127,11 @@ const Dashboard = () => {
     orderBy: { column: 'created_at', ascending: false },
   });
 
-  // Calculate total revenue from cached data
+  // Calculate total revenue from Sales Hub orders only (matches Product Analysis)
   const totalRevenue = useMemo(() => {
-    const invoiceRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
     const ordersRevenue = salesHubOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-    return invoiceRevenue + ordersRevenue;
-  }, [invoices, salesHubOrders]);
+    return ordersRevenue;
+  }, [salesHubOrders]);
 
   // Calculate total expenses from cached data
   const totalExpenses = useMemo(() => {
@@ -214,21 +202,15 @@ const Dashboard = () => {
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
 
-    const filteredInvoices = invoices.filter(inv => {
-      const createdTime = new Date(inv.created_at).getTime();
-      return createdTime >= startTime && createdTime <= endTime;
-    });
-
     const filteredOrders = salesHubOrders.filter(order => {
       const createdTime = new Date(order.created_at).getTime();
       return createdTime >= startTime && createdTime <= endTime;
     });
 
-    const invoiceRev = filteredInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
     const ordersRev = filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
-    return invoiceRev + ordersRev;
-  }, [revenuePeriod, totalRevenue, invoices, salesHubOrders]);
+    return ordersRev;
+  }, [revenuePeriod, totalRevenue, salesHubOrders]);
 
   // Calculate filtered expenses by period
   const filteredExpenses = useMemo(() => {
