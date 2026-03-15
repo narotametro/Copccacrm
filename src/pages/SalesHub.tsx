@@ -2574,7 +2574,7 @@ const SalesHub: React.FC = () => {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('main-store');
 
   // VAT type selection state
-  const [vatType, setVatType] = useState<'inclusive' | 'exclusive'>('inclusive');
+  const [vatType, setVatType] = useState<'inclusive' | 'exclusive'>('exclusive');
 
   // Tax rate constant (18% VAT for Tanzania)
   const taxRate = 0.18;
