@@ -29,8 +29,10 @@ import {
   AlertCircle,
   Phone,
   CreditCard,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useLoadingStore } from '@/store/loadingStore';
 import { formatName, formatRole, formatEmail } from '@/lib/textFormat';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { TrialBanner } from '@/components/ui/FeatureGate';
@@ -59,6 +61,7 @@ export const AppLayout: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
   const { getPlanName, isOnTrial, getTrialDaysRemaining } = useSubscription();
+  const isLoading = useLoadingStore((state) => state.isLoading);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -377,6 +380,14 @@ export const AppLayout: React.FC = () => {
                   className="input flex-1 max-w-md animate-scale-in"
                   autoFocus
                 />
+              )}
+
+              {/* Global Loading Indicator */}
+              {isLoading && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg animate-scale-in">
+                  <Loader2 size={16} className="text-blue-600 animate-spin" />
+                  <span className="text-xs font-medium text-blue-900">Updating...</span>
+                </div>
               )}
 
             </div>

@@ -11,7 +11,33 @@ const isConfigured = SUPABASE_URL && SUPABASE_ANON_KEY &&
 
 // Create Supabase client or error-throwing proxy if not configured
 export const supabase: SupabaseClient = isConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        // Keep users logged in - prevent auto-logout
+        autoRefreshToken: true, // Automatically refresh expired tokens
+        persistSession: true, // Persist session to localStorage
+        detectSessionInUrl: true, // Handle OAuth redirects
+        // Storage uses localStorage by default (perfect for persistent sessions)
+        storage: {
+          getItem: (key) => {
+            if (typeof window !== 'undefined') {
+              return window.localStorage.getItem(key);
+            }
+            return null;
+          },
+          setItem: (key, value) => {
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(key, value);
+            }
+          },
+          removeItem: (key) => {
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem(key);
+            }
+          },
+        },
+      },
+    })
   : new Proxy({}, {
       get: () => {
         throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file. Get these from https://supabase.com → Your Project → Settings → API');
