@@ -14,19 +14,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('rememberedEmail'));
   const navigate = useNavigate();
-  const location = useLocation();
   const navigatedRef = useRef(false);
 
   useEffect(() => {
     if (user && !navigatedRef.current) {
       navigatedRef.current = true;
-      // Get the intended destination from location state or localStorage
-      const from = location.state?.from || localStorage.getItem('redirectAfterLogin') || '/app/dashboard';
-      // Clear the stored redirect path
-      localStorage.removeItem('redirectAfterLogin');
-      navigate(from, { replace: true });
+      // Always go to dashboard after login - no stored redirects
+      // This prevents unwanted navigation loops and page shifting
+      navigate('/app/dashboard', { replace: true });
     }
-  }, [user, navigate, location]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

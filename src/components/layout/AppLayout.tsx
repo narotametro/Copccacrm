@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import type { Database } from '@/lib/types/database';
 import {
   LayoutDashboard,
@@ -58,6 +58,7 @@ const menuItems = [
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
   const { getPlanName, isOnTrial, getTrialDaysRemaining } = useSubscription();
@@ -275,9 +276,11 @@ export const AppLayout: React.FC = () => {
   }, []);
 
   const handleSignOut = async () => {
-    // Use Supabase directly for sign out
-    await import('@/lib/supabase').then(({ supabase }) => supabase.auth.signOut());
-    window.location.href = '/login';
+    // Sign out through Zustand store
+    const { signOut } = useAuthStore.getState();
+    await signOut();
+    // Navigate to login page (React Router way - no hard refresh)
+    navigate('/login');
   };
 
   return (

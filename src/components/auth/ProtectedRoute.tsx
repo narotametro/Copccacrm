@@ -14,16 +14,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
+  const initialized = useAuthStore((state) => state.initialized);
   const location = useLocation();
 
   const roleHierarchy = { admin: 3, manager: 2, user: 1 } as const;
   const effectiveRole = (profile?.role || user?.user_metadata?.role || 'user') as 'admin' | 'manager' | 'user';
 
-  // INSTANT: No loading check - auth is instantly available from cache
+  // CRITICAL: Wait for auth initialization to complete
+  // Don't redirect users while auth is still loading from localStorage
+  // This prevents page shifting during initial load
+  if (!initialized) {
+    // Auth is still initializing - show nothing (no redirect, no loading spinner)
+    // This happens for a split second while checking localStorage
+    return null;
+  }
+
+  // NOW we can safely check if user is logged in
   if (!user) {
-    // Save the current path before redirecting to login
-    localStorage.setItem('redirectAfterLogin', location.pathname);
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    // User is definitely not logged in - redirect to login
+    // DO NOT save redirect path - causes unwanted navigation loops
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole) {
