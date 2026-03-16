@@ -829,6 +829,14 @@ const Dashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-600">Total Profit</p>
                     <p className={`text-lg font-bold break-words ${
+                      filteredProfit > 0 ? 'text-emerald-600' : 
+                      filteredProfit < 0 ? 'text-orange-600' : 
+                      'text-slate-900'
+                    }`}>{formatCurrency(filteredProfit)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
                 {useCustomDateRange ? (
                   <>
                     Period: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
@@ -844,15 +852,7 @@ const Dashboard = () => {
                       revenuePeriod === 'annual' ? 'Annual (This Year)' :
                       revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
                   </>
-                
-                Period: {revenuePeriod === 'all' ? 'All Time' : 
-                  revenuePeriod === 'q1' ? 'Q1 (Jan-Mar)' :
-                  revenuePeriod === 'q2' ? 'Q2 (Apr-Jun)' :
-                  revenuePeriod === 'q3' ? 'Q3 (Jul-Sep)' :
-                  revenuePeriod === 'q4' ? 'Q4 (Oct-Dec)' :
-                  revenuePeriod === '6months' ? 'Last 6 Months' :
-                  revenuePeriod === 'annual' ? 'Annual (This Year)' :
-                  revenuePeriod.charAt(0).toUpperCase() + revenuePeriod.slice(1)}
+                )}
               </div>
             </div>
           </Card>
