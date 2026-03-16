@@ -4905,10 +4905,6 @@ const SalesHub: React.FC = () => {
   };
 
   const handleDeleteProduct = async (product: Product) => {
-    if (!confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
-      return;
-    }
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -4916,7 +4912,59 @@ const SalesHub: React.FC = () => {
         return;
       }
 
-      // Delete product
+      // Check if product is used in any orders
+      const { data: ordersWithProduct, error: checkError } = await supabase
+        .from('sales_hub_orders')
+        .select('id, order_number, created_at')
+        .contains('items', [{ product_id: product.id }])
+        .limit(5);
+
+      if (checkError) {
+        console.error('Error checking product usage:', checkError);
+      }
+
+      const isUsedInOrders = ordersWithProduct && ordersWithProduct.length > 0;
+
+      // Show appropriate confirmation message
+      let confirmMessage = `Are you sure you want to delete "${product.name}"?`;
+      
+      if (isUsedInOrders) {
+        confirmMessage = `⚠️ WARNING: "${product.name}" has been used in ${ordersWithProduct.length}+ order(s).\n\n` +
+          `This product CANNOT be deleted because it would break order history.\n\n` +
+          `Instead, you can:\n` +
+          `• Mark it as out of stock (set stock to 0)\n` +
+          `• Hide it from the products list\n` +
+          `• Update its details if needed\n\n` +
+          `Do you want to mark this product as OUT OF STOCK instead?`;
+      } else {
+        confirmMessage += `\n\nThis action cannot be undone.`;
+      }
+
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      // If product is used in orders, mark as out of stock instead of deleting
+      if (isUsedInOrders) {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ 
+            stock: 0,
+            min_stock_level: 0
+          })
+          .eq('id', product.id);
+
+        if (updateError) {
+          console.error('Error updating product:', updateError);
+          toast.error('Failed to update product. Please try again.');
+          return;
+        }
+
+        toast.success(`"${product.name}" marked as out of stock. It can still be viewed in order history.`);
+        return;
+      }
+
+      // Product not used in orders - safe to delete
       const { error } = await supabase
         .from('products')
         .delete()
@@ -4924,17 +4972,22 @@ const SalesHub: React.FC = () => {
 
       if (error) {
         console.error('Error deleting product:', error);
-        toast.error('Failed to delete product. Please try again.');
+        
+        // Handle specific error codes
+        if (error.code === '23503') {
+          toast.error('Cannot delete: This product is referenced in other records. Try marking it as out of stock instead.');
+        } else if (error.code === '409' || error.message?.includes('409')) {
+          toast.error('Cannot delete: Product is in use. Mark it as out of stock instead.');
+        } else {
+          toast.error('Failed to delete product. Please try again or contact support.');
+        }
         return;
       }
-
-      // Update local state
-      // Products state will auto-update via useOptimisticCache real-time subscriptions
 
       toast.success(`Successfully deleted product: ${product.name}`);
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     }
   };
 
