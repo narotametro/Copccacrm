@@ -17,6 +17,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useLoadingStore } from '@/store/loadingStore';
 
 interface CacheConfig<T> {
   table: string;
@@ -75,6 +76,11 @@ class OptimisticCache<T extends { id: string }> {
       return this.data; // Return cached data
     }
 
+    // Notify global loading system
+    const loadingStore = useLoadingStore.getState();
+    const operationId = `fetch-${this.config.table}-${Date.now()}`;
+    loadingStore.startLoading(operationId);
+
     try {
       let query = supabase
         .from(this.config.table)
@@ -120,12 +126,18 @@ class OptimisticCache<T extends { id: string }> {
       return this.data;
     } catch (error) {
       console.error(`Error fetching ${this.config.table}:`, error);
-      return this.data; // Return stale data on error
-    }
+      return this.data; // Return stale data on error    } finally {
+      // Stop loading indicator
+      const loadingStore = useLoadingStore.getState();
+      loadingStore.stopLoading(operationId);    }
   }
 
   // Optimistically create item (instant UI update)
   async create(item: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T | null> {
+    const loadingStore = useLoadingStore.getState();
+    const operationId = `create-${this.config.table}-${Date.now()}`;
+    loadingStore.startLoading(operationId);
+
     const tempId = `temp_${Date.now()}`;
     const optimisticItem = {
       ...item,
@@ -157,13 +169,22 @@ class OptimisticCache<T extends { id: string }> {
       this.set(this.data.filter(d => d.id !== tempId));
       toast.error('Failed to create item');
       return null;
+    } finally {
+      loadingStore.stopLoading(operationId);
     }
   }
 
   // Optimistically update item (instant UI update)
   async update(id: string, updates: Partial<T>): Promise<boolean> {
+    const loadingStore = useLoadingStore.getState();
+    const operationId = `update-${this.config.table}-${Date.now()}`;
+    loadingStore.startLoading(operationId);
+
     const originalItem = this.data.find(d => d.id === id);
-    if (!originalItem) return false;
+    if (!originalItem) {
+      loadingStore.stopLoading(operationId);
+      return false;
+    }
 
     // Instant UI update
     const updatedItem = { ...originalItem, ...updates, updated_at: new Date().toISOString() };
@@ -185,13 +206,22 @@ class OptimisticCache<T extends { id: string }> {
       this.set(this.data.map(d => (d.id === id ? originalItem : d)));
       toast.error('Failed to update item');
       return false;
+    } finally {
+      loadingStore.stopLoading(operationId);
     }
   }
 
   // Optimistically delete item (instant UI update)
   async delete(id: string): Promise<boolean> {
+    const loadingStore = useLoadingStore.getState();
+    const operationId = `delete-${this.config.table}-${Date.now()}`;
+    loadingStore.startLoading(operationId);
+
     const originalItem = this.data.find(d => d.id === id);
-    if (!originalItem) return false;
+    if (!originalItem) {
+      loadingStore.stopLoading(operationId);
+      return false;
+    }
 
     // Instant UI update
     this.set(this.data.filter(d => d.id !== id));
@@ -212,6 +242,8 @@ class OptimisticCache<T extends { id: string }> {
       this.set([...this.data, originalItem]);
       toast.error('Failed to delete item');
       return false;
+    } finally {
+      loadingStore.stopLoading(operationId);
     }
   }
 

@@ -346,6 +346,33 @@ export const AppLayout: React.FC = () => {
             );
           })}
         </nav>
+        
+        {/* World-Class Loading Indicator at Sidebar Bottom */}
+        <div className="absolute bottom-4 left-4 right-4">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${
+            isLoading 
+              ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-400/30 shadow-lg' 
+              : 'bg-slate-700/50 border border-slate-600/30'
+          }`}>
+            <Loader2 
+              size={sidebarOpen ? 16 : 18} 
+              className={`transition-all duration-300 ${
+                isLoading 
+                  ? 'text-blue-300 animate-spin' 
+                  : 'text-slate-400'
+              }`} 
+            />
+            {sidebarOpen && (
+              <span className={`text-xs font-medium transition-all duration-300 ${
+                isLoading 
+                  ? 'text-blue-100' 
+                  : 'text-slate-300'
+              }`}>
+                {isLoading ? 'Loading Data...' : 'System Ready'}
+              </span>
+            )}
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -385,13 +412,28 @@ export const AppLayout: React.FC = () => {
                 />
               )}
 
-              {/* Global Loading Indicator */}
-              {isLoading && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg animate-scale-in">
-                  <Loader2 size={16} className="text-blue-600 animate-spin" />
-                  <span className="text-xs font-medium text-blue-900">Updating...</span>
-                </div>
-              )}
+              {/* World-Class Always-Visible Loading Indicator */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
+                isLoading 
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm' 
+                  : 'bg-slate-50 border border-slate-200'
+              }`}>
+                <Loader2 
+                  size={16} 
+                  className={`transition-all duration-300 ${
+                    isLoading 
+                      ? 'text-blue-600 animate-spin' 
+                      : 'text-slate-400'
+                  }`} 
+                />
+                <span className={`text-xs font-medium transition-all duration-300 ${
+                  isLoading 
+                    ? 'text-blue-900' 
+                    : 'text-slate-500'
+                }`}>
+                  {isLoading ? 'Loading...' : 'Ready'}
+                </span>
+              </div>
 
             </div>
             <div className="flex items-center gap-2">
