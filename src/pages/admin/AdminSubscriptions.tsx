@@ -412,13 +412,8 @@ export const AdminSubscriptions: React.FC = () => {
       .reduce((sum, s) => sum + (s.amount || 0), 0),
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  // Removed blocking loading screen - navbar/sidebar indicators handle loading
+  // Page renders immediately, data loads in background
 
   return (
     <div className="p-6 space-y-6">

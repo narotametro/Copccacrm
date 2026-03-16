@@ -51,7 +51,7 @@ interface SMSStats {
 }
 
 export const SMSAdminPanel: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+  // Removed loading state - page renders immediately, data loads in background
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [config, setConfig] = useState<TwilioConfig>({
@@ -85,7 +85,7 @@ export const SMSAdminPanel: React.FC = () => {
 
   const loadConfig = async () => {
     try {
-      setLoading(true);
+      // Removed setLoading(true) - page already rendered
       const { data, error } = await supabase
         .from('system_settings')
         .select('key, value')
@@ -106,9 +106,8 @@ export const SMSAdminPanel: React.FC = () => {
     } catch (error) {
       console.error('Failed to load config:', error);
       toast.error('Failed to load Twilio configuration');
-    } finally {
-      setLoading(false);
     }
+    // Removed finally setLoading(false) - no loading state needed
   };
 
   const loadStats = async () => {
@@ -320,16 +319,8 @@ export const SMSAdminPanel: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <Activity className="animate-spin mx-auto mb-4" size={40} />
-          <p className="text-slate-600">Loading admin panel...</p>
-        </div>
-      </div>
-    );
-  }
+  // Removed blocking loading screen - navbar/sidebar indicators handle loading
+  // Page renders immediately, data loads in background
 
   const isConfigured = config.accountSid && config.authToken && config.phoneNumber;
 

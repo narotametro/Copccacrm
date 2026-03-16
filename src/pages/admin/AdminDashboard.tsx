@@ -49,7 +49,7 @@ export const AdminDashboard: React.FC = () => {
     trialsExpiringSoon: 0,
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Removed loading state - page renders immediately, data loads in background
 
   useEffect(() => {
     fetchDashboardData();
@@ -80,9 +80,8 @@ export const AdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
     }
+    // Removed setLoading(false) - no loading state needed
   };
 
   const fetchBasicStats = async () => {
@@ -242,21 +241,8 @@ export const AdminDashboard: React.FC = () => {
     return 'Just now';
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-white/10 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-white/10 rounded w-1/2"></div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-white/10 rounded-lg animate-pulse"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Removed blocking loading screen - navbar/sidebar indicators handle loading
+  // Page renders immediately, data loads in background
 
   return (
     <div className="space-y-6">
