@@ -427,6 +427,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         };
         fetchProfile();
       }
+
+      // Set up auth state change listener to handle token refresh and sign out
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event);
+        
+        if (event === 'SIGNED_OUT') {
+          // User signed out - clear state
+          set({ user: null, profile: null, hasActiveSubscription: null });
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token refreshed - keep user signed in
+          if (session?.user) {
+            set({ user: session.user });
+          }
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          // User signed in - update state
+          set({ user: session.user });
+        } else if (event === 'USER_UPDATED' && session?.user) {
+          // User data updated
+          set({ user: session.user });
+        }
+      });
     } catch (error) {
       // Don't log AbortErrors - they're expected during navigation/remounts
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
