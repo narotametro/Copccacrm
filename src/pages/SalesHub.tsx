@@ -981,7 +981,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [expenseKPIs, setExpenseKPIs] = useState({
     totalExpenses: 0,
     netProfit: 0,
@@ -1915,16 +1914,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
               <option value="Recurring">Recurring</option>
             </select>
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">View</label>
-            <Button
-              onClick={() => setShowAnalytics(!showAnalytics)}
-              variant="outline"
-              className="w-full"
-            >
-              {showAnalytics ? 'List View' : 'Analytics'}
-            </Button>
-          </div>
         </div>
       </Card>
 
@@ -1990,19 +1979,8 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
         </Card>
       )}
 
-      {/* Main Content: List or Analytics */}
-      {showAnalytics ? (
-        /* Analytics View */
-        <Card className="p-6">
-          <h4 className="text-lg font-bold text-slate-900 mb-4">Expense Analytics</h4>
-          <div className="text-center text-slate-500 py-12">
-            <BarChart3 className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-            <p>Charts coming soon: Expenses by Category, Trend Analysis, Expense vs Sales</p>
-          </div>
-        </Card>
-      ) : (
-        /* Expense List */
-        <Card className="overflow-hidden">
+      {/* Expense List */}
+      <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -2079,7 +2057,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
             </div>
           )}
         </Card>
-      )}
 
       {/* Add Expense Modal */}
       {showAddExpenseModal && (
