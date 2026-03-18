@@ -7491,7 +7491,7 @@ const CustomerBuyingPatternsSection = () => {
                       <td className="py-3 px-3">
                         <div>
                           <div className="font-medium text-slate-900">{product.name}</div>
-                          <div className="text-sm text-slate-600">SKU: {product.sku}</div>
+                          {product.sku && <div className="text-sm text-slate-600">SKU: {product.sku}</div>}
                           {product.brands?.name && (
                             <div className="text-xs text-slate-500 mt-0.5">🏷️ {product.brands.name}</div>
                           )}
