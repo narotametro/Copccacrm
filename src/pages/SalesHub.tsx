@@ -3534,6 +3534,50 @@ const SalesHub: React.FC = () => {
     console.log('🟢 [SALES HUB] Active subsection changed to:', activeSubsection);
   }, [activeSubsection]);
 
+  // Auto-select location when user has only one location
+  useEffect(() => {
+    if (userLocations.length === 1) {
+      // Auto-populate default location in Add Product form
+      setNewProductData(prev => ({
+        ...prev,
+        location_id: userLocations[0].id
+      }));
+      console.log('🎯 [AUTO-LOCATION] Auto-selected single location:', userLocations[0].name);
+    } else if (userLocations.length > 1) {
+      // Check for user's preferred default location
+      const defaultLocationId = localStorage.getItem('defaultLocationId');
+      if (defaultLocationId && userLocations.some(loc => loc.id === defaultLocationId)) {
+        setNewProductData(prev => ({
+          ...prev,
+          location_id: defaultLocationId
+        }));
+        console.log('🎯 [AUTO-LOCATION] Auto-selected default location from preferences');
+      }
+    }
+  }, [userLocations]);
+
+  // Auto-populate location when Add Product modal opens
+  useEffect(() => {
+    if (showAddProductModal && userLocations.length > 0) {
+      if (userLocations.length === 1) {
+        // Auto-select the only available location
+        setNewProductData(prev => ({
+          ...prev,
+          location_id: userLocations[0].id
+        }));
+      } else {
+        // Check for user's preferred default location
+        const defaultLocationId = localStorage.getItem('defaultLocationId');
+        if (defaultLocationId && userLocations.some(loc => loc.id === defaultLocationId)) {
+          setNewProductData(prev => ({
+            ...prev,
+            location_id: defaultLocationId
+          }));
+        }
+      }
+    }
+  }, [showAddProductModal, userLocations]);
+
   const loadCompanyPaymentInfo = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -8901,6 +8945,22 @@ const CustomerBuyingPatternsSection = () => {
                 <p className="text-xs text-amber-600 mt-1">
                   No locations available. Please add a location first.
                 </p>
+              )}
+              {userLocations.length > 1 && newProductData.location_id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('defaultLocationId', newProductData.location_id);
+                    const selectedLocation = userLocations.find(loc => loc.id === newProductData.location_id);
+                    alert(`✓ "${selectedLocation?.name}" set as your default location`);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Set as my default location
+                </button>
               )}
             </div>
 
