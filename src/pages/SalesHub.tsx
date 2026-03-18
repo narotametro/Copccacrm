@@ -143,6 +143,8 @@ interface StockHistoryEntry {
   referenceType: string;
   performedBy: string;
   customer?: string;
+  purchaseCostPerUnit?: number;
+  purchaseCostTotal?: number;
 }
 
 interface AIInsight {
@@ -3497,8 +3499,7 @@ const SalesHub: React.FC = () => {
     }
     if (activeSubsection === 'order-history') {
       loadOrderHistory();
-      loadCategories();
-      loadBrands();
+      // Categories and brands loaded instantly via optimistic cache - no manual load needed
     }
   }, [activeSubsection]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -7766,6 +7767,8 @@ const CustomerBuyingPatternsSection = () => {
             created_by,
             notes,
             created_at,
+            purchase_cost_per_unit,
+            purchase_cost_total,
             products!inner(name, model, sku, brand_id, brands(name))
           `)
           .gte('created_at', startDate.toISOString())
@@ -7814,7 +7817,9 @@ const CustomerBuyingPatternsSection = () => {
             reference: entry.reference_id || 'N/A',
             performedBy: entry.created_by || 'System',
             customer: undefined,
-            referenceType: entry.reference_type
+            referenceType: entry.reference_type,
+            purchaseCostPerUnit: entry.purchase_cost_per_unit || undefined,
+            purchaseCostTotal: entry.purchase_cost_total || undefined
           };
         }).filter(Boolean) as StockHistoryEntry[];
 
@@ -8104,6 +8109,27 @@ const CustomerBuyingPatternsSection = () => {
                       <p className="text-xl font-bold text-slate-900 mt-1">{selectedEntry.stockAfter}</p>
                     </div>
                   </div>
+
+                  {(selectedEntry.purchaseCostPerUnit || selectedEntry.purchaseCostTotal) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                      {selectedEntry.purchaseCostPerUnit && (
+                        <div>
+                          <label className="text-xs font-medium text-green-700 uppercase tracking-wide">💰 Cost/Unit</label>
+                          <p className="text-lg font-bold text-green-900 mt-1">
+                            TSh {selectedEntry.purchaseCostPerUnit.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedEntry.purchaseCostTotal && (
+                        <div>
+                          <label className="text-xs font-medium text-green-700 uppercase tracking-wide">💵 Total Cost</label>
+                          <p className="text-lg font-bold text-green-900 mt-1">
+                            TSh {selectedEntry.purchaseCostTotal.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4 p-3 bg-white rounded-lg border border-slate-200">
                     <div>
