@@ -65,6 +65,7 @@ const Dashboard = () => {
     return new Date().toISOString().split('T')[0];
   });
   const [useCustomDateRange, setUseCustomDateRange] = useState<boolean>(false);
+  const [useSingleDate, setUseSingleDate] = useState<boolean>(false);
   
   // Sales date selector state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -736,24 +737,48 @@ const Dashboard = () => {
                 </select>
               ) : (
                 <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <input
+                      type="checkbox"
+                      id="singleDateMode"
+                      checked={useSingleDate}
+                      onChange={(e) => {
+                        setUseSingleDate(e.target.checked);
+                        if (e.target.checked) {
+                          setEndDate(startDate);
+                        }
+                      }}
+                      className="w-3 h-3 text-green-600 border-slate-300 rounded focus:ring-2 focus:ring-green-500"
+                    />
+                    <label htmlFor="singleDateMode" className="text-xs text-slate-600 cursor-pointer">
+                      Single date only
+                    </label>
+                  </div>
                   <div className="flex items-center gap-1">
-                    <label className="text-xs text-slate-600 w-10">From:</label>
+                    <label className="text-xs text-slate-600 w-10">{useSingleDate ? 'Date:' : 'From:'}</label>
                     <input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        if (useSingleDate) {
+                          setEndDate(e.target.value);
+                        }
+                      }}
                       className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                     />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <label className="text-xs text-slate-600 w-10">To:</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
-                    />
-                  </div>
+                  {!useSingleDate && (
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs text-slate-600 w-10">To:</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="text-xs px-2 py-1 border border-slate-200 rounded bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
