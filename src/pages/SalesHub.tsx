@@ -1048,10 +1048,12 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
         return;
       }
 
-      // Load categories (default + custom)
+      // Load categories (default + custom) - filtered by company_id via RLS
+      // Adding explicit OR filter as safeguard: is_default=true OR company_id matches
       const { data: categories, error } = await supabase
         .from('expense_categories')
         .select('name')
+        .or(`is_default.eq.true,company_id.eq.${userData.company_id}`)
         .order('is_default', { ascending: false })
         .order('name', { ascending: true });
 
@@ -1251,10 +1253,24 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
           break;
       }
 
-      // Build query with filters
+      // Get user's company_id for filtering
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!userData?.company_id) {
+        console.error('⚠️ User has no company_id - cannot load expenses');
+        toast.error('Account setup incomplete. Please contact support.');
+        return;
+      }
+
+      // Build query with filters - explicitly filter by company_id for data isolation
       let query = supabase
         .from('expenses')
         .select('*')
+        .eq('company_id', userData.company_id)
         .gte('expense_date', startDate.toISOString().split('T')[0])
         .lte('expense_date', endDate.toISOString().split('T')[0])
         .order('expense_date', { ascending: false });
@@ -1781,73 +1797,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ expenses, setExpenses
 
       {/* Filters Bar */}
       <Card className="p-4">
-        {/* Quick Date Range Filter Buttons */}
-        <div className="mb-4">
-          <label className="text-sm font-medium text-slate-700 mb-2 block">📅 Quick Filters</label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setDateRange('today')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'today'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setDateRange('this-week')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'this-week'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => setDateRange('last-week')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'last-week'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Last Week
-            </button>
-            <button
-              onClick={() => setDateRange('this-month')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'this-month'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => setDateRange('last-30-days')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'last-30-days'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Last 30 Days
-            </button>
-            <button
-              onClick={() => setDateRange('this-year')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'this-year'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              This Year
-            </button>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-slate-700 mb-1 block">Advanced Date Range</label>
