@@ -22,10 +22,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // CRITICAL: Wait for auth initialization to complete
   // Don't redirect users while auth is still loading from localStorage
-  // This prevents page shifting during initial load
+  // This prevents page shifting during initial load and token refreshes
   if (!initialized) {
     // Auth is still initializing - show nothing (no redirect, no loading spinner)
     // This happens for a split second while checking localStorage
+    // STABLE: During this time, don't make ANY navigation decisions
     return null;
   }
 

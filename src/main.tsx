@@ -82,20 +82,20 @@ window.addEventListener('error', (event) => {
   if (is404Error && !errorRecoveryInProgress) {
     errorRecoveryInProgress = true;
     
-    // SILENT FIX: Clear caches in background - NO RELOAD unless it's critical
-    clearAllServiceWorkersAndCaches().then(() => {
-      // Only reload if this is a critical startup error
-      // Don't reload if user is actively working
-      if (document.readyState === 'loading' || !document.getElementById('root')?.children.length) {
-        // App hasn't rendered yet - safe to reload
+    // ULTRA-STABLE: Never reload while user is working - let them continue
+    // Only clear caches in background for future page loads
+    if (document.readyState === 'loading' && !document.getElementById('root')?.children.length) {
+      // App hasn't rendered yet - safe to clear cache and reload
+      clearAllServiceWorkersAndCaches().then(() => {
         localStorage.removeItem('app_build_version');
         setTimeout(() => window.location.reload(), 100);
-      } else {
-        // App is already running - let user continue
-        // Error was likely a lazy-loaded chunk they don't need right now
-        console.log('Non-critical error detected - continuing without reload');
-      }
-    });
+      });
+    } else {
+      // App is already running - NEVER reload, just clear cache for next session
+      clearAllServiceWorkersAndCaches().then(() => {
+        console.log('Cache cleared - changes will apply on next page load');
+      });
+    }
     
     // Prevent error from showing in console (user never sees it)
     event.preventDefault();
@@ -109,15 +109,17 @@ window.addEventListener('error', (event) => {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then(registration => {
-    // Check for updates every 30 seconds
-    setInterval(() => {
-      registration.update().catch(() => {
-        // If update fails silently, clear and reload without disruption
-        clearAllServiceWorkersAndCaches().then(() => {
-          setTimeout(() => window.location.reload(), 300);
+    // STABLE MODE: Only check for updates when user returns to tab (not every 30 seconds)
+    // This prevents unexpected reloads while users are actively working
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // User returned to tab - check for updates silently
+        registration.update().catch(() => {
+          // If update fails, log but DON'T reload while user is working
+          console.log('SW update check failed - will retry on next tab visibility');
         });
-      });
-    }, 30000);
+      }
+    });
     
     // Listen for new service worker
     registration.addEventListener('updatefound', () => {

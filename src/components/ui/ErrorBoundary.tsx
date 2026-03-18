@@ -31,16 +31,15 @@ export class ErrorBoundary extends Component<Props, State> {
       error.message?.includes('ChunkLoadError');
     
     if (isChunkLoadError) {
+      // STABLE MODE: Never auto-reload - let user decide when to refresh
       // Check if we've already tried reloading to prevent infinite loops
       const hasReloadedForChunk = sessionStorage.getItem('chunk_reload_attempted');
       
       if (!hasReloadedForChunk) {
-        console.log('Chunk load error detected. Reloading page to fetch new chunks...');
+        // Mark that we encountered a chunk error, but DON'T auto-reload
+        // User can manually click the Reload button when ready
         sessionStorage.setItem('chunk_reload_attempted', 'true');
-        window.location.reload();
-      } else {
-        // Clear the flag after showing error (user can manually reload)
-        sessionStorage.removeItem('chunk_reload_attempted');
+        console.log('Chunk load error detected. User can manually reload when ready.');
       }
     }
   }
