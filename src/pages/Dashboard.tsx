@@ -745,7 +745,10 @@ const Dashboard = () => {
                       onChange={(e) => {
                         setUseSingleDate(e.target.checked);
                         if (e.target.checked) {
-                          setEndDate(startDate);
+                          // Set both dates to TODAY when enabling single date mode
+                          const today = new Date().toISOString().split('T')[0];
+                          setStartDate(today);
+                          setEndDate(today);
                         }
                       }}
                       className="w-3 h-3 text-green-600 border-slate-300 rounded focus:ring-2 focus:ring-green-500"
