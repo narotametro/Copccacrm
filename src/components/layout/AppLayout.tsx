@@ -412,29 +412,6 @@ export const AppLayout: React.FC = () => {
                 />
               )}
 
-              {/* World-Class Always-Visible Loading Indicator */}
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
-                isLoading 
-                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm' 
-                  : 'bg-slate-50 border border-slate-200'
-              }`}>
-                <Loader2 
-                  size={16} 
-                  className={`transition-all duration-300 ${
-                    isLoading 
-                      ? 'text-blue-600 animate-spin' 
-                      : 'text-slate-400'
-                  }`} 
-                />
-                <span className={`text-xs font-medium transition-all duration-300 ${
-                  isLoading 
-                    ? 'text-blue-900' 
-                    : 'text-slate-500'
-                }`}>
-                  {isLoading ? 'Loading...' : 'Ready'}
-                </span>
-              </div>
-
             </div>
             <div className="flex items-center gap-2">
               {/* User Filter Dropdown - Admin and Manager Only */}
