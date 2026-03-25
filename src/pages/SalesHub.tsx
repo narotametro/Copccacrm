@@ -4118,7 +4118,12 @@ const SalesHub: React.FC = () => {
           await loadOrderHistory();
           console.log('✅ Order history refreshed successfully');
 
-          // Products state will auto-update via useOptimisticCache real-time subscriptions
+          // Force products reload to update inventory display instantly
+          console.log('🔄 Refreshing inventory management data...');
+          await reloadProducts();
+          console.log('✅ Inventory updated successfully - stock changes now visible');
+
+          // Products state will also auto-update via useOptimisticCache real-time subscriptions
         } catch (error) {
           console.error('❌ Error processing order in background:', error);
           // Still try to refresh order history even if stock update failed
